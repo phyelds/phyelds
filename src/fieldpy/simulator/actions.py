@@ -1,4 +1,3 @@
-
 def move_with_velocity(simulator, delta_time, node, velocity):
     """
     Move the node with a given velocity.
@@ -8,4 +7,6 @@ def move_with_velocity(simulator, delta_time, node, velocity):
     (vx, vy) = velocity
     new_position = (x + vx * delta_time, y + vy * delta_time)
     node.update(new_position)
-    simulator.schedule_event(delta_time, move_with_velocity, simulator, delta_time, node, velocity)
+    simulator.schedule_event(
+        delta_time, move_with_velocity, simulator, delta_time, node, velocity
+    )

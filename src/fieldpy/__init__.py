@@ -1,5 +1,3 @@
-from typing import Dict, List, Any, Optional, Union, Iterator
-
 from fieldpy.internal import Engine, MutableEngine
 
 """

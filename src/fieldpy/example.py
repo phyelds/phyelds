@@ -11,6 +11,8 @@ from fieldpy.simulator.render import render_sync
 from fieldpy.simulator.runner import aggregate_program_runner
 
 random.seed(42)
+
+
 @aggregate
 def main(context):
     distances = neighbors_distances(context.position)
@@ -19,7 +21,8 @@ def main(context):
     # distance from nodes_in
     distance_from_path = distance_to(nodes_in_path, distances)
     channel = 1.0 if distance_from_path < 0.12 else 0.0
-    return channel #distance_to(leader == 33, distances)
+    return channel  # distance_to(leader == 33, distances)
+
 
 simulator = Simulator()
 # deformed lattice

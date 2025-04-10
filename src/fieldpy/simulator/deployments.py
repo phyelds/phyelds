@@ -12,9 +12,16 @@ def grid_generation(simulator: Simulator, width: int, height: int, spacing: floa
     for x in range(0, width):
         for y in range(0, height):
             position = (x * spacing, y * spacing)
-            simulator.create_node(position, id = x * height + y)
+            simulator.create_node(position, id=x * height + y)
 
-def deformed_lattice(simulator: Simulator, width: int, height: int, spacing: float, deformation_factor: float):
+
+def deformed_lattice(
+    simulator: Simulator,
+    width: int,
+    height: int,
+    spacing: float,
+    deformation_factor: float,
+):
     """
     Generate a deformed lattice of nodes in the simulator's environment.
     """
@@ -24,7 +31,8 @@ def deformed_lattice(simulator: Simulator, width: int, height: int, spacing: flo
             dx = random.uniform(-deformation_factor, deformation_factor)
             dy = random.uniform(-deformation_factor, deformation_factor)
             position = (x * spacing + dx, y * spacing + dy)
-            simulator.create_node(position, id = x * height + y)
+            simulator.create_node(position, id=x * height + y)
+
 
 def random_walk(simulator: Simulator, num_steps: int, step_size: float):
     """
@@ -37,6 +45,7 @@ def random_walk(simulator: Simulator, num_steps: int, step_size: float):
         position = (position[0] + dx, position[1] + dy)
         simulator.create_node(position)
 
+
 def random_in_circle(simulator: Simulator, num_nodes: int, radius: float):
     """
     Generate nodes randomly distributed within a circle.
@@ -46,15 +55,16 @@ def random_in_circle(simulator: Simulator, num_nodes: int, radius: float):
         r = random.uniform(0, radius)
         x = r * math.cos(angle)
         y = r * math.sin(angle)
-        simulator.create_node((x, y), id = index)
+        simulator.create_node((x, y), id=index)
 
-def gaussian_movement(simulator: Simulator, node: Node, mean: Tuple[float, ...], stddev: float):
+
+def gaussian_movement(
+    simulator: Simulator, node: Node, mean: Tuple[float, ...], stddev: float
+):
     """
     Move a node according to a Gaussian distribution.
     """
-    new_position = tuple(
-        random.gauss(mean[i], stddev) for i in range(len(mean))
-    )
+    new_position = tuple(random.gauss(mean[i], stddev) for i in range(len(mean)))
     node.update(new_position)
     # next schedule the event
     simulator.schedule_event(1.0, gaussian_movement, simulator, node, mean, stddev)

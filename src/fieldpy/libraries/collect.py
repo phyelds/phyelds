@@ -10,6 +10,7 @@ def find_parent(potential: float) -> any:
     else:
         return min_value[0]
 
+
 @aggregate
 def collect_with(context, potential, local, accumulation):
     collections = remember(local)
@@ -22,13 +23,16 @@ def collect_with(context, potential, local, accumulation):
             operations = accumulation(operations, value)
     return collections.update(operations)
 
+
 @aggregate
 def count_nodes(context, potential):
     return collect_with(context, potential, 1, lambda x, y: x + y)
 
+
 @aggregate
 def sum_values(context, potential, local):
     return collect_with(context, potential, local, lambda x, y: x + y)
+
 
 @aggregate
 def collect_or(context, potential, local):

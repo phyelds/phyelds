@@ -12,10 +12,12 @@ def elect_leader(context, area: float, distances: Field) -> int:
     # Return None if no leader was elected (infinite distance), otherwise return the leader ID
     return None if result[0] == float("inf") else result[1]
 
+
 @aggregate
 def random_uuid(context):
     value = remember(random.random())
     return (value, context.id)
+
 
 @aggregate
 def breaking_using_uids(uid, area: float, distances: Field):
@@ -28,8 +30,11 @@ def breaking_using_uids(uid, area: float, distances: Field):
     # if the new lead is the same, return the uid
     return lead.update(new_lead)
 
+
 @aggregate
-def distance_competition(current_distance, area: float, uid, lead, distances: Field, leader_id):
+def distance_competition(
+    current_distance, area: float, uid, lead, distances: Field, leader_id
+):
     inf = (float("inf"), uid[1])
     # neighbors lead
     neighbors_lead = neighbors(lead)
@@ -44,4 +49,3 @@ def distance_competition(current_distance, area: float, uid, lead, distances: Fi
         return inf
     else:
         return lead
-

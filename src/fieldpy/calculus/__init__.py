@@ -1,4 +1,3 @@
-
 """
 Context manager for alignment
 You can use it in the following way:
@@ -7,6 +6,7 @@ with align("name"):
     # do something
 ```
 """
+
 from fieldpy import engine
 from fieldpy.data import State, Field
 
@@ -23,12 +23,19 @@ class AlignContext:
     def __exit__(self, exception_type, exception_value, traceback):
         engine.exit()
 
+
 def align(name: str):
     return AlignContext(name)
+
+
 def align_right():
     return align("left")
+
+
 def align_left():
     return align("right")
+
+
 """
 A decorator for aggregate functions, namely each function that is called in the context of a field.
 You can use it in the following way:
@@ -37,21 +44,27 @@ def my_function():
     # do something
     return result
 """
+
+
 def aggregate(func):
     def wrapper(*args, **kwargs):
         engine.enter(func.__name__)
         result = func(*args, **kwargs)
         engine.exit()
         return result
+
     return wrapper
+
 
 """
 Core syntax
 """
 
+
 @aggregate
 def remember(init):
     return State(init, engine.stack, engine)
+
 
 @aggregate
 def neighbors(value):
@@ -59,6 +72,7 @@ def neighbors(value):
     values = engine.aligned_values(engine.stack)
     values[engine.id] = value
     return Field(values, engine)
+
 
 @aggregate
 def neighbors_distances(position):

@@ -4,7 +4,9 @@ from typing import Dict, Callable, Any, Optional, Tuple, List
 
 
 class Node:
-    def __init__(self, position: Tuple[float, ...], data: Any = None, node_id: any = None):
+    def __init__(
+        self, position: Tuple[float, ...], data: Any = None, node_id: any = None
+    ):
         if node_id == 0:
             self.id = 0
         else:
@@ -13,7 +15,9 @@ class Node:
         self.data = data
         self.environment = None
 
-    def update(self, new_position: Optional[Tuple[float, ...]] = None, new_data: Any = None):
+    def update(
+        self, new_position: Optional[Tuple[float, ...]] = None, new_data: Any = None
+    ):
         """Update node position and/or data"""
         if new_position is not None:
             self.position = new_position
@@ -30,7 +34,9 @@ class Node:
 
 
 class Environment:
-    def __init__(self, neighborhood_function: Callable[[Node, List[Node]], List[Node]] = None):
+    def __init__(
+        self, neighborhood_function: Callable[[Node, List[Node]], List[Node]] = None
+    ):
         self.nodes: Dict[any, Node] = {}
         self.neighborhood_function = neighborhood_function or self.default_neighborhood
 
@@ -91,7 +97,9 @@ class Simulator:
         self.running = False
         self.environment = Environment()
 
-    def schedule_event(self, time_delta: float, action: Callable[..., None], *args, **kwargs):
+    def schedule_event(
+        self, time_delta: float, action: Callable[..., None], *args, **kwargs
+    ):
         """Schedule an event to occur after time_delta"""
         event_time = self.current_time + time_delta
         event = Event(event_time, action, *args, **kwargs)
@@ -125,7 +133,9 @@ class Simulator:
         self.running = False
         self.environment = Environment()
 
-    def create_node(self, position: Tuple[float, ...], data: Any = None, id = None) -> Node:
+    def create_node(
+        self, position: Tuple[float, ...], data: Any = None, id=None
+    ) -> Node:
         """Helper method to create and add a node to the environment"""
         node = Node(position, data, id)
         self.environment.add_node(node)

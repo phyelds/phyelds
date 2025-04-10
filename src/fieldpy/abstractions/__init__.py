@@ -68,6 +68,7 @@ class Engine(ABC):
         :return: The aligned values.
         """
         pass
+
     def cooldown(self) -> None:
         """
         Cooldown the engine.

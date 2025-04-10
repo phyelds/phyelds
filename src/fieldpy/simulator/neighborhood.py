@@ -13,7 +13,9 @@ def radius_neighborhood(radius: float):
                 continue
 
             # Calculate Euclidean distance
-            distance = sum((a - b) ** 2 for a, b in zip(node.position, other.position)) ** 0.5
+            distance = (
+                sum((a - b) ** 2 for a, b in zip(node.position, other.position)) ** 0.5
+            )
 
             if distance <= radius:
                 neighbors.append(other)
@@ -31,8 +33,13 @@ def k_nearest_neighbors(k: int):
             return []
 
         # Calculate distances
-        distances = [(sum((a - b) ** 2 for a, b in zip(node.position, other.position)) ** 0.5, other)
-                     for other in others]
+        distances = [
+            (
+                sum((a - b) ** 2 for a, b in zip(node.position, other.position)) ** 0.5,
+                other,
+            )
+            for other in others
+        ]
 
         # Sort by distance and take k nearest
         distances.sort()

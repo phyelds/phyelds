@@ -6,7 +6,12 @@ from fieldpy.libraries.utils import min_with_default
 def distance_to(source, distances):
     gradient = remember(float("inf"))
     neighbors_gradients = neighbors(gradient) + distances
-    return gradient.update(0.0 if source else min_with_default(neighbors_gradients.exclude_self(), float("inf")))
+    return gradient.update(
+        0.0
+        if source
+        else min_with_default(neighbors_gradients.exclude_self(), float("inf"))
+    )
+
 
 @aggregate
 def cast_from(source, data, distances):

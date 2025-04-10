@@ -1,13 +1,12 @@
-
 """
 Engine is the core of the FieldPy library. It manages the state and message passing
 between different contexts. It provides methods to enter and exit contexts, send messages,
 and manage the state of the system.
 """
+
 from typing import Dict, List, Any, Optional
-from copy import deepcopy
 from fieldpy.abstractions import Engine
-from fieldpy.data import State
+
 
 class MutableEngine(Engine):
     def __init__(self):
@@ -24,7 +23,9 @@ class MutableEngine(Engine):
         if state is None:
             state = {}
         self.stack: List[str] = []
-        self.state: Dict[str, Any] = state.copy()  # Copy the state to avoid modifying the original
+        self.state: Dict[str, Any] = (
+            state.copy()
+        )  # Copy the state to avoid modifying the original
         self.count_stack: List[int] = [0]  # Reset counter stack
         self.to_send: Dict[str, Any] = {}
         self.messages: Dict[int, Dict[str, Any]] = messages
