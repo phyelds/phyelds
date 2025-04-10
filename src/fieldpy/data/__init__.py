@@ -3,15 +3,22 @@ Internal state class used to manage the state of the system (namely `rep` of fie
 """
 
 from typing import Any, Dict, Optional, List
-from fieldpy.abstractions import Engine
 import wrapt
+from fieldpy.abstractions import Engine
 
 """
 Field class used to manage the interactions of between nodes (namely `nbr` of field calculus).
 """
 
 
-class Field(object):
+class Field:
+    """
+    A class to represent a field of values associated with node IDs.
+    It provides methods to perform operations on the field, such as addition,
+    subtraction, multiplication, and division.
+    You should never use it directly, but rather use the `neighbors` function
+    """
+
     def __init__(self, data: Dict[int, Any], engine: Engine) -> None:
         self.data = dict(sorted(data.items()))
         self._iter_index: Optional[int] = None
@@ -19,20 +26,33 @@ class Field(object):
         self.engine = engine
 
     def __iter__(self) -> "Field":
-        self._iter_index = -1  # -1 represents the local value
+        self._iter_index = 0
         self._iter_keys = sorted(self.data.keys())
         return self
 
+    # TODO: consider to return a Field or a dic
     def exclude_self(self):
+        """
+        Exclude the current node from the field.
+        :return:  A new Field object with the current node excluded.
+        """
         to_return = self.data.copy()
-        to_return.pop(self.engine.id, None)
+        to_return.pop(self.engine.node_id, None)
         return Field(to_return, self.engine)
 
     def local(self):
-        return self.data.get(self.engine.id, None)
+        """
+        Get the local value of the current node.
+        :return:
+        """
+        return self.data.get(self.engine.node_id, None)
 
-    def select(self, field) -> List:
-        # take the element which are true from the field passed
+    def select(self, field) -> list:
+        """
+        Select the values from the field that are present in the current field.
+        :param field: The field to select from.
+        :return:  A list of values from the current field that are present in the given field.
+        """
         return [
             self.data[k] for k in self.data.keys() & field.data.keys() if field.data[k]
         ]
@@ -49,66 +69,47 @@ class Field(object):
             )
         return Field({k: op(v, other) for k, v in self.data.items()}, self.engine)
 
-    # Plus operator, namely it sums all the elements of the field
     def __add__(self, other):
         return self._apply_binary_op(other, lambda a, b: a + b)
 
-    # Minus operator, namely it subtracts all the elements of the field
     def __sub__(self, other):
         return self._apply_binary_op(other, lambda a, b: a - b)
 
-    # Multiplication operator, namely it multiplies all the elements of the field
     def __mul__(self, other):
         return self._apply_binary_op(other, lambda a, b: a * b)
 
-    # Division operator, namely it divides all the elements of the field
     def __truediv__(self, other):
         return self._apply_binary_op(other, lambda a, b: a / b)
 
-    # Modulo operator, namely it applies modulo to all the elements of the field
     def __mod__(self, other):
         return self._apply_binary_op(other, lambda a, b: a % b)
 
-    # Power operator, namely it raises all the elements of the field to the power of the other
     def __pow__(self, other):
         return self._apply_binary_op(other, lambda a, b: a**b)
 
-    # Floor division operator, namely it applies floor division to all the elements of the field
     def __floordiv__(self, other):
         return self._apply_binary_op(other, lambda a, b: a // b)
 
-    # Bitwise and operator, namely it does a bitwise and operation on all the elements of the field
     def __and__(self, other):
         return self._apply_binary_op(other, lambda a, b: a & b)
 
-    # Bitwise or operator, namely it does a bitwise or operation on all the elements of the field
     def __or__(self, other):
         return self._apply_binary_op(other, lambda a, b: a | b)
 
-    # Bitwise xor operator, namely it does a bitwise xor operation on all the elements of the field
     def __xor__(self, other):
         return self._apply_binary_op(other, lambda a, b: a ^ b)
 
-    # Bitwise not operator, namely it does a bitwise not operation on all the elements of the field
     def __invert__(self):
         return Field({k: ~v for k, v in self.data.items()}, self.engine)
 
-    # Less than operator, namely it does a less than operation on all the elements of the field
     def __lt__(self, other):
         return self._apply_binary_op(other, lambda a, b: a < b)
 
-    # Less than or equal operator, namely it does a less than or equal operation on all the elements of the field
     def __le__(self, other):
         return self._apply_binary_op(other, lambda a, b: a <= b)
 
-    # Greater than operator, namely it does a greater than operation on all the elements of the field
     def __gt__(self, other):
         return self._apply_binary_op(other, lambda a, b: a > b)
-
-    def __iter__(self) -> "Field":
-        self._iter_index = 0
-        self._iter_keys = sorted(self.data.keys())
-        return self
 
     def __next__(self) -> Any:
         if self._iter_keys is None or self._iter_index is None:
@@ -132,6 +133,7 @@ class State(wrapt.ObjectProxy):
     """
 
     def __init__(self, default: Any, path: List, engine: Engine):
+        self.__wrapped__ = default  ### then it will be updated
         state = engine.read_state(path)
         if state is None:
             value = default
@@ -173,3 +175,11 @@ class State(wrapt.ObjectProxy):
     def __repr__(self):
         """String representation of the state."""
         return f"State: {repr(self.__wrapped__)}"
+
+    def __copy__(self):
+        """Create a shallow copy of the state."""
+        return State(self.__wrapped__, self._self_path, self._self_engine)
+
+    def __deepcopy__(self, memo):
+        """Create a deep copy of the state."""
+        return self.__copy__()

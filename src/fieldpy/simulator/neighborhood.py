@@ -1,3 +1,9 @@
+"""
+Neighborhood functions for the FieldPy simulator.
+A neighborhood function is simply a function that takes a node and a list of all nodes,
+and returns a list of neighbors.
+"""
+
 from typing import List
 
 from fieldpy.simulator import Node

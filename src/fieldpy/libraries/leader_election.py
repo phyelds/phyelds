@@ -2,7 +2,7 @@ from fieldpy.calculus import aggregate, remember, neighbors
 from fieldpy.data import Field
 import random
 
-from fieldpy.libraries.diffusion import distance_to, cast_from
+from fieldpy.libraries.spreading import distance_to, broadcast
 from fieldpy.libraries.utils import min_with_default
 
 
@@ -25,7 +25,7 @@ def breaking_using_uids(uid, area: float, distances: Field):
     lead = remember(uid)
     # get the minimum value of the neighbors
     potential = distance_to(lead == uid, distances)
-    leader_id = cast_from(lead == uid, uid, distances)
+    leader_id = broadcast(lead == uid, uid, distances)
     new_lead = distance_competition(potential, area, uid, lead, distances, leader_id)
     # if the new lead is the same, return the uid
     return lead.update(new_lead)

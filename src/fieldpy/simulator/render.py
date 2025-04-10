@@ -1,3 +1,7 @@
+"""
+Render the nodes in the simulator's environment.
+"""
+
 from typing import Tuple
 
 from matplotlib import pyplot as plt
@@ -6,6 +10,13 @@ from fieldpy.simulator import Simulator
 
 
 class Link:
+    """
+    A class to represent a link between two nodes.
+    The link is represented as a tuple of two nodes.
+    Note!
+    Link(node1, node2) == Link(node2, node1)
+    """
+
     def __init__(self, node1: Tuple[float, ...], node2: Tuple[float, ...]):
         self.node1 = node1
         self.node2 = node2
@@ -58,7 +69,7 @@ def render_sync(simulator: Simulator, color_from: str = None):
             fontsize=8,
             ha="center",
             va="center",
-            bbox=dict(facecolor="white", alpha=0.1, edgecolor="none"),
+            bbox={"facecolor": "white", "alpha": 0.1, "edgecolor": "none"},
         )
     plt.title("Node Positions")
     plt.xlabel("X Position")

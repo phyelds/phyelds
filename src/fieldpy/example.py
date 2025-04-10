@@ -1,9 +1,13 @@
-# set random seed
+"""
+This example shows how to use the fieldpy library to create a simple simulation
+"""
+
 import random
 
+from fieldpy import engine
 from fieldpy.calculus import aggregate, neighbors_distances
 from fieldpy.libraries.collect import collect_or
-from fieldpy.libraries.diffusion import distance_to
+from fieldpy.libraries.spreading import distance_to
 from fieldpy.simulator import Simulator
 from fieldpy.simulator.deployments import deformed_lattice
 from fieldpy.simulator.neighborhood import radius_neighborhood

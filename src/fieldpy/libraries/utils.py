@@ -1,16 +1,19 @@
-from functools import reduce
+"""
+This module contains utility functions and classes for various purposes.
+"""
 
-from fieldpy.calculus import aggregate, remember
+from functools import reduce
 
 
 def min_with_default(iterable, default=None):
+    """
+    Returns the minimum value from an iterable, or a default value if the iterable is empty.
+    :param iterable: a list of values (or any iterable)
+    :param default: the default value to return if the iterable is empty
+    :return: the minimum value from the iterable or the default value
+    """
     return (
         reduce(lambda x, y: x if x < y else y, iterable, default)
         if iterable
         else default
     )
-
-
-@aggregate
-def counter():
-    return remember(0).update_fn(lambda x: x + 1)

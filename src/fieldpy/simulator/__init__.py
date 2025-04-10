@@ -1,9 +1,20 @@
+"""
+A simple simulator for aggregate computing systems in FieldPy.
+This simulator allows you to create nodes, set their positions and data,
+and define their neighborhoods.
+It also provides a way to schedule events and run the simulation.
+"""
+
+from typing import Dict, Callable, Any, Optional, Tuple, List
 import heapq
 import uuid
-from typing import Dict, Callable, Any, Optional, Tuple, List
 
 
 class Node:
+    """
+    A class to represent a node in the simulation.
+    """
+
     def __init__(
         self, position: Tuple[float, ...], data: Any = None, node_id: any = None
     ):
@@ -34,11 +45,17 @@ class Node:
 
 
 class Environment:
+    """
+    A class to represent the environment in which nodes exist.
+    It manages the nodes and their neighborhoods.
+    It also provides a way to set the neighborhood function.
+    """
+
     def __init__(
         self, neighborhood_function: Callable[[Node, List[Node]], List[Node]] = None
     ):
         self.nodes: Dict[any, Node] = {}
-        self.neighborhood_function = neighborhood_function or self.default_neighborhood
+        self.neighborhood_function = neighborhood_function or self.no_neighbors
 
     def node_list(self) -> List[Node]:
         """Return a list of all nodes in the environment"""
@@ -57,8 +74,6 @@ class Environment:
 
     def node_updated(self, node: Node):
         """Called when a node is updated"""
-        # Could trigger neighborhood recalculations or other actions
-        pass
 
     def set_neighborhood_function(self, func: Callable[[Node, List[Node]], List[Node]]):
         """Set the function that determines neighborhoods"""
@@ -69,12 +84,17 @@ class Environment:
         return self.neighborhood_function(node, list(self.nodes.values()))
 
     @staticmethod
-    def default_neighborhood(node: Node, all_nodes: List[Node]) -> List[Node]:
+    def no_neighbors() -> List[Node]:
         """Default neighborhood function (no neighbors)"""
         return []
 
 
 class Event:
+    """
+    A class to represent an event in the simulation.
+    An event has a time, an action (function), and optional arguments.
+    """
+
     def __init__(self, time: float, action: Callable[..., None], *args, **kwargs):
         self.time = time
         self.action = action

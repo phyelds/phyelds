@@ -1,8 +1,15 @@
+"""
+This module contains various functions to generate different types of node distributions
+in a simulation environment.
+These functions can be used to create specific patterns or random distributions of nodes
+for testing and simulation purposes.
+"""
+
+from typing import Tuple
 import random
 import math
 from fieldpy.simulator import Simulator
 from fieldpy.simulator import Node
-from typing import Tuple
 
 
 def grid_generation(simulator: Simulator, width: int, height: int, spacing: float):
