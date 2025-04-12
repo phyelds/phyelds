@@ -1,7 +1,32 @@
 from fieldpy import engine
-from fieldpy.calculus import remember
+from fieldpy.calculus import remember, aggregate, align, align_left, align_right
 from fieldpy.data import State
+from tests.calculus.mock import MockSimulator
 
+
+def test_remember_should_add_a_path_to_the_engine():
+    engine.setup(0)
+    remember(0)
+    x = engine.engine_state.state_trace
+    assert str(["remember@0"]) in x
+
+def test_remember_should_increment_the_counter():
+    engine.setup(0)
+    remember(0)
+    remember(0)
+    x = engine.engine_state.state_trace
+    assert str(["remember@1"]) in x
+
+def test_remember_should_support_nesting():
+    engine.setup(0)
+    with(align("first")):
+        remember(0)
+        with(align("second")):
+            remember(0)
+
+    x = engine.engine_state.state_trace
+    assert str(["first", "remember@0"]) in x
+    assert str(["first", "second", "remember@0"]) in x
 
 def test_remember_should_give_the_value_itself():
     # Setup
@@ -21,6 +46,11 @@ def test_remember_should_update_value():
     state.update(new_value)
     # Assert
     assert state.value == new_value
+
+
+def test_state_could_be_combined():
+    # Setup
+    assert remember(1) + remember(2) == 3
 
 def test_remember_should_update_value_with_function():
     # Setup
@@ -43,14 +73,29 @@ def test_remember_should_not_update_value_with_function_twice():
     assert state == 1
 
 def test_remember_should_have_state_in_different_call():
-    engine.setup(0)
+    simulator = MockSimulator(1)
+    @aggregate
+    def counter(context):
+        return remember(0).update_fn(lambda x: x + 1)
+    simulator.cycle(counter)
+    simulator.cycle(counter)
+    assert simulator.nodes[0].root == 2
+
+def test_remember_should_restart_when_dealing():
+    simulator = MockSimulator(1)
+    @aggregate
     def counter():
         return remember(0).update_fn(lambda x: x + 1)
-    counter()
-    engine.cooldown()
-    engine.setup(0, state=engine.state_trace())
-    assert counter() == 2
-
-def test_state_could_be_combined():
-    # Setup
-    assert remember(1) + remember(2) == 3
+    def double_state(context):
+        if counter() % 2 == 0:
+            with align_left():
+                return remember(0).update_fn(lambda x: x + 1)
+        else:
+            with align_right():
+                return remember(0).update_fn(lambda x: x + 1)
+    simulator.cycle(double_state)
+    assert simulator.nodes[0].root == 1
+    simulator.cycle(double_state)
+    assert simulator.nodes[0].root == 1
+    simulator.cycle(double_state)
+    assert simulator.nodes[0].root == 1
