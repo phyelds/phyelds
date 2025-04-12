@@ -59,6 +59,8 @@ def neighbors(value):
     :param value: used to query the neighbors.
     :return: the field representing this value
     """
+    if isinstance(value, Field):
+        raise TypeError("Field is not supported as a value")
     engine.send(value)
     values = engine.aligned_values(engine.current_path())
     values[engine.node_id] = value
