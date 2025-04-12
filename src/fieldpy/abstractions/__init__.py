@@ -1,3 +1,6 @@
+"""
+Engine interface: how to implement an aggregate computing engine.
+"""
 from abc import ABC
 
 

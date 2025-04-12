@@ -4,24 +4,23 @@ between different contexts. It provides methods to enter and exit contexts, send
 and manage the state of the system.
 """
 
-from typing import Dict, List, Any, Optional
-from fieldpy.abstractions import Engine
-
-
-from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
+from typing import Dict, List, Any, Optional
+
 from fieldpy.abstractions import Engine
 
 
 @dataclass
 class EngineState:
+    """
+    Inner state of the engine used to process aggregate computation.
+    """
     stack: List[str] = None
     state_trace: Dict[str, Any] = None
     count_stack: List[int] = None
     to_send: Dict[str, Any] = None
     messages: Dict[int, Dict[str, Any]] = None
-    count: int = 0
-    id: int = 0
+    node_id: int = 0
     reads: set = None
 
     def __post_init__(self):
@@ -32,8 +31,12 @@ class EngineState:
         self.messages = {} if self.messages is None else self.messages
         self.reads = set() if self.reads is None else self.reads
 
-
 class MutableEngine(Engine):
+    """
+    MutableEngine is the responsible for managing the state and message passing
+    in an aggregate computing system. It provides methods to enter and exit contexts,
+    send messages, and manage the state of the system.
+    """
     def __init__(self):
         super().__init__()
         self.engine_state = EngineState()
@@ -50,8 +53,7 @@ class MutableEngine(Engine):
             count_stack=[0],  # Reset counter stack
             to_send={},
             messages=messages,
-            count=0,  # Reset global counter
-            id=node_id,
+            node_id=node_id,
             reads=set(),
         )
 
@@ -85,9 +87,9 @@ class MutableEngine(Engine):
 
     def aligned(self) -> List[int]:
         aligned: List[int] = []
-        for id in self.engine_state.messages:
-            if str(self.engine_state.stack) in self.engine_state.messages[id]:
-                aligned.append(id)
+        for node_id in self.engine_state.messages:
+            if str(self.engine_state.stack) in self.engine_state.messages[node_id]:
+                aligned.append(node_id)
 
         return aligned
 
@@ -96,9 +98,9 @@ class MutableEngine(Engine):
         path_str: str = str(path)
         aligned_values: Dict[int, Any] = {}
         # take the values of the given path
-        for id in aligned:
-            if path_str in self.engine_state.messages[id]:
-                aligned_values[id] = self.engine_state.messages[id][path_str]
+        for node_id in aligned:
+            if path_str in self.engine_state.messages[node_id]:
+                aligned_values[node_id] = self.engine_state.messages[node_id][path_str]
         return aligned_values
 
     def state_trace(self) -> Dict[str, Any]:
@@ -120,6 +122,5 @@ class MutableEngine(Engine):
         self.engine_state.to_send = {}
         self.engine_state.stack = []
         self.engine_state.count_stack = []  # Reset counter stack
-        self.engine_state.count = 0  # Reset global counter
         self.engine_state.messages = {}
         return flatten_messages

@@ -38,7 +38,7 @@ def deformed_lattice(
             dx = random.uniform(-deformation_factor, deformation_factor)
             dy = random.uniform(-deformation_factor, deformation_factor)
             position = (x * spacing + dx, y * spacing + dy)
-            simulator.create_node(position, id=x * height + y)
+            simulator.create_node(position, node_id=x * height + y)
 
 
 def random_walk(simulator: Simulator, num_steps: int, step_size: float):

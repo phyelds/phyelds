@@ -1,5 +1,6 @@
 """
-Collect library -- namely the functions that are used to collect information from the network to source nodes.
+Collect library
+functions that are used to collect information from the network to source nodes.
 """
 
 from fieldpy.calculus import neighbors, aggregate, remember
@@ -16,8 +17,7 @@ def find_parent(potential: float) -> any:
     min_value = min(neighbors_potential.data.items(), key=lambda x: x[1])
     if min_value[1] >= potential:
         return None
-    else:
-        return min_value[0]
+    return min_value[0]
 
 
 @aggregate

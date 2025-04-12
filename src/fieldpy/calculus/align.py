@@ -7,6 +7,15 @@ from fieldpy import engine
 
 
 class AlignContext:
+    """
+    Context manager for alignment in FieldPy.
+    This context manager is used to align the state of the engine with the
+    current context. It should be used in the following way:
+    with AlignContext("context_name"):
+        # do something
+        pass
+
+    """
     def __init__(self, name: str):
         self.name = name
 

@@ -111,6 +111,9 @@ class Event:
 
 
 class Simulator:
+    """
+    A class to represent the simulator for a simple aggregate computing system.
+    """
     def __init__(self):
         self.event_queue = []
         self.current_time = 0.0
@@ -154,9 +157,9 @@ class Simulator:
         self.environment = Environment()
 
     def create_node(
-        self, position: Tuple[float, ...], data: Any = None, id=None
+        self, position: Tuple[float, ...], data: Any = None, node_id=None
     ) -> Node:
         """Helper method to create and add a node to the environment"""
-        node = Node(position, data, id)
+        node = Node(position, data, node_id)
         self.environment.add_node(node)
         return node

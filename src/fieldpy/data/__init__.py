@@ -6,14 +6,10 @@ from typing import Any, Dict, Optional, List
 import wrapt
 from fieldpy.abstractions import Engine
 
-"""
-Field class used to manage the interactions of between nodes (namely `nbr` of field calculus).
-"""
-
 
 class Field:
     """
-    A class to represent a field of values associated with node IDs.
+    Field class used to manage the interactions of between nodes (namely `nbr` of field calculus).
     It provides methods to perform operations on the field, such as addition,
     subtraction, multiplication, and division.
     You should never use it directly, but rather use the `neighbors` function
@@ -30,15 +26,15 @@ class Field:
         self._iter_keys = sorted(self.data.keys())
         return self
 
-    # TODO: consider to return a Field or a dic
-    def exclude_self(self):
+
+    def exclude_self(self) -> dict[int, Any]:
         """
         Exclude the current node from the field.
         :return:  A new Field object with the current node excluded.
         """
         to_return = self.data.copy()
         to_return.pop(self.engine.node_id, None)
-        return Field(to_return, self.engine)
+        return to_return
 
     def local(self):
         """
@@ -183,3 +179,11 @@ class State(wrapt.ObjectProxy):
     def __deepcopy__(self, memo):
         """Create a deep copy of the state."""
         return self.__copy__()
+
+    def __reduce__(self):
+        """Reduce the state for pickling."""
+        return self.__wrapped__
+
+    def __reduce_ex__(self, protocol):
+        """Reduce the state for pickling."""
+        return self.__reduce__()

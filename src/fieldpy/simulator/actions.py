@@ -1,3 +1,7 @@
+"""
+Sent of actions related to node movements and interactions in the simulator
+"""
+
 def move_with_velocity(simulator, delta_time, node, velocity):
     """
     Move the node with a given velocity.

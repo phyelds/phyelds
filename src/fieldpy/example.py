@@ -4,7 +4,6 @@ This example shows how to use the fieldpy library to create a simple simulation
 
 import random
 
-from fieldpy import engine
 from fieldpy.calculus import aggregate, neighbors_distances
 from fieldpy.libraries.collect import collect_or
 from fieldpy.libraries.spreading import distance_to
@@ -19,6 +18,11 @@ random.seed(42)
 
 @aggregate
 def main(context):
+    """
+    Example to use the fieldpy library to create a simple simulation
+    :param context:
+    :return:
+    """
     distances = neighbors_distances(context.position)
     target_distance = distance_to(context.data["target"], distances)
     nodes_in_path = collect_or(context, target_distance, context.data["source"])

@@ -22,7 +22,8 @@ from fieldpy.data import State, Field
 
 def aggregate(func):
     """
-    A decorator for aggregate functions, namely each function that is called in the context of a field.
+    A decorator for aggregate functions,
+    namely each function that is called in the context of a field.
     You can use it in the following way:
     @aggregate
     def my_function():
@@ -51,6 +52,13 @@ def remember(init):
 
 @aggregate
 def neighbors(value):
+    """
+    Get the `value` of the neighbors from the current node.
+    Example:
+    neighbors(context.data["temperature"]) // returns the temperature of the neighbors
+    :param value: used to query the neighbors.
+    :return: the field representing this value
+    """
     engine.send(value)
     values = engine.aligned_values(engine.current_path())
     values[engine.node_id] = value
@@ -59,23 +67,49 @@ def neighbors(value):
 
 @aggregate
 def neighbors_distances(position):
+    """
+    Get the distances to the neighbors from the current node.
+    :param position: the current node position
+    :return: the field representing the distances to the neighbors
+    """
     positions = neighbors(position)
     x, y = position
     distances = {}
-    for id, pos in positions.data.items():
+    for node_id, pos in positions.data.items():
         # pos are x, y tuples
         n_x, n_y = pos
-        distances[id] = ((x - n_x) ** 2 + (y - n_y) ** 2) ** 0.5
+        distances[node_id] = ((x - n_x) ** 2 + (y - n_y) ** 2) ** 0.5
     return Field(distances, engine)
 
 
 def align(name: str):
+    """
+    Used to align a part of the code with the current context,
+    creating different non communicating zones
+    :param name: what you would like to align on
+    :return: the context
+    """
     return AlignContext(name)
 
 
 def align_right():
+    """
+    Typically used in if statements to align the code
+    Example:
+    if condition:
+        with align_left():
+            # do something
+    else:
+        with align_right():
+            # do something else
+    :return:
+    """
     return align("left")
 
 
 def align_left():
+    """
+    Typically used in if statements to align the code
+    See align_right
+    """
     return align("right")
