@@ -34,3 +34,5 @@ build-backend = "poetry.core.masonry.api"
 pytest = "^8.0.0"
 pylint = "^3.0.0"
 ruff = "^0.3.0"
+flake8 = "^7.0.0"
+

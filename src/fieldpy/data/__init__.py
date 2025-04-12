@@ -26,7 +26,6 @@ class Field:
         self._iter_keys = sorted(self.data.keys())
         return self
 
-
     def exclude_self(self) -> dict[int, Any]:
         """
         Exclude the current node from the field.
@@ -129,7 +128,7 @@ class State(wrapt.ObjectProxy):
     """
 
     def __init__(self, default: Any, path: List, engine: Engine):
-        self.__wrapped__ = default  ### then it will be updated
+        self.__wrapped__ = default  # then it will be updated
         state = engine.read_state(path)
         if state is None:
             value = default

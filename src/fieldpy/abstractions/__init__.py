@@ -13,7 +13,7 @@ class Engine(ABC):
         self.node_id = None
 
     def setup(
-        self, node_id: int, messages: dict[int, dict[str, any]]=None, state=None
+        self, node_id: int, messages: dict[int, dict[str, any]], state=None
     ) -> None:
         """
         Setup the engine with the current context.

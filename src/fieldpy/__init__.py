@@ -12,7 +12,7 @@ In order to use it, you should:
 
 """
 
-from fieldpy.internal import Engine, MutableEngine
+from fieldpy.internal import MutableEngine
 
 
 engine = MutableEngine()
