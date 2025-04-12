@@ -18,7 +18,7 @@ def aggregate_program_runner(
     neighbors_messages = {
         neighbor.id: neighbor.data.get("messages", {}) for neighbor in all_neighbors
     }
-    engine.setup(neighbors_messages, node.id, node.data.get("state", {}))
+    engine.setup(node.id, neighbors_messages, node.data.get("state", {}))
     result = program(node)
     if isinstance(result, State):
         result = result.value

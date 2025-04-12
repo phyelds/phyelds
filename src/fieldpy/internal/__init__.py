@@ -42,8 +42,10 @@ class MutableEngine(Engine):
         self.engine_state = EngineState()
 
     def setup(
-        self, messages: Dict[int, Dict[str, Any]], node_id: int, state=None
+        self, node_id: int, messages=None, state=None
     ) -> None:
+        if messages is None:
+            messages = {}
         if state is None:
             state = {}
         self.node_id = node_id

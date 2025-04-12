@@ -9,7 +9,7 @@ def my_function():
     # do something
     return result
 
-Them, there is the core syntax of fieldpy:
+Then, there is the core syntax of fieldpy:
 - remember: used to remember a value across iterations.
 - neighbors: used to get the neighbors of a node.
 - neighbors_distances: used to get the distances to the neighbors.

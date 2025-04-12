@@ -13,12 +13,12 @@ class Engine(ABC):
         self.node_id = None
 
     def setup(
-        self, messages: dict[int, dict[str, any]], node_id: int, state=None
+        self, node_id: int, messages: dict[int, dict[str, any]]=None, state=None
     ) -> None:
         """
         Setup the engine with the current context.
+        :param node_id:
         :param messages: The messages to send.
-        :param id: The id of the current iteration.
         :param state: The state of the engine.
         """
 
