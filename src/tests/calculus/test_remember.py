@@ -23,10 +23,10 @@ def test_remember_should_support_nesting():
         remember(0)
         with(align("second")):
             remember(0)
-
     x = engine.engine_state.state_trace
-    assert str(["first", "remember@0"]) in x
-    assert str(["first", "second", "remember@0"]) in x
+    assert str(["first@0", "remember@0"]) in x
+    assert str(["first@0", "second@1", "remember@0"]) in x
+
 
 def test_remember_should_give_the_value_itself():
     # Setup
