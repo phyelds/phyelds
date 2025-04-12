@@ -36,7 +36,7 @@ jobs:
 
     - name: Lint with pylint
       run: |
-        poetry run pylint $(poetry run python -c "import pathlib; print(' '.join(str(p) for p in pathlib.Path('.').rglob('*.py') if 'venv' not in str(p)))")
+        poetry run pylint src
 
     - name: Test with pytest
       run: poetry run pytest
