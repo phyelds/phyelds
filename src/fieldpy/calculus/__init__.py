@@ -64,7 +64,7 @@ def neighbors(value):
     engine.send(value)
     values = engine.aligned_values(engine.current_path())
     values[engine.node_id] = value
-    return Field(values, engine)
+    return Field(values, engine.node_id)
 
 
 @aggregate
@@ -81,7 +81,7 @@ def neighbors_distances(position):
         # pos are x, y tuples
         n_x, n_y = pos
         distances[node_id] = ((x - n_x) ** 2 + (y - n_y) ** 2) ** 0.5
-    return Field(distances, engine)
+    return Field(distances, engine.node_id)
 
 
 def align(name: str):

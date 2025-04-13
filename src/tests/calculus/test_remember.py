@@ -99,3 +99,4 @@ def test_remember_should_restart_when_dealing():
     assert simulator.nodes[0].root == 1
     simulator.cycle(double_state)
     assert simulator.nodes[0].root == 1
+

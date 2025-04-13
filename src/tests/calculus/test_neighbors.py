@@ -52,3 +52,17 @@ def test_align_should_break_connection():
     assert simulator.nodes[0].root.data == { 0: 0, 1: 1 }
     assert simulator.nodes[1].root.data == { 0: 0, 1: 1 }
     assert simulator.nodes[2].root.data == { 2: 2 }
+
+def test_neighbors_local_should_return_the_value_itself():
+    simulator = MockSimulator(how_many)
+    def program(context):
+        result = neighbors(context.node_id)
+        print("id = " + str(context.node_id))
+        print("local = " + str(result.local()))
+        return result
+    simulator.cycle_for(program, how_many * how_many)
+    for node in simulator.nodes:
+        print(node.node_id)
+        print(node.root)
+        print(node.root.local())
+        assert node.root.local() == node.node_id

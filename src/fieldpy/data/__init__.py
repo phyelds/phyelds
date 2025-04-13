@@ -15,16 +15,30 @@ class Field:
     You should never use it directly, but rather use the `neighbors` function
     """
 
-    def __init__(self, data: Dict[int, Any], engine: Engine) -> None:
+    def __init__(self, data: Dict[int, Any], node_id: int) -> None:
         self.data = dict(sorted(data.items()))
         self._iter_index: Optional[int] = None
         self._iter_keys: Optional[List[int]] = None
-        self.engine = engine
+        self.node_id = node_id
 
     def __iter__(self) -> "Field":
         self._iter_index = 0
         self._iter_keys = sorted(self.data.keys())
         return self
+
+    def __next__(self) -> Any:
+        if self._iter_keys is None or self._iter_index is None:
+            raise StopIteration
+
+        if self._iter_index >= len(self._iter_keys):
+            self._iter_index = None
+            self._iter_keys = None
+            raise StopIteration
+
+        key = self._iter_keys[self._iter_index]
+        value = self.data[key]
+        self._iter_index += 1
+        return value
 
     def exclude_self(self) -> dict[int, Any]:
         """
@@ -32,7 +46,7 @@ class Field:
         :return:  A new Field object with the current node excluded.
         """
         to_return = self.data.copy()
-        to_return.pop(self.engine.node_id, None)
+        to_return.pop(self.node_id, None)
         return to_return
 
     def local(self):
@@ -40,7 +54,7 @@ class Field:
         Get the local value of the current node.
         :return:
         """
-        return self.data.get(self.engine.node_id, None)
+        return self.data.get(self.node_id, None)
 
     def select(self, field) -> list:
         """
@@ -60,9 +74,9 @@ class Field:
                     k: op(self.data[k], other.data[k])
                     for k in self.data.keys() & other.data.keys()
                 },
-                self.engine,
+                self.node_id,
             )
-        return Field({k: op(v, other) for k, v in self.data.items()}, self.engine)
+        return Field({k: op(v, other) for k, v in self.data.items()}, self.node_id)
 
     def __add__(self, other):
         return self._apply_binary_op(other, lambda a, b: a + b)
@@ -95,7 +109,7 @@ class Field:
         return self._apply_binary_op(other, lambda a, b: a ^ b)
 
     def __invert__(self):
-        return Field({k: ~v for k, v in self.data.items()}, self.engine)
+        return Field({k: ~v for k, v in self.data.items()}, self.node_id)
 
     def __lt__(self, other):
         return self._apply_binary_op(other, lambda a, b: a < b)
@@ -106,19 +120,13 @@ class Field:
     def __gt__(self, other):
         return self._apply_binary_op(other, lambda a, b: a > b)
 
-    def __next__(self) -> Any:
-        if self._iter_keys is None or self._iter_index is None:
-            raise StopIteration
+    def __str__(self):
+        """String representation of the field."""
+        return self.__repr__()
 
-        if self._iter_index >= len(self._iter_keys):
-            self._iter_index = None
-            self._iter_keys = None
-            raise StopIteration
-
-        key = self._iter_keys[self._iter_index]
-        value = self.data[key]
-        self._iter_index += 1
-        return value
+    def __repr__(self):
+        """String representation of the field."""
+        return f"Field (id: {self.node_id}) -- data: {self.data} -- local: {self.local()}"
 
 
 class State(wrapt.ObjectProxy):
