@@ -32,8 +32,6 @@ class MockSimulator:
             node.root = program(node)
             node.context["messages"] = engine.cooldown()
             node.context["state"] = engine.state_trace()
-        for node in self.nodes:
-            print(node.root)
     def cycle_for(self, program, how_many: int):
         for _ in range(how_many):
             self.cycle(program)
