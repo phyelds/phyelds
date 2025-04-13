@@ -61,3 +61,33 @@ def test_neighbors_local_should_return_the_value_itself():
     simulator.cycle_for(program, how_many * how_many)
     for node in simulator.nodes:
         assert node.root.local() == node.node_id
+
+def test_field_support_math_operations():
+    simulator = MockSimulator(how_many)
+    def program(context):
+        return neighbors(1) + 1
+    simulator.cycle_for(program, how_many * how_many)
+    for node in simulator.nodes:
+        assert node.root.local() == 2
+
+def test_field_support_math_operations_between_field():
+    simulator = MockSimulator(how_many)
+    def program(context):
+        return neighbors(1) + neighbors(context.node_id)
+    simulator.cycle_for(program, how_many * how_many)
+    expected = {
+        0: 1,
+        1: 2,
+        2: 3,
+    }
+
+    for node in simulator.nodes:
+        assert node.root.data == expected
+
+def test_field_may_be_used_to_exclude_themselves():
+    simulator = MockSimulator(how_many)
+    def program(context):
+        return neighbors(context.node_id).exclude_self()
+
+    simulator.cycle_for(program, how_many * how_many)
+    assert simulator.nodes[0].root == { 1: 1, 2: 2 }
