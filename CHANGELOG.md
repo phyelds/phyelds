@@ -1,3 +1,9 @@
+## [1.1.0](https://github.com/phyelds/phyelds/compare/1.0.0...1.1.0) (2025-05-09)
+
+### Features
+
+* implement empty neighborhood ([3ee1468](https://github.com/phyelds/phyelds/commit/3ee146817d67dd2df433cae2b54baa371a5aeae5))
+
 ## 1.0.0 (2025-05-09)
 
 ### Features

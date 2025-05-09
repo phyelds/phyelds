@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "phyelds"
-version = "1.0.0"
+version = "1.1.0"
 description = "A lightweight Python library to support aggregate computing!"
 license = "Apache-2.0"
 authors = [
