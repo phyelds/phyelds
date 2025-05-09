@@ -57,3 +57,7 @@ def k_nearest_neighbors(k: int):
 def full_neighborhood(node: Node, all_nodes: List[Node]) -> List[Node]:
     """Include all nodes as neighbors"""
     return [n for n in all_nodes if n.id != node.id]
+
+def empty_neighborhood() -> List[Node]:
+    """Include no nodes as neighbors"""
+    return []
