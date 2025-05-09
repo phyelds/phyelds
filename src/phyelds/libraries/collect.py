@@ -3,7 +3,7 @@ Collect library
 functions that are used to collect information from the network to source nodes.
 """
 
-from fieldpy.calculus import neighbors, aggregate, remember
+from phyelds.calculus import neighbors, aggregate, remember
 
 
 @aggregate

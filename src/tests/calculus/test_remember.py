@@ -1,6 +1,6 @@
-from fieldpy import engine
-from fieldpy.calculus import remember, aggregate, align, align_left, align_right
-from fieldpy.data import State
+from phyelds import engine
+from phyelds.calculus import remember, aggregate, align, align_left, align_right
+from phyelds.data import State
 from tests.calculus.mock import MockSimulator
 
 

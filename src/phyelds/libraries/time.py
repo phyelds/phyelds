@@ -2,7 +2,7 @@
 A group of functions based on the notion of time.
 """
 
-from fieldpy.calculus import aggregate, remember
+from phyelds.calculus import aggregate, remember
 
 
 @aggregate

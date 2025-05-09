@@ -8,8 +8,8 @@ for testing and simulation purposes.
 from typing import Tuple
 import random
 import math
-from fieldpy.simulator import Simulator
-from fieldpy.simulator import Node
+from phyelds.simulator import Simulator
+from phyelds.simulator import Node
 
 
 def grid_generation(simulator: Simulator, width: int, height: int, spacing: float):

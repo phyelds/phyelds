@@ -1,5 +1,5 @@
 [project]
-name = "fieldpy"
+name = "phyelds"
 version = "0.1.0"
 description = "A lightweight Python library to support aggregate computing!"
 license = "Apache-2.0"
@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 packages = [
-    { include = "fieldpy", from = "src" },
+    { include = "phyelds", from = "src" },
 ]
 
 classifiers = [

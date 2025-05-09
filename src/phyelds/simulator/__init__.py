@@ -1,5 +1,5 @@
 """
-A simple simulator for aggregate computing systems in FieldPy.
+A simple simulator for aggregate computing systems in phyelds.
 This simulator allows you to create nodes, set their positions and data,
 and define their neighborhoods.
 It also provides a way to schedule events and run the simulation.

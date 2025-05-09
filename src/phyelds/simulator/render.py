@@ -6,7 +6,7 @@ from typing import Tuple
 
 from matplotlib import pyplot as plt
 
-from fieldpy.simulator import Simulator
+from phyelds.simulator import Simulator
 
 
 class Link:

@@ -1,5 +1,5 @@
 """
-Engine is the core of the FieldPy library. It manages the state and message passing
+Engine is the core of the phyelds library. It manages the state and message passing
 between different contexts. It provides methods to enter and exit contexts, send messages,
 and manage the state of the system.
 """
@@ -7,7 +7,7 @@ and manage the state of the system.
 from dataclasses import dataclass
 from typing import Dict, List, Any, Optional
 
-from fieldpy.abstractions import Engine
+from phyelds.abstractions import Engine
 
 
 @dataclass

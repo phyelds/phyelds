@@ -3,10 +3,10 @@ Leader election functionality (self-stabilizing) using UUIDs.
 """
 import random
 
-from fieldpy.calculus import aggregate, remember, neighbors
-from fieldpy.data import Field
-from fieldpy.libraries.spreading import distance_to
-from fieldpy.libraries.utils import min_with_default
+from phyelds.calculus import aggregate, remember, neighbors
+from phyelds.data import Field
+from phyelds.libraries.spreading import distance_to
+from phyelds.libraries.utils import min_with_default
 
 
 @aggregate

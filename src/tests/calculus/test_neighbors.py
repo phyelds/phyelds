@@ -1,7 +1,7 @@
 import pytest
 
-from fieldpy import engine
-from fieldpy.calculus import neighbors, remember, align_right, align_left
+from phyelds import engine
+from phyelds.calculus import neighbors, remember, align_right, align_left
 from tests.calculus.mock import MockSimulator
 
 how_many = 3

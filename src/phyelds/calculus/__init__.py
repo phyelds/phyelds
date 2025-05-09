@@ -1,5 +1,5 @@
 """
-Core syntax for fieldpy.
+Core syntax for phyelds.
 It exposes a set of functions that are used to create and manipulate fields,
 as well as to manage the state of the system.
 @aggregate is a decorator that marks a function as an aggregate function,
@@ -9,15 +9,15 @@ def my_function():
     # do something
     return result
 
-Then, there is the core syntax of fieldpy:
+Then, there is the core syntax of phyelds:
 - remember: used to remember a value across iterations.
 - neighbors: used to get the neighbors of a node.
 - neighbors_distances: used to get the distances to the neighbors.
 """
 
-from fieldpy import engine
-from fieldpy.calculus.align import AlignContext
-from fieldpy.data import State, Field
+from phyelds import engine
+from phyelds.calculus.align import AlignContext
+from phyelds.data import State, Field
 
 
 def aggregate(func):
@@ -43,7 +43,7 @@ def aggregate(func):
 @aggregate
 def remember(init):
     """
-    One of the main operator of FieldPy TODO
+    One of the main operator of phyelds TODO
     :param init:
     :return:
     """

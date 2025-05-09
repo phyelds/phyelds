@@ -1,9 +1,9 @@
 """
 This module contains the event to run the aggregate program in the simulator
 """
-from fieldpy import engine
-from fieldpy.data import State
-from fieldpy.simulator import Simulator, Node
+from phyelds import engine
+from phyelds.data import State
+from phyelds.simulator import Simulator, Node
 
 
 def aggregate_program_runner(

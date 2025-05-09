@@ -1,5 +1,5 @@
 """
-FieldPy: A Python library for aggregate computing system with a pythonic interface.
+phyelds: A Python library for aggregate computing system with a pythonic interface.
 
 This library provides a set of tools for building and running aggregate computing systems.
 
@@ -12,7 +12,7 @@ In order to use it, you should:
 
 """
 
-from fieldpy.internal import MutableEngine
+from phyelds.internal import MutableEngine
 
 
 engine = MutableEngine()
