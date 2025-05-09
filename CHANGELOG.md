@@ -1,3 +1,13 @@
+## [1.1.1](https://github.com/phyelds/phyelds/compare/1.1.0...1.1.1) (2025-05-09)
+
+### Bug Fixes
+
+* min_with_default now works ([5b2a516](https://github.com/phyelds/phyelds/commit/5b2a516eec5dd1f11edbc423dfcc5fbcdefbfcc0))
+
+### General maintenance
+
+* update name in readme ([e07a1e3](https://github.com/phyelds/phyelds/commit/e07a1e334fdf5510283ef0d9d1514d9dcd07b8a4))
+
 ## [1.1.0](https://github.com/phyelds/phyelds/compare/1.0.0...1.1.0) (2025-05-09)
 
 ### Features
