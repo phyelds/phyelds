@@ -1,0 +1,54 @@
+name: Semantic Release
+
+on:
+  workflow_run:
+    workflows: ["test"]
+    types:
+      - completed
+jobs:
+  release:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    name: Release
+    concurrency:
+      # Only one release job at a time. Strictly sequential.
+      group: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # all history
+
+      - name: Get All Tags
+        run: git fetch --tags -f
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Poetry
+        run: pip install -r requirements.txt
+
+      - name: Restore Development Environment
+        run: poetry install
+
+      - name: Get Node Version
+        id: get-node-version
+        run: echo version=$(jq -r .engines.node package.json) >> $GITHUB_OUTPUT
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ steps.get-node-version.outputs.version }}
+
+      - name: Release
+        shell: bash
+        run: |
+          npm install
+          npx semantic-release --branches `git branch --show-current`
+        env:
+          PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          RELEASE_TEST_PYPI: ${{ contains(github.repository, 'template') }}
+          RELEASE_DRY_RUN: ${{ github.ref_name != 'master' && github.ref_name != 'main' }}
