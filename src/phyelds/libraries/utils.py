@@ -13,7 +13,7 @@ def min_with_default(iterable, default=None):
     :return: the minimum value from the iterable or the default value
     """
     return (
-        reduce(lambda x, y: x if x < y else y, iterable, default)
+        reduce(lambda acc, key: acc if acc < iterable[key] else iterable[key], iterable, default)
         if iterable
         else default
     )

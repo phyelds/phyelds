@@ -3,7 +3,6 @@ Diffusion (information) library for phyelds
 This library provides functions for diffusion of information in a network.
 It includes functions for calculating distances and to braodcast information
 """
-
 from phyelds.calculus import aggregate, remember, neighbors
 from phyelds.data import Field
 from phyelds.libraries.utils import min_with_default
