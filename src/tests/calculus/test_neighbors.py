@@ -1,12 +1,17 @@
 import pytest
 
-from phyelds import engine
+from phyelds import engine, reset_engine
 from phyelds.calculus import neighbors, remember, align_right, align_left
 from tests.calculus.mock import MockSimulator
 
 how_many = 3
-def test_neighbors_should_give_the_value_itself():
+
+@pytest.fixture(scope="function", autouse=True)
+def setup_engine():
+    reset_engine()
     engine.setup(0)
+
+def test_neighbors_should_give_the_value_itself():
     # Setup
     initial_value = 42
     # Execute
@@ -15,7 +20,6 @@ def test_neighbors_should_give_the_value_itself():
     assert result.local() == initial_value
 
 def test_neighbors_should_get_value_from_neighbors():
-    engine.setup(0)
     # Setup
     initial_value = 1
     simulator = MockSimulator(how_many)
@@ -26,14 +30,12 @@ def test_neighbors_should_get_value_from_neighbors():
         assert value == initial_value
 
 def test_neighbors_should_work_as_share():
-    engine.setup(0)
     state = remember(0)
     field = neighbors(state)
     state.update(state + 1)
     assert field.local() == 1
 
 def test_neighbors_of_neighbors_should_not_work():
-    engine.setup(0)
     with pytest.raises(TypeError):
         neighbors(neighbors(0))
 

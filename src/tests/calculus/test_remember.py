@@ -1,24 +1,27 @@
-from phyelds import engine
+import pytest
+
+from phyelds import engine, reset_engine
 from phyelds.calculus import remember, aggregate, align, align_left, align_right
 from phyelds.data import State
 from tests.calculus.mock import MockSimulator
 
+@pytest.fixture(scope="function", autouse=True)
+def setup_engine():
+    reset_engine()
+    engine.setup(0)
 
 def test_remember_should_add_a_path_to_the_engine():
-    engine.setup(0)
     remember(0)
     x = engine.engine_state.state_trace
     assert str(["remember@0"]) in x
 
 def test_remember_should_increment_the_counter():
-    engine.setup(0)
     remember(0)
     remember(0)
     x = engine.engine_state.state_trace
     assert str(["remember@1"]) in x
 
 def test_remember_should_support_nesting():
-    engine.setup(0)
     with(align("first")):
         remember(0)
         with(align("second")):
