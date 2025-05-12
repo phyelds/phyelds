@@ -1,3 +1,13 @@
+## [1.1.3](https://github.com/phyelds/phyelds/compare/1.1.2...1.1.3) (2025-05-12)
+
+### Bug Fixes
+
+* elect leader now works ([07ef7ba](https://github.com/phyelds/phyelds/commit/07ef7ba9b97e9aac682f0288dea6154409dfb3c7))
+
+### Style improvements
+
+* better style for pylint :) ([d217c4c](https://github.com/phyelds/phyelds/commit/d217c4cf1ba8cccf40139b45779ec4e1667e0649))
+
 ## [1.1.2](https://github.com/phyelds/phyelds/compare/1.1.1...1.1.2) (2025-05-12)
 
 ### Bug Fixes
