@@ -16,3 +16,10 @@ from phyelds.internal import MutableEngine
 
 
 engine = MutableEngine()
+
+def reset_engine():
+    """
+    Reset the engine to its initial state.
+    """
+    global engine
+    engine = MutableEngine()
