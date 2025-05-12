@@ -43,6 +43,8 @@ def cast_from(source: bool, data: any, accumulation: callable, distances: Field)
     values = zip(neighbors_potential, neighbors_value)
     # select the minimum potential
     _, result = min(values, key=lambda x: x[0])
+    if source:
+        return cast_area.update(data)
     return cast_area.update(accumulation(result))
 
 
