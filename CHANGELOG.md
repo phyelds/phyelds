@@ -1,3 +1,21 @@
+## [1.1.2](https://github.com/phyelds/phyelds/compare/1.1.1...1.1.2) (2025-05-12)
+
+### Bug Fixes
+
+* fix min with default, now it works with any data structure ([2613ec3](https://github.com/phyelds/phyelds/commit/2613ec338ff078facbd17f2ec305cbbf1b0ea122))
+
+### Tests
+
+* add tests for min_with_default functionality ([da68ac7](https://github.com/phyelds/phyelds/commit/da68ac7194047f6f8ed2922719af594faa15bad2))
+
+### General maintenance
+
+* **test:** remove useless print ([ba532f0](https://github.com/phyelds/phyelds/commit/ba532f0577484661d59b7b6b19219a13391fdf2b))
+
+### Style improvements
+
+* better style for pylint :) ([314d3b8](https://github.com/phyelds/phyelds/commit/314d3b8288ecfc6a198890fbdc5718efe67e313d))
+
 ## [1.1.1](https://github.com/phyelds/phyelds/compare/1.1.0...1.1.1) (2025-05-09)
 
 ### Bug Fixes
