@@ -6,7 +6,6 @@ def test_min_with_default_dict():
     """
     Test the min_with_default function with a dictionary.
     """
-    print("ajncjanja")
     data = {'a': 3, 'b': 1, 'c': 2}
     default = 0
     result = min_with_default(data, default)
