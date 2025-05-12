@@ -5,11 +5,10 @@ These functions can be used to create specific patterns or random distributions 
 for testing and simulation purposes.
 """
 
-from typing import Tuple
-import random
 import math
+import random
+
 from phyelds.simulator import Simulator
-from phyelds.simulator import Node
 
 
 def grid_generation(simulator: Simulator, width: int, height: int, spacing: float):
@@ -19,7 +18,7 @@ def grid_generation(simulator: Simulator, width: int, height: int, spacing: floa
     for x in range(0, width):
         for y in range(0, height):
             position = (x * spacing, y * spacing)
-            simulator.create_node(position, id=x * height + y)
+            simulator.create_node(position, node_id=x * height + y)
 
 
 def deformed_lattice(
@@ -62,16 +61,4 @@ def random_in_circle(simulator: Simulator, num_nodes: int, radius: float):
         r = random.uniform(0, radius)
         x = r * math.cos(angle)
         y = r * math.sin(angle)
-        simulator.create_node((x, y), id=index)
-
-
-def gaussian_movement(
-    simulator: Simulator, node: Node, mean: Tuple[float, ...], stddev: float
-):
-    """
-    Move a node according to a Gaussian distribution.
-    """
-    new_position = tuple(random.gauss(mean[i], stddev) for i in range(len(mean)))
-    node.update(new_position)
-    # next schedule the event
-    simulator.schedule_event(1.0, gaussian_movement, simulator, node, mean, stddev)
+        simulator.create_node((x, y), node_id=index)
