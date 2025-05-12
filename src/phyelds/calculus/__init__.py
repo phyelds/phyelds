@@ -18,6 +18,7 @@ Then, there is the core syntax of phyelds:
 from phyelds import engine
 from phyelds.calculus.align import AlignContext
 from phyelds.data import State, Field
+from phyelds.libraries.device import local_id
 
 
 def aggregate(func):
@@ -63,8 +64,8 @@ def neighbors(value):
         raise TypeError("Field is not supported as a value")
     engine.send(value)
     values = engine.aligned_values(engine.current_path())
-    values[engine.node_id] = value
-    return Field(values, engine.node_id)
+    values[engine.node_context.node_id] = value
+    return Field(values, engine.node_context.node_id)
 
 
 @aggregate
@@ -81,7 +82,7 @@ def neighbors_distances(position):
         # pos are x, y tuples
         n_x, n_y = pos
         distances[node_id] = ((x - n_x) ** 2 + (y - n_y) ** 2) ** 0.5
-    return Field(distances, engine.node_id)
+    return Field(distances, local_id())
 
 
 def align(name: str):

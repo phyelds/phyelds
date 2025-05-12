@@ -1,11 +1,34 @@
 """
 This module contains the event to run the aggregate program in the simulator
 """
+from abc import ABC
+
 from phyelds import engine
+from phyelds.abstractions import NodeContext
 from phyelds.data import State
 from phyelds.simulator import Simulator, Node
 
+class SimulatorNodeContext(NodeContext, ABC):
+    """
+    A class to represent the context of a node in the simulator.
+    This class is used to pass the node's data and messages to the aggregate program.
+    """
 
+    def __init__(self, node_id: int, sensors: dict[str, any] = None):
+        super().__init__(node_id, sensors)
+
+    @staticmethod
+    def from_node(node: Node):
+        """
+        Create a SimulatorNodeContext from a Node.
+        :param node: The node to create the context from.
+        :return: The SimulatorNodeContext.
+        """
+        sensors = {
+            "position": node.position,
+            **node.data,
+        }
+        return SimulatorNodeContext(node.id, sensors)
 def aggregate_program_runner(
     simulator: Simulator, time_delta: float, node: Node, program: callable
 ):
@@ -18,8 +41,12 @@ def aggregate_program_runner(
     neighbors_messages = {
         neighbor.id: neighbor.data.get("messages", {}) for neighbor in all_neighbors
     }
-    engine.setup(node.id, neighbors_messages, node.data.get("state", {}))
-    result = program(node)
+    engine.setup(
+        SimulatorNodeContext.from_node(node),
+        neighbors_messages,
+        node.data.get("state", {})
+    )
+    result = program()
     if isinstance(result, State):
         result = result.value
     node.data["result"] = result

@@ -4,6 +4,7 @@ functions that are used to collect information from the network to source nodes.
 """
 
 from phyelds.calculus import neighbors, aggregate, remember
+from phyelds.libraries.device import local_id
 
 
 @aggregate
@@ -21,10 +22,9 @@ def find_parent(potential: float) -> any:
 
 
 @aggregate
-def collect_with(context, potential, local, accumulation):
+def collect_with(potential, local, accumulation):
     """
     TODO
-    :param context:
     :param potential:
     :param local:
     :param accumulation:
@@ -36,24 +36,24 @@ def collect_with(context, potential, local, accumulation):
     zip_operation = zip(parents, n_collections)
     operations = local
     for parent, value in zip_operation:
-        if context.id == parent:
+        if local_id() == parent:
             operations = accumulation(operations, value)
     return collections.update(operations)
 
 
 @aggregate
-def count_nodes(context, potential):
+def count_nodes(potential):
     """
     TODO
     :param context:
     :param potential:
     :return:
     """
-    return collect_with(context, potential, 1, lambda x, y: x + y)
+    return collect_with(potential, 1, lambda x, y: x + y)
 
 
 @aggregate
-def sum_values(context, potential, local):
+def sum_values(potential, local):
     """
     TODO
     :param context:
@@ -61,11 +61,11 @@ def sum_values(context, potential, local):
     :param local:
     :return:
     """
-    return collect_with(context, potential, local, lambda x, y: x + y)
+    return collect_with(potential, local, lambda x, y: x + y)
 
 
 @aggregate
-def collect_or(context, potential, local):
+def collect_or(potential, local):
     """
     TODO
     :param context:
@@ -73,4 +73,4 @@ def collect_or(context, potential, local):
     :param local:
     :return:
     """
-    return collect_with(context, potential, local, lambda x, y: x or y)
+    return collect_with(potential, local, lambda x, y: x or y)

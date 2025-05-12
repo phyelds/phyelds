@@ -1,5 +1,20 @@
 from phyelds import engine
+from phyelds.abstractions import NodeContext
 
+
+class MockNodeContext(NodeContext):
+    """
+    Mock NodeContext for testing purposes.
+    """
+
+    def __init__(self, node_id: int):
+        super().__init__(node_id=node_id, sensors={})
+
+    def __repr__(self):
+        return f"MockNodeContext(node_id={self.node_id})"
+
+    def __str__(self):
+        return f"MockNodeContext with ID: {self.node_id}"
 
 class MockNode:
     def __init__(self, position: tuple, node_id: int):
@@ -8,7 +23,7 @@ class MockNode:
         self.context = {
             'messages': {},
             "state": {},
-            "node_id": node_id,
+            "node_context": MockNodeContext(node_id),
         }
         self.root = None
 
@@ -28,8 +43,10 @@ class MockSimulator:
                 neighbor.node_id: neighbor.context["messages"]
                 for neighbor in self.nodes if neighbor.node_id != node.node_id
             }
-            engine.setup(node.node_id, all_messages, node.context["state"])
-            node.root = program(node)
+            print(node.context["node_context"])
+            engine.setup(node.context["node_context"], all_messages, node.context["state"])
+            node.root = program()
+            print(node.root)
             node.context["messages"] = engine.cooldown()
             node.context["state"] = engine.state_trace()
     def cycle_for(self, program, how_many: int):

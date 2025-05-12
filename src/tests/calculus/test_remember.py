@@ -3,12 +3,13 @@ import pytest
 from phyelds import engine, reset_engine
 from phyelds.calculus import remember, aggregate, align, align_left, align_right
 from phyelds.data import State
-from tests.calculus.mock import MockSimulator
+from tests.calculus.mock import MockSimulator, MockNodeContext
+
 
 @pytest.fixture(scope="function", autouse=True)
 def setup_engine():
     reset_engine()
-    engine.setup(0)
+    engine.setup(MockNodeContext(0))
 
 def test_remember_should_add_a_path_to_the_engine():
     remember(0)
@@ -78,7 +79,7 @@ def test_remember_should_not_update_value_with_function_twice():
 def test_remember_should_have_state_in_different_call():
     simulator = MockSimulator(1)
     @aggregate
-    def counter(context):
+    def counter():
         return remember(0).update_fn(lambda x: x + 1)
     simulator.cycle(counter)
     simulator.cycle(counter)
@@ -89,7 +90,7 @@ def test_remember_should_restart_when_dealing():
     @aggregate
     def counter():
         return remember(0).update_fn(lambda x: x + 1)
-    def double_state(context):
+    def double_state():
         if counter() % 2 == 0:
             with align_left():
                 return remember(0).update_fn(lambda x: x + 1)

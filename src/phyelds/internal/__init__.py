@@ -7,7 +7,7 @@ and manage the state of the system.
 from dataclasses import dataclass
 from typing import Dict, List, Any, Optional
 
-from phyelds.abstractions import Engine
+from phyelds.abstractions import Engine, NodeContext
 
 
 @dataclass
@@ -43,20 +43,20 @@ class MutableEngine(Engine):
         self.engine_state = EngineState()
 
     def setup(
-        self, node_id: int, messages=None, state=None
+        self, node_context: NodeContext, messages=None, state=None
     ) -> None:
         if messages is None:
             messages = {}
         if state is None:
             state = {}
-        self.node_id = node_id
+        self.node_context = node_context
         self.engine_state = EngineState(
             stack=[],
             state_trace=state.copy(),  # Copy the state to avoid modifying the original
             count_stack=[0],  # Reset counter stack
             to_send={},
             messages=messages,
-            node_id=node_id,
+            node_id=node_context.node_id,
             reads=set(),
         )
 
