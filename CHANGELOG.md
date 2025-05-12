@@ -1,3 +1,22 @@
+## [1.2.0](https://github.com/phyelds/phyelds/compare/1.1.4...1.2.0) (2025-05-12)
+
+### Features
+
+* add context as an implicit input of the program (simplify all the other operations) ([08d97e4](https://github.com/phyelds/phyelds/commit/08d97e452fceb0d67587996656543834912bc0d9))
+* add reset_engine in core library ([137bd24](https://github.com/phyelds/phyelds/commit/137bd242cbae7f8477b76d65825e725caccefbc1))
+
+### Bug Fixes
+
+* rmeove global reset index, minors on style ([57e8fed](https://github.com/phyelds/phyelds/commit/57e8fedf35ecc7b7ae7bd2e6f47f41f167eb8d35))
+
+### Tests
+
+* add fixure for tests ([c1c9e3d](https://github.com/phyelds/phyelds/commit/c1c9e3da930625505feab41a3f3efae7b4df2892))
+
+### General maintenance
+
+* remove example in core phyelds ([72947c4](https://github.com/phyelds/phyelds/commit/72947c478e1caa4e0bd3a20e6af110c9852001c1))
+
 ## [1.1.4](https://github.com/phyelds/phyelds/compare/1.1.3...1.1.4) (2025-05-12)
 
 ### Bug Fixes
