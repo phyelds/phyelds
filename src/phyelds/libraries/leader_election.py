@@ -46,11 +46,7 @@ def breaking_using_uids(uid, area: float, distances: Field):
     # get the minimum value of the neighbors
     lead = remember(uid)
     # get the minimum value of the neighbors
-
     potential = distance_to(lead == uid, distances)
-    if (uid[1] == 14):
-        print(lead)
-        print(potential)
     new_lead = distance_competition(potential, area, uid, lead, distances)
     # if the new lead is the same, return the uid
     return lead.update(new_lead)
@@ -76,9 +72,6 @@ def distance_competition(
     condition = (neighbors(current_distance) + distances) < (0.5 * area)
     # filter the one that have the condition
     lead = neighbors_lead.select(condition)
-    if(uid[1]== 14):
-        print(lead)
-        print(current_distance)
     # take the minimum value, but the comparator just consider both values of the tuple
     lead = min_with_default(lead, uid)
     if current_distance > area:
