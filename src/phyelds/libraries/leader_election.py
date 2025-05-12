@@ -10,7 +10,7 @@ from phyelds.libraries.utils import min_with_default
 
 
 @aggregate
-def elect_leader(context, area: float, distances: Field) -> int:
+def elect_leader(context, area: float, distances: Field) -> bool:
     """
     Elect a leader in the network using a random UUID.
     :param context: it should contain the node ID
@@ -20,7 +20,7 @@ def elect_leader(context, area: float, distances: Field) -> int:
     """
     result = breaking_using_uids(random_uuid(context), area, distances)
     # Return None if no leader was elected (infinite distance), otherwise return the leader ID
-    return None if result[0] == float("inf") else result[1]
+    return result[1] == context.id and result[0] != (float("inf"))
 
 
 @aggregate
@@ -46,7 +46,11 @@ def breaking_using_uids(uid, area: float, distances: Field):
     # get the minimum value of the neighbors
     lead = remember(uid)
     # get the minimum value of the neighbors
+
     potential = distance_to(lead == uid, distances)
+    if (uid[1] == 14):
+        print(lead)
+        print(potential)
     new_lead = distance_competition(potential, area, uid, lead, distances)
     # if the new lead is the same, return the uid
     return lead.update(new_lead)
@@ -72,8 +76,11 @@ def distance_competition(
     condition = (neighbors(current_distance) + distances) < (0.5 * area)
     # filter the one that have the condition
     lead = neighbors_lead.select(condition)
+    if(uid[1]== 14):
+        print(lead)
+        print(current_distance)
     # take the minimum value, but the comparator just consider both values of the tuple
-    lead = min_with_default(lead, inf)
+    lead = min_with_default(lead, uid)
     if current_distance > area:
         return uid
     if current_distance >= (0.5 * area):
