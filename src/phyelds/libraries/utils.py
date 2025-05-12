@@ -12,8 +12,10 @@ def min_with_default(iterable, default=None):
     :param default: the default value to return if the iterable is empty
     :return: the minimum value from the iterable or the default value
     """
-    return (
-        reduce(lambda acc, key: acc if acc < iterable[key] else iterable[key], iterable, default)
-        if iterable
-        else default
-    )
+    if not iterable:
+        return default
+    else:
+        if isinstance(iterable, dict):
+            return min(iterable.values())
+        elif isinstance(iterable, (list, tuple, set, range)):
+            return min(iterable)
