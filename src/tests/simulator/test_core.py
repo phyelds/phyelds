@@ -1,5 +1,5 @@
 import pytest
-from src.phyelds.simulator import Node, Environment, Simulator
+from phyelds.simulator import Node, Environment, Simulator
 
 
 def test_initializes_with_correct_attributes():
