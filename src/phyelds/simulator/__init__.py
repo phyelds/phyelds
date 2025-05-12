@@ -149,6 +149,14 @@ class Simulator:
         """Stop the simulation"""
         self.running = False
 
+    def cancel_event(self, event: Event):
+        """Cancel a scheduled event"""
+        if event in self.event_queue:
+            self.event_queue.remove(event)
+            heapq.heapify(self.event_queue)
+        else:
+            raise ValueError("Event not found in the queue")
+
     def reset(self):
         """Reset the simulator"""
         self.event_queue = []

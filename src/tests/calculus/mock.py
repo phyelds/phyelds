@@ -43,10 +43,8 @@ class MockSimulator:
                 neighbor.node_id: neighbor.context["messages"]
                 for neighbor in self.nodes if neighbor.node_id != node.node_id
             }
-            print(node.context["node_context"])
             engine.setup(node.context["node_context"], all_messages, node.context["state"])
             node.root = program()
-            print(node.root)
             node.context["messages"] = engine.cooldown()
             node.context["state"] = engine.state_trace()
     def cycle_for(self, program, how_many: int):
