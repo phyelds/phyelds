@@ -1,3 +1,9 @@
+## [1.1.4](https://github.com/phyelds/phyelds/compare/1.1.3...1.1.4) (2025-05-12)
+
+### Bug Fixes
+
+* update gradient if I'm the leader ([237e14a](https://github.com/phyelds/phyelds/commit/237e14a29c9d2a37d6a6e61935d0ae00564550b7))
+
 ## [1.1.3](https://github.com/phyelds/phyelds/compare/1.1.2...1.1.3) (2025-05-12)
 
 ### Bug Fixes
