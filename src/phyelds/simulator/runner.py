@@ -14,9 +14,6 @@ class SimulatorNodeContext(NodeContext, ABC):
     This class is used to pass the node's data and messages to the aggregate program.
     """
 
-    def __init__(self, node_id: int, sensors: dict[str, any] = None):
-        super().__init__(node_id, sensors)
-
     @staticmethod
     def from_node(node: Node):
         """
