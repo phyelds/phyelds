@@ -1,3 +1,14 @@
+## [1.2.2](https://github.com/phyelds/phyelds/compare/1.2.1...1.2.2) (2025-05-12)
+
+### Bug Fixes
+
+* add more test for deployments ([f28311e](https://github.com/phyelds/phyelds/commit/f28311e2af45b831e296326e1d72c784412dac4b))
+* remove src from package in test ([af695b1](https://github.com/phyelds/phyelds/commit/af695b17e31116e6d5b4d148a5e090c1e12911c0))
+
+### Tests
+
+* add test to main abstraction of simulator ([811310b](https://github.com/phyelds/phyelds/commit/811310bcb452718335c264faffb0575646937812))
+
 ## [1.2.1](https://github.com/phyelds/phyelds/compare/1.2.0...1.2.1) (2025-05-12)
 
 ### Documentation
