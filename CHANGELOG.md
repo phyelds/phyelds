@@ -1,3 +1,9 @@
+## [1.6.0](https://github.com/phyelds/phyelds/compare/1.5.0...1.6.0) (2025-05-13)
+
+### Features
+
+* change neighbors distance in order to do not need position ([a07282a](https://github.com/phyelds/phyelds/commit/a07282a1d15b18c6b711bb645170039b8e49e4db))
+
 ## [1.5.0](https://github.com/phyelds/phyelds/compare/1.4.0...1.5.0) (2025-05-13)
 
 ### Features
