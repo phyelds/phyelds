@@ -1,3 +1,14 @@
+## [1.4.0](https://github.com/phyelds/phyelds/compare/1.3.0...1.4.0) (2025-05-13)
+
+### Features
+
+* avoid global variable but prefer context variable for thread safety ([17c43f0](https://github.com/phyelds/phyelds/commit/17c43f0cebf106e2092fe3871f2e3d9d60758bd9))
+* clean-up engine state and mutable engine ([4b60e9a](https://github.com/phyelds/phyelds/commit/4b60e9a9c6a18855c9161c8e84bb61b723b9bdf7))
+
+### Refactoring
+
+* prefer using set inside the runner ([66452f0](https://github.com/phyelds/phyelds/commit/66452f0f14aeafe2f8c2a5f47a5b78e609628a3a))
+
 ## [1.3.0](https://github.com/phyelds/phyelds/compare/1.2.4...1.3.0) (2025-05-13)
 
 ### Features
