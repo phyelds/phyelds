@@ -1,13 +1,10 @@
-import pytest
-
 from phyelds.calculus import aggregate, remember, neighbors
 from phyelds.simulator import Node
-from phyelds.simulator import Environment, Simulator
+from phyelds.simulator import Simulator
 from phyelds.simulator.deployments import random_in_circle
 from phyelds.simulator.neighborhood import full_neighborhood
 from phyelds.simulator.runner import (
     aggregate_program_runner,
-    SimulatorNodeContext,
 )
 
 def test_aggregate_program_runner_with_plain_result(monkeypatch):
