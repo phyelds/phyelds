@@ -13,7 +13,6 @@ def test_aggregate_program_runner_with_plain_result(monkeypatch):
     sim = Simulator()
     # program that returns a bare value
     called = {}
-    how_many = 0
     def program():
         called["ran"] = True
         return 42
