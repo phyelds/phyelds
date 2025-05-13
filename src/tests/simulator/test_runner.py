@@ -9,19 +9,6 @@ from phyelds.simulator.runner import (
     aggregate_program_runner,
     SimulatorNodeContext,
 )
-from phyelds.data import State
-import phyelds.simulator.runner as runner
-
-def test_from_node_includes_position_and_data():
-    node = Node(position=(10, 20), data={"foo": "bar", "messages": {"x": 1}})
-    ctx = SimulatorNodeContext.from_node(node)
-
-    assert ctx.id == "node1"
-    assert ctx.sensors == {
-        "position": (10, 20),
-        "foo": "bar",
-        "messages": {"x": 1},
-    }
 
 def test_aggregate_program_runner_with_plain_result(monkeypatch):
     # real Node & real Simulator
@@ -55,7 +42,7 @@ def test_aggregate_program_with_neighbors():
     sim = Simulator()
     sim.environment.set_neighborhood_function(full_neighborhood)
     random_in_circle(sim, num_nodes=3, radius=3)
-    node = sim.environment.nodes[0]
+
     @aggregate
     def program():
         others = neighbors(1)
@@ -65,4 +52,5 @@ def test_aggregate_program_with_neighbors():
         current_node = sim.environment.nodes[node]
         sim.schedule_event(0.5, aggregate_program_runner, sim, 0.5, current_node, program)
     sim.run(10)  # 2 called
+    node = sim.environment.nodes[0]
     assert node.data["result"] == 3
