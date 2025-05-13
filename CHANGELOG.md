@@ -1,3 +1,9 @@
+## [1.3.0](https://github.com/phyelds/phyelds/compare/1.2.4...1.3.0) (2025-05-13)
+
+### Features
+
+* add data for all node in the environment ([0d65c3d](https://github.com/phyelds/phyelds/commit/0d65c3daa6e61bb8134aa5d483dfeda4aad07735))
+
 ## [1.2.4](https://github.com/phyelds/phyelds/compare/1.2.3...1.2.4) (2025-05-13)
 
 ### Bug Fixes
