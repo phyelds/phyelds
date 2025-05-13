@@ -1,5 +1,3 @@
-from phyelds import engine, MutableEngine
-
 from phyelds.calculus import aggregate, remember, neighbors
 from phyelds.simulator import Node
 from phyelds.simulator import Simulator

@@ -1,6 +1,3 @@
-import pytest
-from phyelds import engine, MutableEngine
-
 from phyelds.calculus import aggregate
 from phyelds.libraries.device import sense
 from phyelds.libraries.distances import hops_distance

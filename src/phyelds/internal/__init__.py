@@ -4,32 +4,9 @@ between different contexts. It provides methods to enter and exit contexts, send
 and manage the state of the system.
 """
 
-from dataclasses import dataclass
 from typing import Dict, List, Any, Optional
 
-from phyelds.abstractions import Engine, NodeContext
-
-
-@dataclass
-class EngineState:
-    """
-    Inner state of the engine used to process aggregate computation.
-    """
-    stack: List[str] = None
-    state_trace: Dict[str, Any] = None
-    count_stack: List[int] = None
-    to_send: Dict[str, Any] = None
-    messages: Dict[int, Dict[str, Any]] = None
-    node_id: int = 0
-    reads: set = None
-
-    def __post_init__(self):
-        self.stack = [] if self.stack is None else self.stack
-        self.state_trace = {} if self.state_trace is None else self.state_trace
-        self.count_stack = [0] if self.count_stack is None else self.count_stack
-        self.to_send = {} if self.to_send is None else self.to_send
-        self.messages = {} if self.messages is None else self.messages
-        self.reads = set() if self.reads is None else self.reads
+from phyelds.abstractions import Engine, NodeContext, EngineState
 
 
 class MutableEngine(Engine):
@@ -44,7 +21,7 @@ class MutableEngine(Engine):
 
     def setup(
         self, node_context: NodeContext, messages=None, state=None
-    ) -> None:
+    ) -> Engine:
         if messages is None:
             messages = {}
         if state is None:
@@ -59,6 +36,7 @@ class MutableEngine(Engine):
             node_id=node_context.node_id,
             reads=set(),
         )
+        return self
 
     def enter(self, name: str) -> None:
         counter: int = self.engine_state.count_stack[-1]

@@ -1,5 +1,3 @@
-import pytest
-
 from phyelds.libraries.utils import min_with_default
 
 def test_min_with_default_dict():

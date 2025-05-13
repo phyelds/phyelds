@@ -11,8 +11,7 @@ In order to use it, you should:
 4. Store the state for the next iteration.
 
 """
-
-from phyelds.internal import MutableEngine
 from contextvars import ContextVar
+from phyelds.abstractions import Engine
 
-engine: ContextVar[MutableEngine] = ContextVar("engine")
+engine: ContextVar[Engine] = ContextVar("engine")

@@ -2,6 +2,8 @@
 Engine interface: how to implement an aggregate computing engine.
 """
 from abc import ABC
+from dataclasses import dataclass
+from typing import List, Dict, Any
 
 
 class NodeContext(ABC):
@@ -34,6 +36,28 @@ class NodeContext(ABC):
         return self.sensors.get("position")
 
 
+@dataclass
+class EngineState:
+    """
+    Inner state of the engine used to process aggregate computation.
+    """
+    stack: List[str] = None
+    state_trace: Dict[str, Any] = None
+    count_stack: List[int] = None
+    to_send: Dict[str, Any] = None
+    messages: Dict[int, Dict[str, Any]] = None
+    node_id: int = 0
+    reads: set = None
+
+    def __post_init__(self):
+        self.stack = [] if self.stack is None else self.stack
+        self.state_trace = {} if self.state_trace is None else self.state_trace
+        self.count_stack = [0] if self.count_stack is None else self.count_stack
+        self.to_send = {} if self.to_send is None else self.to_send
+        self.messages = {} if self.messages is None else self.messages
+        self.reads = set() if self.reads is None else self.reads
+
+
 class Engine(ABC):
     """
     Abstract base class for the engine. This class should be implemented by the user.
@@ -41,10 +65,11 @@ class Engine(ABC):
 
     def __init__(self):
         self.node_context: NodeContext | None = None
+        self.engine_state: EngineState | None = None
 
     def setup(
         self, node_context: NodeContext, messages: dict[int, dict[str, any]], state=None
-    ) -> None:
+    ) -> "Engine":
         """
         Setup the engine with the current context.
         :param node_context: the current context of the engine.
@@ -115,7 +140,7 @@ class Engine(ABC):
         :return: The aligned values.
         """
 
-    def cooldown(self) -> None:
+    def cooldown(self) -> dict[str, Any]:
         """
         Cooldown the engine.
         :return:

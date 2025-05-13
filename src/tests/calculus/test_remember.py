@@ -1,6 +1,7 @@
 import pytest
+from phyelds.internal import MutableEngine
 
-from phyelds import engine, MutableEngine
+from phyelds import engine
 from phyelds.calculus import remember, aggregate, align, align_left, align_right
 from phyelds.data import State
 from tests.calculus.mock import MockSimulator, MockNodeContext
@@ -8,8 +9,7 @@ from tests.calculus.mock import MockSimulator, MockNodeContext
 
 @pytest.fixture(scope="function", autouse=True)
 def setup_engine():
-    engine.set(MutableEngine())
-    engine.get().setup(MockNodeContext(0))
+    engine.set(MutableEngine().setup(MockNodeContext(0)))
 
 def test_remember_should_add_a_path_to_the_engine():
     remember(0)
