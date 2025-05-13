@@ -59,6 +59,11 @@ class Environment:
         self.nodes: Dict[any, Node] = {}
         self.neighborhood_function = neighborhood_function or self.no_neighbors
 
+    def add_data_for_all_nodes(self, data: Dict[str, Any]):
+        """Add data to all nodes in the environment"""
+        for node in self.nodes.values():
+            node.data.update(data)
+
     def node_list(self) -> List[Node]:
         """Return a list of all nodes in the environment"""
         return list(self.nodes.values())

@@ -66,6 +66,21 @@ def test_returns_correct_neighbors():
     assert node1 not in neighbors
 
 
+def test_add_data_for_all_nodes():
+    env = Environment()
+    node1 = Node((0.0, 0.0))
+    node2 = Node((1.0, 1.0))
+
+    env.add_node(node1)
+    env.add_node(node2)
+
+    data = {"key": "value"}
+    env.add_data_for_all_nodes(data)
+
+    assert node1.data == data
+    assert node2.data == data
+
+
 def test_schedules_and_executes_events():
     sim = Simulator()
     result = []
