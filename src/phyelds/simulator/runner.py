@@ -41,7 +41,7 @@ def aggregate_program_runner(
     neighbors_messages = {
         neighbor.id: neighbor.data.get("messages", {}) for neighbor in all_neighbors
     }
-    engine.setup(
+    engine.get().setup(
         SimulatorNodeContext.from_node(node),
         neighbors_messages,
         node.data.get("state", {})
@@ -50,8 +50,8 @@ def aggregate_program_runner(
     if isinstance(result, State):
         result = result.value
     node.data["result"] = result
-    node.data["messages"] = engine.cooldown()
-    node.data["state"] = engine.state_trace()
+    node.data["messages"] = engine.get().cooldown()
+    node.data["state"] = engine.get().state_trace()
     simulator.schedule_event(
         time_delta, aggregate_program_runner, simulator, time_delta, node, program
     )

@@ -32,9 +32,9 @@ def aggregate(func):
     """
 
     def wrapper(*args, **kwargs):
-        engine.enter(func.__name__)
+        engine.get().enter(func.__name__)
         result = func(*args, **kwargs)
-        engine.exit()
+        engine.get().exit()
         return result
 
     return wrapper
@@ -47,7 +47,7 @@ def remember(init):
     :param init:
     :return:
     """
-    return State(init, engine.current_path(), engine)
+    return State(init, engine.get().current_path(), engine.get())
 
 
 @aggregate
@@ -61,10 +61,10 @@ def neighbors(value):
     """
     if isinstance(value, Field):
         raise TypeError("Field is not supported as a value")
-    engine.send(value)
-    values = engine.aligned_values(engine.current_path())
-    values[engine.node_context.node_id] = value
-    return Field(values, engine.node_context.node_id)
+    engine.get().send(value)
+    values = engine.get().aligned_values(engine.get().current_path())
+    values[engine.get().node_context.node_id] = value
+    return Field(values, engine.get().node_context.node_id)
 
 
 def align(name: str):

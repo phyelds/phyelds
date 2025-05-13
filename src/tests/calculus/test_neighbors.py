@@ -1,6 +1,6 @@
 import pytest
 
-from phyelds import engine
+from phyelds import engine, MutableEngine
 from phyelds.calculus import neighbors, remember, align_right, align_left
 from phyelds.libraries.device import local_id
 from tests.calculus.mock import MockSimulator, MockNodeContext
@@ -9,7 +9,8 @@ how_many = 3
 
 @pytest.fixture(scope="function", autouse=True)
 def setup_engine():
-    engine.setup(MockNodeContext(0))
+    engine.set(MutableEngine())
+    engine.get().setup(MockNodeContext(0))
 
 def test_neighbors_should_give_the_value_itself():
     # Setup

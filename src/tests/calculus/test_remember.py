@@ -1,6 +1,6 @@
 import pytest
 
-from phyelds import engine
+from phyelds import engine, MutableEngine
 from phyelds.calculus import remember, aggregate, align, align_left, align_right
 from phyelds.data import State
 from tests.calculus.mock import MockSimulator, MockNodeContext
@@ -8,17 +8,18 @@ from tests.calculus.mock import MockSimulator, MockNodeContext
 
 @pytest.fixture(scope="function", autouse=True)
 def setup_engine():
-    engine.setup(MockNodeContext(0))
+    engine.set(MutableEngine())
+    engine.get().setup(MockNodeContext(0))
 
 def test_remember_should_add_a_path_to_the_engine():
     remember(0)
-    x = engine.engine_state.state_trace
+    x = engine.get().engine_state.state_trace
     assert str(["remember@0"]) in x
 
 def test_remember_should_increment_the_counter():
     remember(0)
     remember(0)
-    x = engine.engine_state.state_trace
+    x = engine.get().engine_state.state_trace
     assert str(["remember@1"]) in x
 
 def test_remember_should_support_nesting():
@@ -26,7 +27,7 @@ def test_remember_should_support_nesting():
         remember(0)
         with(align("second")):
             remember(0)
-    x = engine.engine_state.state_trace
+    x = engine.get().engine_state.state_trace
     assert str(["first@0", "remember@0"]) in x
     assert str(["first@0", "second@1", "remember@0"]) in x
 

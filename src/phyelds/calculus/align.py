@@ -20,8 +20,8 @@ class AlignContext:
         self.name = name
 
     def __enter__(self):
-        engine.enter(self.name)
+        engine.get().enter(self.name)
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        engine.exit()
+        engine.get().exit()

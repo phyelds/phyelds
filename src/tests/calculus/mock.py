@@ -1,3 +1,5 @@
+from phyelds.internal import MutableEngine
+
 from phyelds import engine
 from phyelds.abstractions import NodeContext
 
@@ -43,10 +45,11 @@ class MockSimulator:
                 neighbor.node_id: neighbor.context["messages"]
                 for neighbor in self.nodes if neighbor.node_id != node.node_id
             }
-            engine.setup(node.context["node_context"], all_messages, node.context["state"])
+            engine.set(MutableEngine())
+            engine.get().setup(node.context["node_context"], all_messages, node.context["state"])
             node.root = program()
-            node.context["messages"] = engine.cooldown()
-            node.context["state"] = engine.state_trace()
+            node.context["messages"] = engine.get().cooldown()
+            node.context["state"] = engine.get().state_trace()
     def cycle_for(self, program, how_many: int):
         for _ in range(how_many):
             self.cycle(program)

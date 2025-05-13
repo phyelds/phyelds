@@ -13,6 +13,6 @@ In order to use it, you should:
 """
 
 from phyelds.internal import MutableEngine
+from contextvars import ContextVar
 
-
-engine = MutableEngine()
+engine: ContextVar[MutableEngine] = ContextVar("engine")

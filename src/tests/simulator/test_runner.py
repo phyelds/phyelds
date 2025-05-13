@@ -1,3 +1,5 @@
+from phyelds import engine, MutableEngine
+
 from phyelds.calculus import aggregate, remember, neighbors
 from phyelds.simulator import Node
 from phyelds.simulator import Simulator
@@ -10,6 +12,7 @@ from phyelds.simulator.runner import (
 def test_aggregate_program_runner_with_plain_result(monkeypatch):
     # real Node & real Simulator
     node = Node(position=(1, 2), data={"state": {"prev": True}})
+    engine.set(MutableEngine())
     sim = Simulator()
     # program that returns a bare value
     called = {}
@@ -25,7 +28,7 @@ def test_aggregate_program_runner_with_plain_result(monkeypatch):
 def test_aggregate_program_runner_with_aggregate(monkeypatch):
     node = Node(position=(0, 0), data={"state": {"a": 1}})
     sim = Simulator()
-
+    engine.set(MutableEngine())
     @aggregate
     def program():
         return remember(0).update_fn(lambda x: x + 1)
@@ -36,6 +39,7 @@ def test_aggregate_program_runner_with_aggregate(monkeypatch):
 
 def test_aggregate_program_with_neighbors():
     sim = Simulator()
+    engine.set(MutableEngine())
     sim.environment.set_neighborhood_function(full_neighborhood)
     random_in_circle(sim, num_nodes=3, radius=3)
 
