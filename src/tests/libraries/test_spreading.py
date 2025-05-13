@@ -5,7 +5,7 @@ from phyelds.libraries.spreading import distance_to, cast_from, broadcast
 from phyelds.simulator import Simulator
 from phyelds.simulator.deployments import grid_generation
 from phyelds.simulator.neighborhood import radius_neighborhood
-from phyelds.simulator.runner import aggregate_program_runner, schedule_program_for_all
+from phyelds.simulator.runner import schedule_program_for_all
 
 ITERATIONS = 10
 
