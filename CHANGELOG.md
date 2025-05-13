@@ -1,3 +1,9 @@
+## [1.5.0](https://github.com/phyelds/phyelds/compare/1.4.0...1.5.0) (2025-05-13)
+
+### Features
+
+* add schedule_progra_for_all ([dccddb1](https://github.com/phyelds/phyelds/commit/dccddb132aae51e0d07a6478af53227d175279ed))
+
 ## [1.4.0](https://github.com/phyelds/phyelds/compare/1.3.0...1.4.0) (2025-05-13)
 
 ### Features
