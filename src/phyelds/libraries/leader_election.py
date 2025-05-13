@@ -2,36 +2,34 @@
 Leader election functionality (self-stabilizing) using UUIDs.
 """
 import random
-
-from phyelds.calculus import aggregate, remember, neighbors
 from phyelds.data import Field
+from phyelds.libraries.device import local_id
 from phyelds.libraries.spreading import distance_to
 from phyelds.libraries.utils import min_with_default
+from phyelds.calculus import aggregate, remember, neighbors
 
 
 @aggregate
-def elect_leader(context, area: float, distances: Field) -> bool:
+def elect_leader(area: float, distances: Field) -> bool:
     """
     Elect a leader in the network using a random UUID.
-    :param context: it should contain the node ID
     :param area: the area of the network
     :param distances: the distances to the neighbors
     :return: the current id of the leader
     """
-    result = breaking_using_uids(random_uuid(context), area, distances)
+    result = breaking_using_uids(random_uuid(), area, distances)
     # Return None if no leader was elected (infinite distance), otherwise return the leader ID
-    return result[1] == context.id and result[0] != (float("inf"))
+    return result[1] == local_id() and result[0] != (float("inf"))
 
 
 @aggregate
-def random_uuid(context):
+def random_uuid():
     """
     Generate a random UUID for the node.
-    :param context: the context of the node
     :return: the random UUID
     """
     value = remember(random.random())
-    return (value, context.id)
+    return value, local_id()
 
 
 @aggregate
