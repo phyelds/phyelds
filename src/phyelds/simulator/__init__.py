@@ -86,7 +86,10 @@ class Environment:
         return self.neighborhood_function(node, list(self.nodes.values()))
 
     @staticmethod
-    def no_neighbors(node: Node, all_node: List[Node]) -> List[Node]:
+    def no_neighbors(
+            node: Node, # pylint: disable=unused-argument
+            all_node: List[Node] # pylint: disable=unused-argument
+    ) -> List[Node]:
         """Default neighborhood function (no neighbors)"""
         return []
 
