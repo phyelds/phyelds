@@ -8,6 +8,7 @@ from phyelds.abstractions import NodeContext
 from phyelds.data import State
 from phyelds.simulator import Simulator, Node
 
+
 class SimulatorNodeContext(NodeContext, ABC):
     """
     A class to represent the context of a node in the simulator.
@@ -26,6 +27,8 @@ class SimulatorNodeContext(NodeContext, ABC):
             **node.data,
         }
         return SimulatorNodeContext(node.id, sensors)
+
+
 def aggregate_program_runner(
     simulator: Simulator, time_delta: float, node: Node, program: callable
 ):

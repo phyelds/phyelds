@@ -66,6 +66,7 @@ def neighbors(value):
     values[engine.node_context.node_id] = value
     return Field(values, engine.node_context.node_id)
 
+
 def align(name: str):
     """
     Used to align a part of the code with the current context,

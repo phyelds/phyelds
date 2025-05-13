@@ -3,6 +3,7 @@ Engine interface: how to implement an aggregate computing engine.
 """
 from abc import ABC
 
+
 class NodeContext(ABC):
     """
     Abstract base class for the node context. This class should be implemented by the user.
@@ -31,6 +32,7 @@ class NodeContext(ABC):
         :return: The position of the node.
         """
         return self.sensors.get("position")
+
 
 class Engine(ABC):
     """

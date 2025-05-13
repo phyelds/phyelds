@@ -2,6 +2,7 @@
 This module contains utility functions and classes for various purposes.
 """
 
+
 def min_with_default(iterable, default=None):
     """
     Returns the minimum value from an iterable, or a default value if the iterable is empty.

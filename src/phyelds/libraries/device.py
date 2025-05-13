@@ -12,12 +12,14 @@ def local_id():
     """
     return engine.node_context.node_id
 
+
 def context():
     """
     Get the context of the device.
     :return:
     """
     return engine.node_context
+
 
 def sense(sensor: str) -> any:
     """
@@ -26,6 +28,7 @@ def sense(sensor: str) -> any:
     :return: The value of the sensor.
     """
     return engine.node_context.sensors[sensor]
+
 
 def local_position():
     """

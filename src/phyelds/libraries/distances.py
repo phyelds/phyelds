@@ -24,6 +24,7 @@ def neighbors_distances(position):
         distances[node_id] = ((x - n_x) ** 2 + (y - n_y) ** 2) ** 0.5
     return Field(distances, local_id())
 
+
 @aggregate
 def hops_distance():
     """
