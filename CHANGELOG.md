@@ -1,3 +1,30 @@
+## [1.2.4](https://github.com/phyelds/phyelds/compare/1.2.3...1.2.4) (2025-05-13)
+
+### Bug Fixes
+
+* **tests:** remove useless test about no neighborhood ([e8e56c6](https://github.com/phyelds/phyelds/commit/e8e56c69385021239a62fc0901e77b69407a96c1))
+
+### Tests
+
+* add more on test_runner ([28ea491](https://github.com/phyelds/phyelds/commit/28ea49125dd252e2a8728b5d8728304331a8c52f))
+* minor on test ([5ed7448](https://github.com/phyelds/phyelds/commit/5ed7448033788faa15cc3fe0f1de714162dd4579))
+
+### Build and continuous integration
+
+* add linting checks also with flake8 ([33a67de](https://github.com/phyelds/phyelds/commit/33a67de91343bd5444c270d8da99c13cbf29eb37))
+
+### Style improvements
+
+* fix unused imports from calculus ([98f6a1a](https://github.com/phyelds/phyelds/commit/98f6a1a8a422d5d43d448f51c5f305f439dd5e0a))
+* follow flake8 guidelines ([f340934](https://github.com/phyelds/phyelds/commit/f340934f6ca05c6147bfa32fb96fcbe1957748ce))
+* reduce pylint problems ([f1fb55a](https://github.com/phyelds/phyelds/commit/f1fb55aabf5fafe9917339b31af43048d6853ed7))
+* remove unused imports ([d17aea6](https://github.com/phyelds/phyelds/commit/d17aea65a9ae09269b2483a9a758ba2e8779479c))
+* remove unused variable ([5babb4a](https://github.com/phyelds/phyelds/commit/5babb4a5e707580762047f1f2c424211dd40b9cb))
+
+### Refactoring
+
+* **library:** move the distances to a proper library ([261c372](https://github.com/phyelds/phyelds/commit/261c372a912d5f063a84056b86c698cd8b48078e))
+
 ## [1.2.3](https://github.com/phyelds/phyelds/compare/1.2.2...1.2.3) (2025-05-13)
 
 ### Bug Fixes
