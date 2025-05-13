@@ -23,6 +23,8 @@ class Node:
         else:
             self.id = node_id or str(uuid.uuid4())
         self.position = position
+        if data is None:
+            data = {}
         self.data = data
         self.environment = None
 
@@ -84,7 +86,7 @@ class Environment:
         return self.neighborhood_function(node, list(self.nodes.values()))
 
     @staticmethod
-    def no_neighbors() -> List[Node]:
+    def no_neighbors(node: Node, all_node: List[Node]) -> List[Node]:
         """Default neighborhood function (no neighbors)"""
         return []
 
