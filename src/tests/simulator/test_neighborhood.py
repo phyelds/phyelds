@@ -2,8 +2,7 @@ from phyelds.simulator import Node
 from phyelds.simulator.neighborhood import (
     radius_neighborhood,
     k_nearest_neighbors,
-    full_neighborhood,
-    empty_neighborhood
+    full_neighborhood
 )
 
 
@@ -94,7 +93,3 @@ def test_full_neighborhood_with_no_other_nodes():
     neighbors = full_neighborhood(node, [node])
 
     assert len(neighbors) == 0
-
-
-def test_empty_neighborhood_always_returns_empty_list():
-    assert empty_neighborhood() == []
