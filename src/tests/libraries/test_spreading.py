@@ -1,5 +1,6 @@
-from phyelds.calculus import aggregate, hops_distance
+from phyelds.calculus import aggregate
 from phyelds.libraries.device import sense
+from phyelds.libraries.distances import hops_distance
 from phyelds.libraries.spreading import distance_to
 from phyelds.simulator import Simulator
 from phyelds.simulator.deployments import grid_generation
