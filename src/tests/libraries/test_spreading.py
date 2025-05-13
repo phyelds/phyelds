@@ -5,7 +5,8 @@ from phyelds.libraries.spreading import distance_to
 from phyelds.simulator import Simulator
 from phyelds.simulator.deployments import grid_generation
 from phyelds.simulator.neighborhood import radius_neighborhood
-from phyelds.simulator.runner import aggregate_program_runner
+from phyelds.simulator.runner import aggregate_program_runner, schedule_program_for_all
+
 
 def setup_up_simulator(size):
     simulator = Simulator()
@@ -24,8 +25,7 @@ def test_distance_to_should_compute_the_multi_hop_distance_from_source():
     def program():
         return distance_to(sense("source"), hops_distance())
     # Act
-    for node in simulator.environment.nodes.values():
-        simulator.schedule_event(1, aggregate_program_runner, simulator, 1, node, program)
+    schedule_program_for_all(simulator, 1.0, program)
     simulator.run(10.0)
     # Assert
     # last node: size - 1 should be far 4 steps from the source

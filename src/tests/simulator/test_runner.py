@@ -4,7 +4,7 @@ from phyelds.simulator import Simulator
 from phyelds.simulator.deployments import random_in_circle
 from phyelds.simulator.neighborhood import full_neighborhood
 from phyelds.simulator.runner import (
-    aggregate_program_runner,
+    aggregate_program_runner, schedule_program_for_all,
 )
 
 def test_aggregate_program_runner_with_plain_result(monkeypatch):
@@ -43,9 +43,7 @@ def test_aggregate_program_with_neighbors():
         others = neighbors(1)
         return sum(others)
 
-    for node in sim.environment.nodes:
-        current_node = sim.environment.nodes[node]
-        sim.schedule_event(0.5, aggregate_program_runner, sim, 0.5, current_node, program)
+    schedule_program_for_all(sim, 1.0, program)
     sim.run(10)  # 2 called
     node = sim.environment.nodes[0]
     assert node.data["result"] == 3

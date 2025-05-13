@@ -58,3 +58,16 @@ def aggregate_program_runner(
     simulator.schedule_event(
         time_delta, aggregate_program_runner, simulator, time_delta, node, program
     )
+
+
+def schedule_program_for_all(simulator: Simulator, frequency: float, program: callable):
+    """
+    Schedule the program for all nodes in the simulator.
+    :param simulator: The simulator to schedule the program for.
+    :param frequency: The frequency to run the program.
+    :param program: The program to run.
+    """
+    for node in simulator.environment.nodes.values():
+        simulator.schedule_event(
+            frequency, aggregate_program_runner, simulator, frequency, node, program
+        )
