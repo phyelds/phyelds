@@ -1,3 +1,9 @@
+## [1.2.3](https://github.com/phyelds/phyelds/compare/1.2.2...1.2.3) (2025-05-13)
+
+### Bug Fixes
+
+* remove context from leader election, now using new API ([93facbe](https://github.com/phyelds/phyelds/commit/93facbea61ae08f77bce218b069db945723397e5))
+
 ## [1.2.2](https://github.com/phyelds/phyelds/compare/1.2.1...1.2.2) (2025-05-12)
 
 ### Bug Fixes
