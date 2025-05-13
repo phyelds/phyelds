@@ -11,7 +11,6 @@ from phyelds.simulator.neighborhood import radius_neighborhood
 from phyelds.simulator.runner import aggregate_program_runner
 
 def setup_up_simulator(size):
-    engine.set(MutableEngine())
     simulator = Simulator()
     grid_generation(simulator, size, 1, spacing=1)
     simulator.environment.set_neighborhood_function(radius_neighborhood(1.1))

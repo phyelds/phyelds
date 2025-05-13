@@ -3,6 +3,8 @@ This module contains the event to run the aggregate program in the simulator
 """
 from abc import ABC
 
+from phyelds.internal import MutableEngine
+
 from phyelds import engine
 from phyelds.abstractions import NodeContext
 from phyelds.data import State
@@ -41,6 +43,7 @@ def aggregate_program_runner(
     neighbors_messages = {
         neighbor.id: neighbor.data.get("messages", {}) for neighbor in all_neighbors
     }
+    engine.set(MutableEngine())
     engine.get().setup(
         SimulatorNodeContext.from_node(node),
         neighbors_messages,
