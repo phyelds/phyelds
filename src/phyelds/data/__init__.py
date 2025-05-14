@@ -66,6 +66,14 @@ class Field:
             self.data[k] for k in self.data.keys() & field.data.keys() if field.data[k]
         ]
 
+    def map(self, fn: callable) -> "Field":
+        """
+        Map a function to the field.
+        :param fn: The function to map.
+        :return: A new Field object with the mapped values.
+        """
+        return Field({k: fn(v) for k, v in self.data.items()}, self.node_id)
+    
     # Helper method to apply binary operations
     def _apply_binary_op(self, other, op):
         if isinstance(other, Field):

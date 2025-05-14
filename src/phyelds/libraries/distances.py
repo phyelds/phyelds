@@ -17,12 +17,7 @@ def neighbors_distances():
     """
     positions = neighbors(local_position())
     x, y = local_position()
-    distances = {}
-    for node_id, pos in positions.data.items():
-        # pos are x, y tuples
-        n_x, n_y = pos
-        distances[node_id] = ((x - n_x) ** 2 + (y - n_y) ** 2) ** 0.5
-    return Field(distances, local_id())
+    return positions.map(lambda v: ((v[0] - x) ** 2 + (v[1] - y) ** 2) ** 0.5)
 
 
 @aggregate
