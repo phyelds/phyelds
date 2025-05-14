@@ -19,7 +19,7 @@ def sense(sensor: str) -> any:
     :param sensor: The name of the sensor.
     :return: The value of the sensor.
     """
-    return engine.get().node_context.sensors[sensor]
+    return engine.get().node_context.sense(sensor)
 
 
 def local_position():
@@ -28,3 +28,13 @@ def local_position():
     :return: The position of the device.
     """
     return engine.get().node_context.position()
+
+
+def store(sensor: str, value: any):
+    """
+    Store the value of the sensor.
+    :param sensor: The name of the sensor.
+    :param value: The value of the sensor.
+    :return:
+    """
+    engine.get().node_context.store(sensor, value)

@@ -11,7 +11,7 @@ class NodeContext(ABC):
     Abstract base class for the node context. This class should be implemented by the user.
     """
 
-    def __init__(self, node_id: int, sensors: dict[str, any] = None):
+    def __init__(self, node_id: int, sensors: dict[str, any] = None, outputs: dict[str, any] = None):
         """
         Initialize the node context with the node id and sensors.
         :param node_id: The id of the node.
@@ -19,6 +19,9 @@ class NodeContext(ABC):
         """
         self.node_id = node_id
         self.sensors = sensors  # map sensor name to sensor value
+        if outputs is None:
+            outputs = {}
+        self.outputs = outputs
 
     def sense(self, sensor_name: str) -> any:
         """
@@ -27,6 +30,16 @@ class NodeContext(ABC):
         :return: The value of the sensor.
         """
         return self.sensors.get(sensor_name)
+
+    def store(self, output_name: str, value: any) -> None:
+        """
+        Store the value of the output.
+        :param output_name: The name of the output.
+        :param value: The value to store.
+        """
+        if self.outputs is None:
+            self.outputs = {}
+        self.outputs[output_name] = value
 
     def position(self) -> any:
         """
