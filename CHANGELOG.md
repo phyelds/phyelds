@@ -1,3 +1,14 @@
+## [2.0.0](https://github.com/phyelds/phyelds/compare/1.6.0...2.0.0) (2025-05-14)
+
+### ⚠ BREAKING CHANGES
+
+* change elect_leader in elect_leaders
+
+### Features
+
+* add map in Field ([d955e5f](https://github.com/phyelds/phyelds/commit/d955e5fe279b75f6e3f7fc9ebf3c6c65189f82d0))
+* change elect_leader in elect_leaders ([b9ef4d3](https://github.com/phyelds/phyelds/commit/b9ef4d3cfc7c015bbc75dac0f58ed268149a9b48))
+
 ## [1.6.0](https://github.com/phyelds/phyelds/compare/1.5.0...1.6.0) (2025-05-13)
 
 ### Features
