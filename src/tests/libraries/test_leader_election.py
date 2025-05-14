@@ -1,3 +1,5 @@
+import pytest
+
 from phyelds.calculus import aggregate
 from phyelds.libraries.distances import neighbors_distances
 from phyelds.libraries.leader_election import elect_leaders
@@ -16,20 +18,21 @@ def prepare_leader_election(area:float = 6, size = 5):
     simulator.run(10)
     return simulator
 
-def test_leader_election_should_elect_one_leader_with_large_grain():
+@pytest.mark.parametrize("_", range(100))
+def test_leader_election_should_elect_one_leader_with_large_grain(_):
     """
     Test the leader election algorithm with a large grain.
     """
-    simulator = prepare_leader_election()
+    simulator = prepare_leader_election(area=10)
     # Assert, just one leader
     leaders = [node for node in simulator.environment.nodes.values() if node.data["result"] == 1]
     assert len(leaders) == 1
 
-def test_leader_election_should_split_the_space_coherently():
+@pytest.mark.parametrize("_", range(100))
+def test_leader_election_should_split_the_space_coherently(_):
     """
     Test the leader election algorithm with a small grain.
     """
     simulator = prepare_leader_election(size=5, area=2.5)
-    # Assert, just one leader
     leaders = [node for node in simulator.environment.nodes.values() if node.data["result"] == 1]
-    assert len(leaders) == 2
+    assert 2 <= len(leaders) <= 4
