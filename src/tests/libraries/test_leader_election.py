@@ -1,6 +1,6 @@
 from phyelds.calculus import aggregate
 from phyelds.libraries.distances import neighbors_distances
-from phyelds.libraries.leader_election import elect_leader
+from phyelds.libraries.leader_election import elect_leaders
 from phyelds.simulator.runner import schedule_program_for_all
 from tests.libraries.simulator_utils import setup_up_simulator
 
@@ -11,7 +11,7 @@ def prepare_leader_election(area:float = 6, size = 5):
     simulator = setup_up_simulator(size)
     @aggregate
     def program():
-        return elect_leader(area, neighbors_distances())
+        return elect_leaders(area, neighbors_distances())
     schedule_program_for_all(simulator, 1.0, program)
     simulator.run(10)
     return simulator

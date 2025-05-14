@@ -10,7 +10,7 @@ from phyelds.calculus import aggregate, remember, neighbors
 
 
 @aggregate
-def elect_leader(area: float, distances: Field) -> bool:
+def elect_leaders(area: float, distances: Field) -> bool:
     """
     Elect a leader in the network using a random UUID.
     :param area: the area of the network

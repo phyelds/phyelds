@@ -4,7 +4,6 @@ These functions may be used by other library to compute system-wise properties
 """
 
 from phyelds.calculus import neighbors, aggregate
-from phyelds.data import Field
 from phyelds.libraries.device import local_id, local_position
 
 
