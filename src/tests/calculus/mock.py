@@ -10,7 +10,7 @@ class MockNodeContext(NodeContext):
     """
 
     def __init__(self, node_id: int):
-        super().__init__(node_id=node_id, sensors={})
+        super().__init__(node_id=node_id, sensors={"position": (0, 0), "foo": "bar"})
 
     def __repr__(self):
         return f"MockNodeContext(node_id={self.node_id})"
