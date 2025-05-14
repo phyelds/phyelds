@@ -56,7 +56,7 @@ class Field:
         """
         return self.data.get(self.node_id, None)
 
-    def select(self, field) -> list:
+    def select(self, field: "Field") -> list:
         """
         Select the values from the field that are present in the current field.
         :param field: The field to select from.
@@ -73,7 +73,7 @@ class Field:
         :return: A new Field object with the mapped values.
         """
         return Field({k: fn(v) for k, v in self.data.items()}, self.node_id)
-    
+
     # Helper method to apply binary operations
     def _apply_binary_op(self, other, op):
         if isinstance(other, Field):
