@@ -58,5 +58,5 @@ def test_aggregate_program_with_parameters():
         return value
 
     schedule_program_for_all(sim, 1.0, program, value=1)
-    sim.run(1)
+    sim.run(2)
     assert node.data['result'] == 1
