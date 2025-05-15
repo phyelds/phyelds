@@ -1,3 +1,9 @@
+## [2.2.1](https://github.com/phyelds/phyelds/compare/2.2.0...2.2.1) (2025-05-15)
+
+### Bug Fixes
+
+* passing parameters to aggregate program also in rounds after the first ([e490684](https://github.com/phyelds/phyelds/commit/e490684185b6ae99829d13eb63c99da3c1d3beb2))
+
 ## [2.2.0](https://github.com/phyelds/phyelds/compare/2.1.0...2.2.0) (2025-05-15)
 
 ### Features
