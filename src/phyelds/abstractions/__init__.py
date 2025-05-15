@@ -11,7 +11,9 @@ class NodeContext(ABC):
     Abstract base class for the node context. This class should be implemented by the user.
     """
 
-    def __init__(self, node_id: int, sensors: dict[str, any] = None, outputs: dict[str, any] = None):
+    def __init__(
+            self, node_id: int, sensors: dict[str, any] = None, outputs: dict[str, any] = None
+    ):
         """
         Initialize the node context with the node id and sensors.
         :param node_id: The id of the node.
