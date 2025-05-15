@@ -1,3 +1,13 @@
+## [2.1.0](https://github.com/phyelds/phyelds/compare/2.0.0...2.1.0) (2025-05-15)
+
+### Features
+
+* add store operation as device abstraction ([abbc5f4](https://github.com/phyelds/phyelds/commit/abbc5f4219269165d20ad0bb469c7cce537a2678))
+
+### Style improvements
+
+* better style for linters:) ([bb77d92](https://github.com/phyelds/phyelds/commit/bb77d92699211dc0bf0af6c44a126def1184cc72))
+
 ## [2.0.0](https://github.com/phyelds/phyelds/compare/1.6.0...2.0.0) (2025-05-14)
 
 ### ⚠ BREAKING CHANGES
