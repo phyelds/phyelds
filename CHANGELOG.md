@@ -1,3 +1,9 @@
+## [2.2.0](https://github.com/phyelds/phyelds/compare/2.1.0...2.2.0) (2025-05-15)
+
+### Features
+
+* now it is possible to pass arguments to the aggregate program ([bedbeaf](https://github.com/phyelds/phyelds/commit/bedbeaf4cba2694d88023c4cf94b4c33b24b5d6c))
+
 ## [2.1.0](https://github.com/phyelds/phyelds/compare/2.0.0...2.1.0) (2025-05-15)
 
 ### Features
