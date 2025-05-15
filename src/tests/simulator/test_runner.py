@@ -47,3 +47,16 @@ def test_aggregate_program_with_neighbors():
     sim.run(10)  # 2 called
     node = sim.environment.nodes[0]
     assert node.data["result"] == 3
+
+def test_aggregate_program_with_parameters():
+    sim = Simulator()
+    node = Node((0.0, 0.0), node_id=1)
+    sim.environment.add_node(node)
+
+    @aggregate
+    def program(value):
+        return value
+
+    schedule_program_for_all(sim, 1.0, program, value=1)
+    sim.run(1)
+    assert node.data['result'] == 1

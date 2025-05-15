@@ -32,7 +32,7 @@ class SimulatorNodeContext(NodeContext, ABC):
 
 
 def aggregate_program_runner(
-    simulator: Simulator, time_delta: float, node: Node, program: callable
+    simulator: Simulator, time_delta: float, node: Node, program: callable, **kwargs
 ):
     """
     Run the program for a node.
@@ -49,7 +49,7 @@ def aggregate_program_runner(
         neighbors_messages,
         node.data.get("state", {})
     )
-    result = program()
+    result = program(**kwargs)
     if isinstance(result, State):
         result = result.value
     node.data["result"] = result
@@ -60,7 +60,7 @@ def aggregate_program_runner(
     )
 
 
-def schedule_program_for_all(simulator: Simulator, frequency: float, program: callable):
+def schedule_program_for_all(simulator: Simulator, frequency: float, program: callable, **kwargs):
     """
     Schedule the program for all nodes in the simulator.
     :param simulator: The simulator to schedule the program for.
@@ -69,5 +69,5 @@ def schedule_program_for_all(simulator: Simulator, frequency: float, program: ca
     """
     for node in simulator.environment.nodes.values():
         simulator.schedule_event(
-            frequency, aggregate_program_runner, simulator, frequency, node, program
+            frequency, aggregate_program_runner, simulator, frequency, node, program, **kwargs
         )
