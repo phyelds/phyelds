@@ -1,0 +1,26 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+
+  - repo: local
+    hooks:
+      - id: poetry-flake8
+        name: Style checks with flake8 via poetry
+        entry: poetry run flake8
+        language: system
+        types: [python]
+
+      - id: poetry-pylint
+        name: Style checks with pylint via poetry
+        entry: poetry run pylint src
+        language: system
+        types: [python]
+
+      - id: poetry-pytest
+        name: Run pytest via poetry
+        entry: poetry run pytest
+        language: system
+        types: [python]
