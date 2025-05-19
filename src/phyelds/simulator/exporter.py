@@ -39,7 +39,6 @@ def csv_exporter(
         for aggregator in config.aggregators:
             column = f'{metric}_{aggregator}'
             new_data[column] = aggregate_values(nodes_data, config.precision, aggregator)
-    print(new_data)
     df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
     df.to_csv(file_path, mode='w', index=False)
     config = replace(config, initial=False)
@@ -67,7 +66,6 @@ def aggregate_values(values: list[float], precision, aggregator: str):
 def init_dataframe(config, file_path):
     """Initializes an empty DataFrame with appropriate columns based on config."""
     columns = list(f'{s}_{a}' for s, a in itertools.product(config.metrics, config.aggregators))
-    print(columns)
     try:
         os.remove(file_path)
     except OSError:
