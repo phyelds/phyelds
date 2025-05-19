@@ -1,3 +1,9 @@
+## [2.3.1](https://github.com/phyelds/phyelds/compare/2.3.0...2.3.1) (2025-05-19)
+
+### Bug Fixes
+
+* remove useless prints ([984d46d](https://github.com/phyelds/phyelds/commit/984d46d71a9ad900ffad6d27ab657b8621f3591e))
+
 ## [2.3.0](https://github.com/phyelds/phyelds/compare/2.2.1...2.3.0) (2025-05-19)
 
 ### Features
