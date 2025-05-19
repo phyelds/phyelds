@@ -1,3 +1,23 @@
+## [2.3.0](https://github.com/phyelds/phyelds/compare/2.2.1...2.3.0) (2025-05-19)
+
+### Features
+
+* implement csv exporter to export simulation data ([83daedf](https://github.com/phyelds/phyelds/commit/83daedfe9dd9e8d9ca7c55dc6899bd4982636d76))
+
+### Dependency updates
+
+* **deps:** add pandas dependency ([477203d](https://github.com/phyelds/phyelds/commit/477203d0035cf40739241bd67970b18679dbf162))
+* **deps:** add pre-commit dependecy ([6d6ea96](https://github.com/phyelds/phyelds/commit/6d6ea96c47b567f270dbeae4e28025462295ee8f))
+
+### Bug Fixes
+
+* add node outputs in node data ([802bc84](https://github.com/phyelds/phyelds/commit/802bc84241b9ddb22dfa8d492fa857ccb8e21021))
+
+### General maintenance
+
+* add pre-commit configuration to install verification hook ([33aad23](https://github.com/phyelds/phyelds/commit/33aad238fb0d0e04ee61438359859ad70a125167))
+* overview of phyelds performance ([260ea6a](https://github.com/phyelds/phyelds/commit/260ea6ac4426e8bef1ad68e0880624261545c74a))
+
 ## [2.2.1](https://github.com/phyelds/phyelds/compare/2.2.0...2.2.1) (2025-05-15)
 
 ### Bug Fixes
