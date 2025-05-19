@@ -30,11 +30,11 @@ def local_position():
     return engine.get().node_context.position()
 
 
-def store(sensor: str, value: any):
+def store(output: str, value: any):
     """
-    Store the value of the sensor.
-    :param sensor: The name of the sensor.
-    :param value: The value of the sensor.
+    Store the value in the context.
+    :param output: The name of the stored value.
+    :param value: The value to be stored.
     :return:
     """
-    engine.get().node_context.store(sensor, value)
+    engine.get().node_context.store(output, value)
