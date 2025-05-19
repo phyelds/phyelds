@@ -21,6 +21,8 @@ repos:
 
       - id: poetry-pytest
         name: Run pytest via poetry
-        entry: poetry run pytest
+        entry: poetry run pytest src/tests
         language: system
         types: [python]
+        pass_filenames: false
+        working_directory: .
