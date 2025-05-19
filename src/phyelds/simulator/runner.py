@@ -55,6 +55,7 @@ def aggregate_program_runner(
     node.data["result"] = result
     node.data["messages"] = engine.get().cooldown()
     node.data["state"] = engine.get().state_trace()
+    node.data["outputs"] = engine.get().node_context.outputs
     simulator.schedule_event(
         time_delta, aggregate_program_runner, simulator, time_delta, node, program, **kwargs
     )
