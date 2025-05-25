@@ -2,9 +2,6 @@ from phyelds.calculus import aggregate
 from phyelds.libraries.device import sense, local_id
 from phyelds.libraries.distances import hops_distance
 from phyelds.libraries.spreading import distance_to, cast_from, broadcast
-from phyelds.simulator import Simulator
-from phyelds.simulator.deployments import grid_generation
-from phyelds.simulator.neighborhood import radius_neighborhood
 from phyelds.simulator.runner import schedule_program_for_all
 from tests.libraries.simulator_utils import setup_up_simulator
 

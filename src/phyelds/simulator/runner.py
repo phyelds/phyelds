@@ -37,7 +37,7 @@ def aggregate_program_runner(
     """
     Run the program for a node.
     """
-    if node not in simulator.environment.nodes:
+    if node.id not in simulator.environment.nodes.keys():
         # If the node is not in the environment, do not run the program
         return
     # get neighbors

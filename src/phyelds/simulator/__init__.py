@@ -45,6 +45,15 @@ class Node:
             return self.environment.get_neighbors(self)
         return []
 
+    def __eq__(self, other):
+        """Define equality based on node id"""
+        if not isinstance(other, Node):
+            return False
+        return self.id == other.id
+
+    def __hash__(self):
+        """Hash based on node id"""
+        return hash(self.id)
 
 class Environment:
     """
