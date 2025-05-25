@@ -9,8 +9,8 @@ from phyelds.simulator.runner import (
 
 def test_aggregate_program_runner_with_plain_result(monkeypatch):
     # real Node & real Simulator
-    node = Node(position=(1, 2), data={"state": {"prev": True}})
     sim = Simulator()
+    node = sim.create_node((0, 0), node_id=1)
     # program that returns a bare value
     called = {}
     def program():
@@ -23,8 +23,8 @@ def test_aggregate_program_runner_with_plain_result(monkeypatch):
     assert node.data["result"] == 42
     
 def test_aggregate_program_runner_with_aggregate(monkeypatch):
-    node = Node(position=(0, 0), data={"state": {"a": 1}})
     sim = Simulator()
+    node = sim.create_node((0, 0), node_id=1)
     @aggregate
     def program():
         return remember(0).update_fn(lambda x: x + 1)
@@ -33,6 +33,23 @@ def test_aggregate_program_runner_with_aggregate(monkeypatch):
     sim.run(1) # 2 called
     assert node.data["result"] == 2
 
+def test_aggregate_program_should_not_run_when_a_not_is_not_in_the_environment():
+    sim = Simulator()
+    node = Node((0.0, 0.0), node_id=1)
+    sim.environment.add_node(node)
+
+    @aggregate
+    def program():
+        return 42
+    # Schedule the program
+    schedule_program_for_all(sim, 1.0, program)
+    # Remove the node from the environment
+    sim.environment.remove_node(node.id)
+    # Run the simulation
+    sim.run(2)
+
+    # Assert that the result is not set
+    assert "result" not in node.data
 def test_aggregate_program_with_neighbors():
     sim = Simulator()
     sim.environment.set_neighborhood_function(full_neighborhood)
