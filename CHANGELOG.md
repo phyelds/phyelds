@@ -1,3 +1,21 @@
+## [2.4.0](https://github.com/phyelds/phyelds/compare/2.3.1...2.4.0) (2025-05-25)
+
+### Features
+
+* add gossip functions ([9f84ab2](https://github.com/phyelds/phyelds/commit/9f84ab2adf7793f5c557ad00301c91b6ebb6cb38))
+
+### Bug Fixes
+
+* avoid to run aggregate program when a node it is not in the environment ([9ece149](https://github.com/phyelds/phyelds/commit/9ece14944bfa87a21b37d5f96769bde6b6274f2f))
+
+### General maintenance
+
+* fix pre commit ([f49a2c2](https://github.com/phyelds/phyelds/commit/f49a2c21cfc8a2d92c08ad28bc9528e5a7e70003))
+
+### Style improvements
+
+* add a space in simulator ([f6956f5](https://github.com/phyelds/phyelds/commit/f6956f58c26f8fabe47ac3a490a2f36ad446082a))
+
 ## [2.3.1](https://github.com/phyelds/phyelds/compare/2.3.0...2.3.1) (2025-05-19)
 
 ### Bug Fixes
