@@ -26,6 +26,27 @@ def test_gossip_max_min_should_gossip_the_correct_values():
     for node in simulator.environment.nodes.values():
         assert node.data["result"] == (size - 1, 0, set(range(size)))
 
+def test_normal_gossip_does_not_heal():
+    size = 5
+    # 0 - 1 - 2 - 3 - 4
+    simulator = setup_up_simulator(size)
+    @aggregate
+    def program():
+        return gossip_max(local_id())
+    # Act
+    schedule_program_for_all(simulator, 1.0, program)
+    simulator.run(ITERATIONS)
+    # Assert
+    # for all node result should be (size - 1, 0)
+    for node in simulator.environment.nodes.values():
+        assert node.data["result"] == (size - 1)
+
+    # remove the last node
+    simulator.environment.remove_node(size - 1)
+    simulator.run(ITERATIONS + ITERATIONS)
+    for node in simulator.environment.nodes.values():
+        assert node.data["result"] == (size - 1)
+
 def test_stabilizing_gossip_should_adapt_to_network_changes():
     size = 5
     # 0 - 1 - 2 - 3 - 4
