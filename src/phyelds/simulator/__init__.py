@@ -55,6 +55,7 @@ class Node:
         """Hash based on node id"""
         return hash(self.id)
 
+
 class Environment:
     """
     A class to represent the environment in which nodes exist.
