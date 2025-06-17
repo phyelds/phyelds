@@ -1,3 +1,13 @@
+## [2.5.0](https://github.com/phyelds/phyelds/compare/2.4.0...2.5.0) (2025-06-17)
+
+### Features
+
+* add any and all in Field ([6c93c62](https://github.com/phyelds/phyelds/commit/6c93c623ef88314c6bd60089c41a93d2d51a48f7))
+
+### Tests
+
+* add test about not healing factor of normal gossip ([c095157](https://github.com/phyelds/phyelds/commit/c0951579ba61c4adc45e9acf5eec7c66c2013234))
+
 ## [2.4.0](https://github.com/phyelds/phyelds/compare/2.3.1...2.4.0) (2025-05-25)
 
 ### Features
