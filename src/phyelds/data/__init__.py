@@ -66,6 +66,20 @@ class Field:
             self.data[k] for k in self.data.keys() & field.data.keys() if field.data[k]
         ]
 
+    def any(self) -> bool:
+        """
+        Check if any value in the field is truthy.
+        :return: True if at least one value in the field is truthy, False otherwise.
+        """
+        return any(self.data.values())
+
+    def all(self) -> bool:
+        """
+        Check if all values in the field are truthy.
+        :return: True if all values in the field are truthy, False otherwise.
+        """
+        return all(self.data.values())
+
     def map(self, fn: callable) -> "Field":
         """
         Map a function to the field.

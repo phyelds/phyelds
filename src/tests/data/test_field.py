@@ -30,6 +30,22 @@ def select_returns_empty_when_no_overlap():
     field2 = Field({2: 20}, 2)
     assert field1.select(field2) == []
 
+def test_any_returns_true_when_at_least_one_truthy():
+    field = Field({1: False, 2: True, 3: False}, 1)
+    assert field.any() is True
+
+def test_any_returns_false_when_all_falsy():
+    field = Field({1: False, 2: 0, 3: ""}, 1)
+    assert field.any() is False
+
+def test_all_returns_true_when_all_truthy():
+    field = Field({1: True, 2: 1, 3: "text"}, 1)
+    assert field.all() is True
+
+def test_all_returns_false_when_at_least_one_falsy():
+    field = Field({1: True, 2: False, 3: True}, 1)
+    assert field.all() is False
+
 def map_applies_function_to_all_values():
     data = {1: 2, 2: 3}
     field = Field(data, 1)
