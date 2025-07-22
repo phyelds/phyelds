@@ -133,6 +133,9 @@ class Event:
 
 class Monitor(ABC):
 
+    def __init__(self, simulator):
+        self.simulator = simulator
+
     def on_start(self) -> None:
         pass
 
