@@ -132,14 +132,18 @@ class Event:
 
 
 class Monitor(ABC):
-
+    """
+    An abstract base class for monitors that can observe the simulation.
+    """
     def __init__(self, simulator):
         self.simulator = simulator
 
     def on_start(self) -> None:
+        """Called when the simulation starts"""
         pass
 
     def on_finish(self) -> None:
+        """Called when the simulation finishes"""
         pass
 
 
@@ -153,7 +157,7 @@ class Simulator:
         self.running = False
         self.environment = Environment()
         self.monitors = []
-        
+
     def schedule_event(
         self, time_delta: float, action: Callable[..., None], *args, **kwargs
     ):
