@@ -6,7 +6,7 @@ It also provides a way to schedule events and run the simulation.
 """
 
 from typing import Dict, Callable, Any, Optional, Tuple, List
-from abc import ABC, abstractmethod
+from abc import ABC
 import heapq
 import uuid
 
@@ -140,11 +140,9 @@ class Monitor(ABC):
 
     def on_start(self) -> None:
         """Called when the simulation starts"""
-        pass
 
     def on_finish(self) -> None:
         """Called when the simulation finishes"""
-        pass
 
 
 class Simulator:
@@ -190,6 +188,7 @@ class Simulator:
             monitor.on_finish()
 
     def add_monitor(self, monitor: Monitor) -> None:
+        """Add a monitor to the simulator"""
         self.monitors.append(monitor)
 
     def stop(self):
