@@ -6,6 +6,7 @@ It also provides a way to schedule events and run the simulation.
 """
 
 from typing import Dict, Callable, Any, Optional, Tuple, List
+from abc import ABC, abstractmethod
 import heapq
 import uuid
 
@@ -130,6 +131,15 @@ class Event:
         return self.time < other.time
 
 
+class Monitor(ABC):
+
+    def on_start(self) -> None:
+        pass
+
+    def on_finish(self) -> None:
+        pass
+
+
 class Simulator:
     """
     A class to represent the simulator for a simple aggregate computing system.
@@ -139,7 +149,8 @@ class Simulator:
         self.current_time = 0.0
         self.running = False
         self.environment = Environment()
-
+        self.monitors = []
+        
     def schedule_event(
         self, time_delta: float, action: Callable[..., None], *args, **kwargs
     ):
@@ -153,6 +164,9 @@ class Simulator:
         """Run the simulation until the specified time or until no more events"""
         self.running = True
 
+        for monitor in self.monitors:
+            monitor.on_start()
+
         while self.running and self.event_queue:
             event = heapq.heappop(self.event_queue)
 
@@ -164,6 +178,12 @@ class Simulator:
             event.execute()
 
         self.running = False
+
+        for monitor in self.monitors:
+            monitor.on_finish()
+
+    def add_monitor(self, monitor: Monitor) -> None:
+        self.monitors.append(monitor)
 
     def stop(self):
         """Stop the simulation"""
