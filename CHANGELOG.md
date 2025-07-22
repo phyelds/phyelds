@@ -1,3 +1,18 @@
+## [2.6.0](https://github.com/phyelds/phyelds/compare/2.5.0...2.6.0) (2025-07-22)
+
+### Features
+
+* add monitors to execute actions before and after the simulation ([9cc08e1](https://github.com/phyelds/phyelds/commit/9cc08e1032638252d65bdd900fa0bde3e1bf07dc))
+
+### Bug Fixes
+
+* add simultor as monitor parameter ([afc5ffa](https://github.com/phyelds/phyelds/commit/afc5ffaa15971dddef521613b389d725aa75bf10))
+
+### General maintenance
+
+* add docstrings ([c030544](https://github.com/phyelds/phyelds/commit/c030544f8200599b56ced9d9b9f8c9962aa6153b))
+* fix pylint ([ce8c395](https://github.com/phyelds/phyelds/commit/ce8c395968c86c758e09deb0f838bfed7e21f730))
+
 ## [2.5.0](https://github.com/phyelds/phyelds/compare/2.4.0...2.5.0) (2025-06-17)
 
 ### Features
