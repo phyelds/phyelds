@@ -15,16 +15,17 @@ Lightweight, pythonic aggregate computing & field calculus toolkit for building,
 
 ## Table of Contents
 
-1. Why phyelds?
-2. Features
-3. Installation
-4. Core Concepts (with 3 tiny examples)
-5. API Highlights
-6. Development
-7. Contributing
-8. Roadmap
-9. License
-10. Running a Minimal Simulation
+- [Why phyelds?](#why-phyelds)
+- [Features](#features)
+- [Installation](#installation)
+- [Core Concepts](#core-concepts)
+  - [Local State (`remember`)](#1-local-state-remember)
+  - [Neighborhood Values (`neighbors`)](#2-neighborhood-values-neighbors)
+  - [Combine State + Neighborhood](#3-combine-state--neighborhood)
+- [Development](#development)
+- [Contributing](#contributing)
+- [License](#license)
+- [Running a Minimal Simulation](#running-a-minimal-simulation)
 
 ---
 
