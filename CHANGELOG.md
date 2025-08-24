@@ -1,3 +1,9 @@
+## [2.6.1](https://github.com/phyelds/phyelds/compare/2.6.0...2.6.1) (2025-08-24)
+
+### Documentation
+
+* write a more extensive README ([ab24563](https://github.com/phyelds/phyelds/commit/ab24563926a67e42f59f9841c9801d81c09d28e7))
+
 ## [2.6.0](https://github.com/phyelds/phyelds/compare/2.5.0...2.6.0) (2025-07-22)
 
 ### Features
