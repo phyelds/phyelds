@@ -1,7 +1,7 @@
 import pytest
 from phyelds.internal import MutableEngine
 from phyelds import engine
-from phyelds.calculus import neighbors, remember, align_right, align_left
+from phyelds.calculus import neighbors, remember, aggregate
 from phyelds.libraries.device import local_id
 from tests.calculus.mock import MockSimulator, MockNodeContext
 
@@ -41,13 +41,12 @@ def test_neighbors_of_neighbors_should_not_work():
 
 def test_align_should_break_connection():
     simulator = MockSimulator(how_many)
+    @aggregate
     def program():
         if local_id() < 2:
-            with(align_left()):
-                return neighbors(local_id())
+            return neighbors(local_id())
         else:
-            with(align_right()):
-                return neighbors(local_id())
+            return neighbors(local_id())
     # Execute
     simulator.cycle_for(program, how_many * how_many)
     # Assert

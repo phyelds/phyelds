@@ -90,13 +90,13 @@ def test_remember_should_restart_when_dealing():
     @aggregate
     def counter():
         return remember(0).update_fn(lambda x: x + 1)
+
+    @aggregate
     def double_state():
         if counter() % 2 == 0:
-            with align_left():
-                return remember(0).update_fn(lambda x: x + 1)
+            return remember(0).update_fn(lambda x: x + 1)
         else:
-            with align_right():
-                return remember(0).update_fn(lambda x: x + 1)
+            return remember(0).update_fn(lambda x: x + 1)
     simulator.cycle(double_state)
     assert simulator.nodes[0].root == 1
     simulator.cycle(double_state)

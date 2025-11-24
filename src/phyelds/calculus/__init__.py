@@ -14,9 +14,13 @@ Then, there is the core syntax of phyelds:
 - neighbors: used to get the neighbors of a node.
 - neighbors_distances: used to get the distances to the neighbors.
 """
+import ast
+import inspect
+import textwrap
 
 from phyelds import engine
 from phyelds.calculus.align import AlignContext
+from phyelds.calculus.internal import AggregateTransformer
 from phyelds.data import State, Field
 
 
@@ -33,7 +37,7 @@ def aggregate(func):
 
     def wrapper(*args, **kwargs):
         engine.get().enter(func.__name__)
-        result = func(*args, **kwargs)
+        result = transform_code(func)(*args, **kwargs)
         engine.get().exit()
         return result
 
@@ -98,3 +102,49 @@ def align_left():
     See align_right
     """
     return align("right")
+
+
+_TRANSFORMATION_CACHE = {}
+
+
+# pylint: disable=exec-used,broad-exception-caught
+def transform_code(func):
+    """
+    Transforms the code of the given function to include alignment contexts.
+    :param func: The function to transform.
+    :return: The transformed function.
+    """
+    if func.__code__ in _TRANSFORMATION_CACHE:
+        code_obj = _TRANSFORMATION_CACHE[func.__code__]
+    else:
+        try:
+            source = inspect.getsource(func)
+            source = textwrap.dedent(source)
+            tree = ast.parse(source)
+            func_def = tree.body[0]
+            if hasattr(func_def, 'decorator_list'):
+                func_def.decorator_list = [
+                    d for d in func_def.decorator_list
+                    if not (isinstance(d, ast.Name) and d.id == 'aggregate')
+                ]
+
+            transformer = AggregateTransformer()
+            tree = transformer.visit(tree)
+            ast.fix_missing_locations(tree)
+            code_obj = compile(tree, filename="<aggregated_code>", mode="exec")
+            _TRANSFORMATION_CACHE[func.__code__] = code_obj
+        except Exception as e:
+            print(f"WARNING: AST transformation failed ({e}). Using original function.")
+            return func
+    scope = func.__globals__.copy()
+    scope['align_left'] = align_left
+    scope['align_right'] = align_right
+    if func.__closure__ and func.__code__.co_freevars:
+        for name, cell in zip(func.__code__.co_freevars, func.__closure__):
+            try:
+                scope[name] = cell.cell_contents
+            except ValueError:
+                pass
+    local_scope = {}
+    exec(code_obj, scope, local_scope)
+    return local_scope[func.__name__]
