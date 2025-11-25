@@ -1,4 +1,4 @@
-from phyelds.calculus import aggregate, remember, neighbors
+from phyelds.calculus import aggregate, remember, neighbors, remember_and_evolve
 from phyelds.simulator import Node
 from phyelds.simulator import Simulator
 from phyelds.simulator.deployments import random_in_circle
@@ -27,7 +27,7 @@ def test_aggregate_program_runner_with_aggregate(monkeypatch):
     node = sim.create_node((0, 0), node_id=1)
     @aggregate
     def program():
-        return remember(0).update_fn(lambda x: x + 1)
+        return remember_and_evolve(0, lambda x: x + 1)
 
     sim.schedule_event(0.5, aggregate_program_runner, sim, 0.5, node, program)
     sim.run(1) # 2 called

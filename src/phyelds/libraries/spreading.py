@@ -16,13 +16,14 @@ def distance_to(source: bool, distances: Field) -> float:
     :param distances:
     :return:
     """
-    gradient = remember(float("inf"))
+    set_gradient, gradient = remember(float("inf"))
     neighbors_gradients = neighbors(gradient) + distances
-    return gradient.update(
+    set_gradient(
         0.0
         if source
         else min_with_default(neighbors_gradients.exclude_self(), float("inf"))
     )
+    return gradient
 
 
 def cast_from(source: bool, data: any, accumulation: callable, distances: Field) -> any:
@@ -34,7 +35,7 @@ def cast_from(source: bool, data: any, accumulation: callable, distances: Field)
     :param distances: the distances against the neighbors
     :return: the data cast
     """
-    cast_area = remember(data)
+    set_cast, cast_area = remember(data)
     potential = distance_to(source, distances)
     neighbors_value = neighbors(cast_area)
     # neighbors potential
@@ -44,8 +45,10 @@ def cast_from(source: bool, data: any, accumulation: callable, distances: Field)
     # select the minimum potential
     _, result = min(values, key=lambda x: x[0])
     if source:
-        return cast_area.update(data)
-    return cast_area.update(accumulation(result))
+        set_cast(data)
+    else:
+        set_cast(accumulation(result))
+    return cast_area
 
 
 @aggregate

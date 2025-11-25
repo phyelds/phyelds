@@ -47,12 +47,25 @@ def aggregate(func):
 @aggregate
 def remember(init):
     """
-    One of the main operator of phyelds TODO
+    One of the main operator of phyelds.
+
     :param init:
     :return:
     """
-    return State(init, engine.get().current_path(), engine.get())
+    state = State(init, engine.get().current_path(), engine.get())
+    return state.update_fn, state
 
+def remember_and_evolve(init, evolve_fn):
+    """
+    Remember a value across iterations and evolve it using the provided function.
+
+    :param init: Initial value to remember.
+    :param evolve_fn: Function to evolve the remembered value.
+    :return: A tuple containing the update function and the state.
+    """
+    state = State(init, engine.get().current_path(), engine.get())
+    state.update_fn(evolve_fn(state))
+    return state
 
 @aggregate
 def neighbors(value):

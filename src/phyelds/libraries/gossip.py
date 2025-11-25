@@ -37,11 +37,12 @@ def gossip(value: any, callback: callable) -> any:
     :param callback: The callback function to apply on the value.
     :return: The gossiped value.
     """
-    gossip_value = remember(value)
+    set_gossip, gossip_value = remember(value)
     neighborhood_value = neighbors(gossip_value)
     # Apply the callback function to the value
     new_value = callback(value, *neighborhood_value)
-    return gossip_value.update(new_value)
+    set_gossip(new_value)
+    return gossip_value
 
 
 @aggregate

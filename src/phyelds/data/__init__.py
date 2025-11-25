@@ -174,18 +174,16 @@ class State(wrapt.ObjectProxy):
         """Get the current value."""
         return self.__wrapped__
 
-    def update(self, new_value: Any) -> Any:
+    @property
+    def update_fn(self) -> callable:
+        return lambda value: self.___update(value)
+
+    def ___update(self, new_value: Any) -> Any:
         """Update the stored value."""
         if isinstance(new_value, State):
             new_value = new_value.value
         self._self_engine.write_state(new_value, self._self_path)
         self.__wrapped__ = new_value
-        return self
-
-    def update_fn(self, fn: callable) -> Any:
-        """Update the stored value using a function."""
-        self.__wrapped__ = fn(self.__wrapped__)
-        self._self_engine.write_state(self.__wrapped__, self._self_path)
         return self
 
     def forget(self):

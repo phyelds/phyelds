@@ -30,7 +30,7 @@ def collect_with(potential, local, accumulation):
     :param accumulation:
     :return:
     """
-    collections = remember(local)
+    set_collections, collections = remember(local)
     n_collections = neighbors(collections)
     parents = neighbors(find_parent(potential))
     zip_operation = zip(parents, n_collections)
@@ -38,7 +38,8 @@ def collect_with(potential, local, accumulation):
     for parent, value in zip_operation:
         if local_id() == parent:
             operations = accumulation(operations, value)
-    return collections.update(operations)
+    set_collections(operations)
+    return collections
 
 
 @aggregate

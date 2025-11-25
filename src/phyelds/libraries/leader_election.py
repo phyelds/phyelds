@@ -28,7 +28,7 @@ def random_uuid():
     Generate a random UUID for the node.
     :return: the random UUID
     """
-    value = remember(random.random())
+    _, value = remember(random.random())
     return value, local_id()
 
 
@@ -42,12 +42,13 @@ def breaking_using_uids(uid, area: float, distances: Field):
     :return: the current id of the leader
     """
     # get the minimum value of the neighbors
-    lead = remember(uid)
+    set_lead, lead = remember(uid)
     # get the minimum value of the neighbors
     potential = distance_to(lead == uid, distances)
     new_lead = distance_competition(potential, area, uid, lead, distances)
     # if the new lead is the same, return the uid
-    return lead.update(new_lead)
+    set_lead(new_lead)
+    return lead
 
 
 @aggregate

@@ -30,9 +30,9 @@ def test_neighbors_should_get_value_from_neighbors():
         assert value == initial_value
 
 def test_neighbors_should_work_as_share():
-    state = remember(0)
+    set_state, state = remember(0)
     field = neighbors(state)
-    state.update(state + 1)
+    set_state(state + 1)
     assert field.local() == 1
 
 def test_neighbors_of_neighbors_should_not_work():
