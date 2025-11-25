@@ -176,6 +176,7 @@ class State(wrapt.ObjectProxy):
 
     @property
     def update_fn(self) -> callable:
+        """Get the update function."""
         return lambda value: self.___update(value)
 
     def ___update(self, new_value: Any) -> Any:

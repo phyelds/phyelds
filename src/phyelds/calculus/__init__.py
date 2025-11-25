@@ -55,6 +55,7 @@ def remember(init):
     state = State(init, engine.get().current_path(), engine.get())
     return state.update_fn, state
 
+
 def remember_and_evolve(init, evolve_fn):
     """
     Remember a value across iterations and evolve it using the provided function.
@@ -66,6 +67,7 @@ def remember_and_evolve(init, evolve_fn):
     state = State(init, engine.get().current_path(), engine.get())
     state.update_fn(evolve_fn(state))
     return state
+
 
 @aggregate
 def neighbors(value):

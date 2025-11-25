@@ -2,7 +2,7 @@
 A group of functions based on the notion of time.
 """
 
-from phyelds.calculus import aggregate, remember, remember_and_evolve
+from phyelds.calculus import aggregate, remember_and_evolve
 
 
 @aggregate
