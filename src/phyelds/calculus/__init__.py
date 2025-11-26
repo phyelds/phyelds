@@ -108,7 +108,7 @@ def align_right():
             # do something else
     :return:
     """
-    return align("left")
+    return align("right")
 
 
 def align_left():
@@ -116,7 +116,7 @@ def align_left():
     Typically used in if statements to align the code
     See align_right
     """
-    return align("right")
+    return align("left")
 
 
 _TRANSFORMATION_CACHE = {}
