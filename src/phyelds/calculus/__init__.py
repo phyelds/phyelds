@@ -17,11 +17,15 @@ Then, there is the core syntax of phyelds:
 import ast
 import inspect
 import textwrap
+from typing import TypeVar, Callable, Tuple, Union
 
 from phyelds import engine
 from phyelds.calculus.align import AlignContext
 from phyelds.calculus.internal import AggregateTransformer
 from phyelds.data import State, Field
+
+# Generic type variable to preserve types through functions
+T = TypeVar("T")
 
 
 def aggregate(func):
@@ -45,44 +49,55 @@ def aggregate(func):
 
 
 @aggregate
-def remember(init):
+def remember(init: T) -> Tuple[Callable[[Union[T, "State[T]"]], "State[T]"], "State[T]"]:
     """
     One of the main operator of phyelds.
 
-    :param init:
-    :return:
+    :param init: The initial value for the state.
+    :return: A tuple containing the update function and the state object.
     """
+    # engine.get() returns the context/engine instance
     state = State(init, engine.get().current_path(), engine.get())
     return state.update_fn, state
 
 
-def remember_and_evolve(init, evolve_fn):
+def remember_and_evolve(
+        init: T,
+        evolve_fn: Callable[["State[T]"], T]
+) -> "State[T]":
     """
     Remember a value across iterations and evolve it using the provided function.
 
     :param init: Initial value to remember.
     :param evolve_fn: Function to evolve the remembered value.
-    :return: A tuple containing the update function and the state.
+                      It receives the current State object and should return the new value.
+    :return: The updated State object.
     """
     state = State(init, engine.get().current_path(), engine.get())
+    # evolve_fn takes the state and returns the new value (T)
+    # state.update_fn takes the new value and returns the State object
     state.update_fn(evolve_fn(state))
     return state
 
 
 @aggregate
-def neighbors(value):
+def neighbors(value: T) -> "Field[T]":
     """
     Get the `value` of the neighbors from the current node.
     Example:
     neighbors(context.data["temperature"]) // returns the temperature of the neighbors
     :param value: used to query the neighbors.
-    :return: the field representing this value
+    :return: the field representing this value containing data of type T
     """
     if isinstance(value, Field):
         raise TypeError("Field is not supported as a value")
+
     engine.get().send(value)
+
+    # aligned_values returns a Dict[int, Any], strictly speaking Dict[int, T] here
     values = engine.get().aligned_values(engine.get().current_path())
     values[engine.get().node_context.node_id] = value
+
     return Field(values, engine.get().node_context.node_id)
 
 

@@ -3,13 +3,16 @@ Diffusion (information) library for phyelds
 This library provides functions for diffusion of information in a network.
 It includes functions for calculating distances and to braodcast information
 """
+from typing import TypeVar
+
 from phyelds.calculus import aggregate, remember, neighbors
 from phyelds.data import Field
 from phyelds.libraries.utils import min_with_default
 
+T = TypeVar("T")
 
 @aggregate
-def distance_to(source: bool, distances: Field) -> float:
+def distance_to(source: bool, distances: Field[float]) -> float:
     """
     Calculate the distance to a source node in the network.
     :param source:
