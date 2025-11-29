@@ -5,11 +5,11 @@ import ast
 
 
 class AggregateTransformer(ast.NodeTransformer):
+    # pylint: disable=missing-docstring,invalid-name
     """
     Internal transformer able to take code with if and align explicitly
     """
 
-    # pylint: disable=missing-docstring,invalid-name
     def visit_If(self, node):
         self.generic_visit(node)
 

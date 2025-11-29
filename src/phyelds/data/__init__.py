@@ -206,7 +206,7 @@ class State(wrapt.ObjectProxy, Generic[S]):
     @property
     def update_fn(self) -> Callable[[Union[S, "State[S]"]], "State[S]"]:
         """Get the update function."""
-        return lambda value: self.___update(value)
+        return lambda value: self.___update(value) # pylint: disable=unnecessary-lambda
 
     def ___update(self, new_value: Union[S, "State[S]"]) -> "State[S]":
         """Update the stored value."""

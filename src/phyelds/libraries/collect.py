@@ -3,7 +3,7 @@ Collect library
 functions that are used to collect information from the network to source nodes.
 """
 
-from typing import Any, Callable, Optional, TypeVar, Union
+from typing import Callable, Optional, TypeVar, Union
 from phyelds.calculus import neighbors, aggregate, remember
 from phyelds.data import Field, State
 from phyelds.libraries.device import local_id
