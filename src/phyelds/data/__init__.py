@@ -23,7 +23,8 @@ T = TypeVar("T")
 U = TypeVar("U")
 # S represents the type of the value held by State
 S = TypeVar("S")
-
+# StateT is the "mark" type for state values
+StateT = Union[S, "State[S]"]
 
 class NeighborhoodField(Generic[T], Iterator[T]):
     """
@@ -181,10 +182,6 @@ class State(wrapt.ObjectProxy, Generic[S]):
     """
 
     def __init__(self, default: S, path: List[Any], engine: Engine) -> None:
-        self.__wrapped__: Optional[S]
-
-        # Initialize internal storage before calling super init logic
-        # (though wrapt handles __wrapped__ specifically)
         self.__wrapped__ = default
 
         state = engine.read_state(path)
@@ -203,10 +200,10 @@ class State(wrapt.ObjectProxy, Generic[S]):
         """Get the current value."""
         # wrapt proxies delegate attribute access, but explicit access to the wrapped object
         # is done via __wrapped__
-        return cast(S, self.__wrapped__)
+        return self.__wrapped__
 
     @property
-    def update_fn(self) -> Callable[[Union[S, "State[S]"]], "State[S]"]:
+    def update_fn(self) -> Callable[["StateT[S]"], "StateT[S]"]:
         """Get the update function."""
         return lambda value: self.___update(value) # pylint: disable=unnecessary-lambda
 

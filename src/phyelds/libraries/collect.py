@@ -3,16 +3,16 @@ Collect library
 functions that are used to collect information from the network to source nodes.
 """
 
-from typing import Callable, Optional, TypeVar, Union
+from typing import Callable, Optional, TypeVar, Union, Tuple
 from phyelds.calculus import neighbors, aggregate, remember
-from phyelds.data import NeighborhoodField, State
+from phyelds.data import NeighborhoodField, State, StateT
 from phyelds.libraries.device import local_id
 
 T = TypeVar("T")
 
 
 @aggregate
-def find_parent(potential: float) -> Optional[int]:
+def find_parent(potential: StateT[float]) -> Optional[int]:
     """
     Find the parent of a path giving a potential neighborhood.
 
@@ -22,7 +22,7 @@ def find_parent(potential: float) -> Optional[int]:
     neighbors_potential: NeighborhoodField[float] = neighbors(potential)
 
     # We are finding the item (id, value) with the minimum value
-    min_value = min(neighbors_potential.data.items(), key=lambda x: x[1])
+    min_value: Tuple[int, float] = min(neighbors_potential.data.items(), key=lambda x: x[1])
 
     if min_value[1] >= potential:
         return None
@@ -31,10 +31,10 @@ def find_parent(potential: float) -> Optional[int]:
 
 @aggregate
 def collect_with(
-    potential: float,
+    potential: StateT[float],
     local: T,
     accumulation: Callable[[T, T], T]
-) -> "State[T]":
+) -> StateT[T]:
     """
     Generic collection function that accumulates data from children to parents
     based on a potential neighborhood.
@@ -65,7 +65,7 @@ def collect_with(
 
 
 @aggregate
-def count_nodes(potential: float) -> "State[int]":
+def count_nodes(potential: StateT[float]) -> StateT[int]:
     """
     Count the number of nodes in the sub-tree defined by the potential neighborhood.
 
@@ -76,7 +76,7 @@ def count_nodes(potential: float) -> "State[int]":
 
 
 @aggregate
-def sum_values(potential: float, local: Union[int, float]) -> "State[Union[int, float]]":
+def sum_values(potential: StateT[float], local: Union[int, float]) -> StateT[Union[int, float]]:
     """
     Sum numeric values up the potential gradient.
 
@@ -88,7 +88,7 @@ def sum_values(potential: float, local: Union[int, float]) -> "State[Union[int, 
 
 
 @aggregate
-def collect_or(potential: float, local: bool) -> "State[bool]":
+def collect_or(potential: float, local: bool) -> StateT[bool]:
     """
     Perform a logical OR collection up the potential gradient.
     Useful for determining if *any* node in a subtree satisfies a condition.
