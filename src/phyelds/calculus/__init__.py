@@ -17,7 +17,7 @@ Then, there is the core syntax of phyelds:
 import ast
 import inspect
 import textwrap
-from typing import TypeVar, Callable, Tuple, Union
+from typing import TypeVar, Callable, Tuple, Union, Any
 
 from phyelds import engine
 from phyelds.calculus.align import AlignContext
@@ -101,14 +101,14 @@ def neighbors(value: T) -> "NeighborhoodField[T]":
     return NeighborhoodField(values, engine.get().node_context.node_id)
 
 
-def align(name: str):
+def align(name: Any):
     """
     Used to align a part of the code with the current context,
     creating different non communicating zones
-    :param name: what you would like to align on
+    :param name: symbol you would like to align on
     :return: the context
     """
-    return AlignContext(name)
+    return AlignContext(str(name))
 
 
 def align_right():
