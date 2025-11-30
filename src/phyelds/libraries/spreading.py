@@ -6,13 +6,13 @@ It includes functions for calculating distances and to braodcast information
 from typing import TypeVar
 
 from phyelds.calculus import aggregate, remember, neighbors
-from phyelds.data import Field
+from phyelds.data import NeighborhoodField
 from phyelds.libraries.utils import min_with_default
 
 T = TypeVar("T")
 
 @aggregate
-def distance_to(source: bool, distances: Field[float]) -> float:
+def distance_to(source: bool, distances: NeighborhoodField[float]) -> float:
     """
     Calculate the distance to a source node in the network.
     :param source:
@@ -29,7 +29,7 @@ def distance_to(source: bool, distances: Field[float]) -> float:
     return gradient
 
 
-def cast_from(source: bool, data: any, accumulation: callable, distances: Field) -> any:
+def cast_from(source: bool, data: any, accumulation: callable, distances: NeighborhoodField) -> any:
     """
     Cast information from a source node to its neighbors.
     :param source: the source node to cast from
@@ -55,7 +55,7 @@ def cast_from(source: bool, data: any, accumulation: callable, distances: Field)
 
 
 @aggregate
-def broadcast(source: bool, data: any, distances: Field) -> any:
+def broadcast(source: bool, data: any, distances: NeighborhoodField) -> any:
     """
     Broadcast information to the network from a source node.
     :param source: the source node to broadcast from

@@ -12,7 +12,7 @@ def neighbors_distances():
     """
     Get the distances to the neighbors from the current node.
     :param position: the current node position
-    :return: the field representing the distances to the neighbors
+    :return: the neighborhood representing the distances to the neighbors
     """
     positions = neighbors(local_position())
     x, y = local_position()
@@ -23,7 +23,7 @@ def neighbors_distances():
 def hops_distance():
     """
     Get the hops distance to the neighbors from the current node.
-    :return: the field representing the hops distance to the neighbors
+    :return: the neighborhood representing the hops distance to the neighbors
     """
     distances = neighbors(1)
     distances.data[local_id()] = 0

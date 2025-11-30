@@ -5,7 +5,7 @@ Set of function used to get the device information.
 from phyelds import engine
 
 
-def local_id():
+def local_id() -> int:
     """
     Get the local id of the device.
     :return:

@@ -1,5 +1,5 @@
 """
-Internal state class used to manage the state of the system (namely `rep` of field calculus).
+Internal classes used to manage the state and the neighborhood of the system (namely `rep` and `nbr` of field calculus).
 """
 
 from typing import (
@@ -17,7 +17,7 @@ from typing import (
 import wrapt
 from phyelds.abstractions import Engine
 
-# T represents the type of data held by the Field (e.g., int, float, bool)
+# T represents the type of data held by the Neighborhood (e.g., int, float, bool)
 T = TypeVar("T")
 # U represents the type of data resulting from a map or operation
 U = TypeVar("U")
@@ -25,10 +25,10 @@ U = TypeVar("U")
 S = TypeVar("S")
 
 
-class Field(Generic[T], Iterator[T]):
+class NeighborhoodField(Generic[T], Iterator[T]):
     """
-    Field class used to manage the interactions of between nodes (namely `nbr` of field calculus).
-    It provides methods to perform operations on the field, such as addition,
+    NeighborhoodField class used to manage the interactions of between nodes (namely `nbr` of neighborhood calculus).
+    It provides methods to perform operations on the neighborhood, such as addition,
     subtraction, multiplication, and division.
     You should never use it directly, but rather use the `neighbors` function
     """
@@ -60,7 +60,7 @@ class Field(Generic[T], Iterator[T]):
 
     def exclude_self(self) -> Dict[int, T]:
         """
-        Exclude the current node from the field.
+        Exclude the current node from the neighborhood.
         :return:  A dictionary with the current node excluded.
         """
         to_return = self.data.copy()
@@ -74,102 +74,104 @@ class Field(Generic[T], Iterator[T]):
         """
         return self.data.get(self.node_id, None)
 
-    def select(self, field: "Field[Any]") -> List[T]:
+    def select(self, neighborhood: "NeighborhoodField[Any]") -> List[T]:
         """
-        Select the values from the field that are present in the current field.
-        :param field: The field to select from (acts as a filter).
-        :return:  A list of values from the current field that are present in the given field.
+        Select the values from the neighborhood that are present in the current neighborhood.
+        :param neighborhood: The neighborhood to select from (acts as a filter).
+        :return:  A list of values from the current neighborhood that are present in the given neighborhood.
         """
-        # We look at keys present in both, where the *other* field's value is truthy
+        # We look at keys present in both, where the *other* neighborhood's value is truthy
         return [
-            self.data[k] for k in self.data.keys() & field.data.keys() if field.data[k]
+            self.data[k]
+            for k in self.data.keys() & neighborhood.data.keys()
+            if neighborhood.data[k]
         ]
 
     def any(self) -> bool:
         """
-        Check if any value in the field is truthy.
-        :return: True if at least one value in the field is truthy, False otherwise.
+        Check if any value in the neighborhood is truthy.
+        :return: True if at least one value in the neighborhood is truthy, False otherwise.
         """
         return any(self.data.values())
 
     def all(self) -> bool:
         """
-        Check if all values in the field are truthy.
-        :return: True if all values in the field are truthy, False otherwise.
+        Check if all values in the neighborhood are truthy.
+        :return: True if all values in the neighborhood are truthy, False otherwise.
         """
         return all(self.data.values())
 
-    def map(self, fn: Callable[[T], U]) -> "Field[U]":
+    def map(self, func: Callable[[T], U]) -> "NeighborhoodField[U]":
         """
-        Map a function to the field.
-        :param fn: The function to map.
-        :return: A new Field object with the mapped values.
+        Map a function to the neighborhood.
+        :param func: The function to map.
+        :return: A new Neighborhood object with the mapped values.
         """
-        return Field({k: fn(v) for k, v in self.data.items()}, self.node_id)
+        return NeighborhoodField({k: func(v) for k, v in self.data.items()}, self.node_id)
 
     # Helper method to apply binary operations
     def _apply_binary_op(
-        self, other: Union["Field[Any]", Any], op: Callable[[Any, Any], Any]
-    ) -> "Field[Any]":
-        if isinstance(other, Field):
-            return Field(
+        self, other: Union["NeighborhoodField[Any]", Any], op: Callable[[Any, Any], Any]
+    ) -> "NeighborhoodField[Any]":
+        if isinstance(other, NeighborhoodField):
+            return NeighborhoodField(
                 {
                     k: op(self.data[k], other.data[k])
                     for k in self.data.keys() & other.data.keys()
                 },
                 self.node_id,
             )
-        return Field({k: op(v, other) for k, v in self.data.items()}, self.node_id)
+        return NeighborhoodField({k: op(v, other) for k, v in self.data.items()}, self.node_id)
 
-    def __add__(self, other: Any) -> "Field[Any]":
+    def __add__(self, other: Any) -> "NeighborhoodField[Any]":
         return self._apply_binary_op(other, lambda a, b: a + b)
 
-    def __sub__(self, other: Any) -> "Field[Any]":
+    def __sub__(self, other: Any) -> "NeighborhoodField[Any]":
         return self._apply_binary_op(other, lambda a, b: a - b)
 
-    def __mul__(self, other: Any) -> "Field[Any]":
+    def __mul__(self, other: Any) -> "NeighborhoodField[Any]":
         return self._apply_binary_op(other, lambda a, b: a * b)
 
-    def __truediv__(self, other: Any) -> "Field[Any]":
+    def __truediv__(self, other: Any) -> "NeighborhoodField[Any]":
         return self._apply_binary_op(other, lambda a, b: a / b)
 
-    def __mod__(self, other: Any) -> "Field[Any]":
+    def __mod__(self, other: Any) -> "NeighborhoodField[Any]":
         return self._apply_binary_op(other, lambda a, b: a % b)
 
-    def __pow__(self, other: Any) -> "Field[Any]":
+    def __pow__(self, other: Any) -> "NeighborhoodField[Any]":
         return self._apply_binary_op(other, lambda a, b: a**b)
 
-    def __floordiv__(self, other: Any) -> "Field[Any]":
+    def __floordiv__(self, other: Any) -> "NeighborhoodField[Any]":
         return self._apply_binary_op(other, lambda a, b: a // b)
 
-    def __and__(self, other: Any) -> "Field[Any]":
+    def __and__(self, other: Any) -> "NeighborhoodField[Any]":
         return self._apply_binary_op(other, lambda a, b: a & b)
 
-    def __or__(self, other: Any) -> "Field[Any]":
+    def __or__(self, other: Any) -> "NeighborhoodField[Any]":
         return self._apply_binary_op(other, lambda a, b: a | b)
 
-    def __xor__(self, other: Any) -> "Field[Any]":
+    def __xor__(self, other: Any) -> "NeighborhoodField[Any]":
         return self._apply_binary_op(other, lambda a, b: a ^ b)
 
-    def __invert__(self) -> "Field[Any]":
-        return Field({k: ~v for k, v in self.data.items()}, self.node_id)  # type: ignore
+    def __invert__(self) -> "NeighborhoodField[Any]":
+        return NeighborhoodField({k: ~v for k, v in self.data.items()}, self.node_id)  # type: ignore
 
-    def __lt__(self, other: Any) -> "Field[bool]":
-        return cast(Field[bool], self._apply_binary_op(other, lambda a, b: a < b))
+    def __lt__(self, other: Any) -> "NeighborhoodField[bool]":
+        return cast(NeighborhoodField[bool], self._apply_binary_op(other, lambda a, b: a < b))
 
-    def __le__(self, other: Any) -> "Field[bool]":
-        return cast(Field[bool], self._apply_binary_op(other, lambda a, b: a <= b))
+    def __le__(self, other: Any) -> "NeighborhoodField[bool]":
+        return cast(NeighborhoodField[bool], self._apply_binary_op(other, lambda a, b: a <= b))
 
-    def __gt__(self, other: Any) -> "Field[bool]":
-        return cast(Field[bool], self._apply_binary_op(other, lambda a, b: a > b))
+    def __gt__(self, other: Any) -> "NeighborhoodField[bool]":
+        return cast(NeighborhoodField[bool], self._apply_binary_op(other, lambda a, b: a > b))
 
     def __str__(self) -> str:
-        """String representation of the field."""
+        """String representation of the neighborhood."""
         return self.__repr__()
 
     def __repr__(self) -> str:
-        """String representation of the field."""
-        return f"Field (id: {self.node_id}) -- data: {self.data} -- local: {self.local()}"
+        """String representation of the neighborhood."""
+        return f"Neighborhood (id: {self.node_id}) -- data: {self.data} -- local: {self.local()}"
 
 
 class State(wrapt.ObjectProxy, Generic[S]):

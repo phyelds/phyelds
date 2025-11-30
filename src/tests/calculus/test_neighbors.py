@@ -63,7 +63,7 @@ def test_neighbors_local_should_return_the_value_itself():
     for node in simulator.nodes:
         assert node.root.local() == node.node_id
 
-def test_field_support_math_operations():
+def test_neighborhood_support_math_operations():
     simulator = MockSimulator(how_many)
     def program():
         return neighbors(1) + 1
@@ -71,7 +71,7 @@ def test_field_support_math_operations():
     for node in simulator.nodes:
         assert node.root.local() == 2
 
-def test_field_support_math_operations_between_field():
+def test_neighborhood_support_math_operations_between_neighborhood():
     simulator = MockSimulator(how_many)
     def program():
         return neighbors(1) + neighbors(local_id())
@@ -85,7 +85,7 @@ def test_field_support_math_operations_between_field():
     for node in simulator.nodes:
         assert node.root.data == expected
 
-def test_field_may_be_used_to_exclude_themselves():
+def test_neighborhood_may_be_used_to_exclude_themselves():
     simulator = MockSimulator(how_many)
     def program():
         return neighbors(local_id()).exclude_self()

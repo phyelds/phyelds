@@ -5,7 +5,7 @@ functions that are used to collect information from the network to source nodes.
 
 from typing import Callable, Optional, TypeVar, Union
 from phyelds.calculus import neighbors, aggregate, remember
-from phyelds.data import Field, State
+from phyelds.data import NeighborhoodField, State
 from phyelds.libraries.device import local_id
 
 T = TypeVar("T")
@@ -14,12 +14,12 @@ T = TypeVar("T")
 @aggregate
 def find_parent(potential: float) -> Optional[int]:
     """
-    Find the parent of a path giving a potential field.
+    Find the parent of a path giving a potential neighborhood.
 
     :param potential: The potential value (distance/gradient) at the current node.
     :return: The node ID of the parent (neighbor with min potential), or None if local is min.
     """
-    neighbors_potential: Field[float] = neighbors(potential)
+    neighbors_potential: NeighborhoodField[float] = neighbors(potential)
 
     # We are finding the item (id, value) with the minimum value
     min_value = min(neighbors_potential.data.items(), key=lambda x: x[1])
@@ -37,9 +37,9 @@ def collect_with(
 ) -> "State[T]":
     """
     Generic collection function that accumulates data from children to parents
-    based on a potential field.
+    based on a potential neighborhood.
 
-    :param potential: The potential field used to determine parent-child relationships.
+    :param potential: The potential neighborhood used to determine parent-child relationships.
     :param local: The local value to start with (and add to).
     :param accumulation: A function to combine two values (e.g., sum, max, union).
     :return: The accumulated state.
@@ -47,10 +47,10 @@ def collect_with(
     # set_collections is the update function, collections is the State object
     set_collections, collections = remember(local)
 
-    n_collections: Field[T] = neighbors(collections)
-    parents: Field[Optional[int]] = neighbors(find_parent(potential))
+    n_collections: NeighborhoodField[T] = neighbors(collections)
+    parents: NeighborhoodField[Optional[int]] = neighbors(find_parent(potential))
 
-    # zip iterates over the aligned values of the fields
+    # zip iterates over the aligned values of the neighborhoods
     zip_operation = zip(parents, n_collections)
 
     operations: T = local
@@ -67,7 +67,7 @@ def collect_with(
 @aggregate
 def count_nodes(potential: float) -> "State[int]":
     """
-    Count the number of nodes in the sub-tree defined by the potential field.
+    Count the number of nodes in the sub-tree defined by the potential neighborhood.
 
     :param potential: The potential field.
     :return: The count of nodes.

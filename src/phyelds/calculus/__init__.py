@@ -22,7 +22,7 @@ from typing import TypeVar, Callable, Tuple, Union
 from phyelds import engine
 from phyelds.calculus.align import AlignContext
 from phyelds.calculus.internal import AggregateTransformer
-from phyelds.data import State, Field
+from phyelds.data import State, NeighborhoodField
 
 # Generic type variable to preserve types through functions
 T = TypeVar("T")
@@ -81,16 +81,16 @@ def remember_and_evolve(
 
 
 @aggregate
-def neighbors(value: T) -> "Field[T]":
+def neighbors(value: T) -> "NeighborhoodField[T]":
     """
     Get the `value` of the neighbors from the current node.
     Example:
     neighbors(context.data["temperature"]) // returns the temperature of the neighbors
     :param value: used to query the neighbors.
-    :return: the field representing this value containing data of type T
+    :return: the neighborhood representing this value containing data of type T
     """
-    if isinstance(value, Field):
-        raise TypeError("Field is not supported as a value")
+    if isinstance(value, NeighborhoodField):
+        raise TypeError("Neighborhood is not supported as a value")
 
     engine.get().send(value)
 
@@ -98,7 +98,7 @@ def neighbors(value: T) -> "Field[T]":
     values = engine.get().aligned_values(engine.get().current_path())
     values[engine.get().node_context.node_id] = value
 
-    return Field(values, engine.get().node_context.node_id)
+    return NeighborhoodField(values, engine.get().node_context.node_id)
 
 
 def align(name: str):

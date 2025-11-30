@@ -2,7 +2,7 @@
 Leader election functionality (self-stabilizing) using UUIDs.
 """
 import random
-from phyelds.data import Field
+from phyelds.data import NeighborhoodField
 from phyelds.libraries.device import local_id
 from phyelds.libraries.spreading import distance_to
 from phyelds.libraries.utils import min_with_default
@@ -10,7 +10,7 @@ from phyelds.calculus import aggregate, remember, neighbors
 
 
 @aggregate
-def elect_leaders(area: float, distances: Field) -> bool:
+def elect_leaders(area: float, distances: NeighborhoodField) -> bool:
     """
     Elect a leader in the network using a random UUID.
     :param area: the area of the network
@@ -33,7 +33,7 @@ def random_uuid():
 
 
 @aggregate
-def breaking_using_uids(uid, area: float, distances: Field):
+def breaking_using_uids(uid, area: float, distances: NeighborhoodField):
     """
     Break the symmetry using the UUID of the node.
     :param uid: the UUID of the node
@@ -53,7 +53,7 @@ def breaking_using_uids(uid, area: float, distances: Field):
 
 @aggregate
 def distance_competition(
-    current_distance, area: float, uid, lead, distances: Field
+    current_distance, area: float, uid, lead, distances: NeighborhoodField
 ):
     """
     Compare the distance of the current node with the distance of the neighbors.
