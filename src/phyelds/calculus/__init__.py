@@ -41,7 +41,7 @@ def aggregate(func):
 
     def wrapper(*args, **kwargs):
         engine.get().enter(func.__name__)
-        result = transform_code(func)(*args, **kwargs)
+        result = ___transform_code(func)(*args, **kwargs)
         engine.get().exit()
         return result
 
@@ -138,7 +138,7 @@ _TRANSFORMATION_CACHE = {}
 
 
 # pylint: disable=exec-used,broad-exception-caught
-def transform_code(func):
+def ___transform_code(func):
     """
     Transforms the code of the given function to include alignment contexts.
     :param func: The function to transform.
