@@ -8,7 +8,10 @@ from phyelds.simulator import Simulator, Node
 
 
 def move_with_velocity(
-        simulator: Simulator, delta_time: float, node: Node, velocity: float
+    simulator: Simulator,
+    delta_time: float,
+    node: Node,
+    velocity: Tuple[float, tuple]
 ):
     """
     Move the node with a given velocity.
