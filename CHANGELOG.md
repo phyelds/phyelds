@@ -1,3 +1,13 @@
+## [3.1.0](https://github.com/phyelds/phyelds/compare/3.0.0...3.1.0) (2025-12-03)
+
+### Features
+
+* add update on monitor ([7084cf2](https://github.com/phyelds/phyelds/commit/7084cf23a015456b21ef521ded9d12267ced347e))
+
+### Style improvements
+
+* remove useless parameter ([13eeb30](https://github.com/phyelds/phyelds/commit/13eeb30921cf68f2e2f6fdf62b9a4e2967f12ea8))
+
 ## [3.0.0](https://github.com/phyelds/phyelds/compare/2.6.1...3.0.0) (2025-12-03)
 
 ### ⚠ BREAKING CHANGES
