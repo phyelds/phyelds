@@ -25,7 +25,8 @@ U = TypeVar("U")
 # S represents the type of the value held by State
 S = TypeVar("S")
 # StateT is the "mark" type for state values
-StateT = Union[S, "State[S]"] # pylint: disable=invalid-name
+StateT = Union[S, "State[S]"]  # pylint: disable=invalid-name
+
 
 class NeighborhoodField(Generic[T], Iterator[T]):
     """
@@ -211,7 +212,7 @@ class State(wrapt.ObjectProxy, Generic[S]):
     @property
     def update_fn(self) -> Callable[["StateT[S]"], "StateT[S]"]:
         """Get the update function."""
-        return lambda value: self.___update(value) # pylint: disable=unnecessary-lambda
+        return lambda value: self.___update(value)  # pylint: disable=unnecessary-lambda
 
     def ___update(self, new_value: Union[S, "State[S]"]) -> "State[S]":
         """Update the stored value."""
