@@ -12,7 +12,6 @@ from phyelds.libraries.device import local_id, local_position
 def neighbors_distances() -> NeighborhoodField[float]:
     """
     Get the distances to the neighbors from the current node.
-    :param position: the current node position
     :return: the neighborhood representing the distances to the neighbors
     """
     positions: NeighborhoodField = neighbors(local_position())
