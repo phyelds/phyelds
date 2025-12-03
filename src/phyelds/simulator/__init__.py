@@ -132,12 +132,16 @@ class Monitor(ABC):
     """
     def __init__(self, simulator):
         self.simulator = simulator
+        self.simulator.add_monitor(monitor=self)
 
     def on_start(self) -> None:
         """Called when the simulation starts"""
 
     def on_finish(self) -> None:
         """Called when the simulation finishes"""
+
+    def update(self) -> None:
+        """Called after each event execution"""
 
 
 class Simulator:
@@ -176,6 +180,9 @@ class Simulator:
 
             self.current_time = event.time
             event.execute()
+
+            for monitor in self.monitors:
+                monitor.update()
 
         self.running = False
 
