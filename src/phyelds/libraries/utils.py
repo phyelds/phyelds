@@ -2,8 +2,10 @@
 This module contains utility functions and classes for various purposes.
 """
 
+from typing import Any
 
-def min_with_default(iterable, default=None):
+
+def min_with_default(iterable: Any, default: Any = None) -> Any:
     """
     Returns the minimum value from an iterable, or a default value if the iterable is empty.
     :param iterable: a list of values (or any iterable)

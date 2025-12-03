@@ -37,8 +37,6 @@ class Node:
             self.position = new_position
         if new_data is not None:
             self.data = new_data
-        if self.environment:
-            self.environment.node_updated(self)
 
     def get_neighbors(self):
         """Get neighboring nodes from the environment"""
@@ -89,9 +87,6 @@ class Environment:
         if node_id in self.nodes:
             self.nodes[node_id].environment = None
             del self.nodes[node_id]
-
-    def node_updated(self, node: Node):
-        """Called when a node is updated"""
 
     def set_neighborhood_function(self, func: Callable[[Node, List[Node]], List[Node]]):
         """Set the function that determines neighborhoods"""

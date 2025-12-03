@@ -2,10 +2,11 @@
 Device library:
 Set of function used to get the device information.
 """
+from typing import Any, Tuple
 from phyelds import engine
 
 
-def local_id():
+def local_id() -> int:
     """
     Get the local id of the device.
     :return:
@@ -13,7 +14,7 @@ def local_id():
     return engine.get().node_context.node_id
 
 
-def sense(sensor: str) -> any:
+def sense(sensor: str) -> Any:
     """
     Get the value of the sensor.
     :param sensor: The name of the sensor.
@@ -22,7 +23,7 @@ def sense(sensor: str) -> any:
     return engine.get().node_context.sense(sensor)
 
 
-def local_position():
+def local_position() -> Tuple[float, float]:
     """
     Get the position of the device.
     :return: The position of the device.
@@ -30,7 +31,7 @@ def local_position():
     return engine.get().node_context.position()
 
 
-def store(output: str, value: any):
+def store(output: str, value: Any) -> None:
     """
     Store the value in the context.
     :param output: The name of the stored value.

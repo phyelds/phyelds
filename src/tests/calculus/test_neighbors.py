@@ -1,7 +1,7 @@
 import pytest
 from phyelds.internal import MutableEngine
 from phyelds import engine
-from phyelds.calculus import neighbors, remember, align_right, align_left
+from phyelds.calculus import neighbors, remember, aggregate
 from phyelds.libraries.device import local_id
 from tests.calculus.mock import MockSimulator, MockNodeContext
 
@@ -30,9 +30,9 @@ def test_neighbors_should_get_value_from_neighbors():
         assert value == initial_value
 
 def test_neighbors_should_work_as_share():
-    state = remember(0)
+    set_state, state = remember(0)
     field = neighbors(state)
-    state.update(state + 1)
+    set_state(state + 1)
     assert field.local() == 1
 
 def test_neighbors_of_neighbors_should_not_work():
@@ -41,13 +41,12 @@ def test_neighbors_of_neighbors_should_not_work():
 
 def test_align_should_break_connection():
     simulator = MockSimulator(how_many)
+    @aggregate
     def program():
         if local_id() < 2:
-            with(align_left()):
-                return neighbors(local_id())
+            return neighbors(local_id())
         else:
-            with(align_right()):
-                return neighbors(local_id())
+            return neighbors(local_id())
     # Execute
     simulator.cycle_for(program, how_many * how_many)
     # Assert
@@ -64,7 +63,7 @@ def test_neighbors_local_should_return_the_value_itself():
     for node in simulator.nodes:
         assert node.root.local() == node.node_id
 
-def test_field_support_math_operations():
+def test_neighborhood_support_math_operations():
     simulator = MockSimulator(how_many)
     def program():
         return neighbors(1) + 1
@@ -72,7 +71,7 @@ def test_field_support_math_operations():
     for node in simulator.nodes:
         assert node.root.local() == 2
 
-def test_field_support_math_operations_between_field():
+def test_neighborhood_support_math_operations_between_neighborhood():
     simulator = MockSimulator(how_many)
     def program():
         return neighbors(1) + neighbors(local_id())
@@ -86,7 +85,7 @@ def test_field_support_math_operations_between_field():
     for node in simulator.nodes:
         assert node.root.data == expected
 
-def test_field_may_be_used_to_exclude_themselves():
+def test_neighborhood_may_be_used_to_exclude_themselves():
     simulator = MockSimulator(how_many)
     def program():
         return neighbors(local_id()).exclude_self()
