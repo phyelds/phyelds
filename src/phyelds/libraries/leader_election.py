@@ -3,7 +3,7 @@ Leader election functionality (self-stabilizing) using UUIDs.
 """
 import random
 from typing import Tuple
-from phyelds.data import NeighborhoodField, State, StateT
+from phyelds.data import NeighborhoodField, StateT
 from phyelds.libraries.device import local_id
 from phyelds.libraries.spreading import distance_to
 from phyelds.libraries.utils import min_with_default

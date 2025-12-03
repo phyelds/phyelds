@@ -2,7 +2,7 @@
 Gossip Library.
 Set of operation in order to gossip information between nodes in the network.
 """
-from typing import TypeVar, Callable, Any, Set, Dict, Tuple, List
+from typing import TypeVar, Callable, Any, Set, Dict, List
 
 from phyelds.data import StateT
 from phyelds.libraries.distances import hops_distance

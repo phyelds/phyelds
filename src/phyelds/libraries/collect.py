@@ -5,7 +5,7 @@ functions that are used to collect information from the network to source nodes.
 
 from typing import Callable, Optional, TypeVar, Union, Tuple
 from phyelds.calculus import neighbors, aggregate, remember
-from phyelds.data import NeighborhoodField, State, StateT
+from phyelds.data import NeighborhoodField, StateT
 from phyelds.libraries.device import local_id
 
 T = TypeVar("T")

@@ -3,7 +3,7 @@ Diffusion (information) library for phyelds
 This library provides functions for diffusion of information in a network.
 It includes functions for calculating distances and to braodcast information
 """
-from typing import TypeVar, Callable, Tuple
+from typing import TypeVar, Callable
 
 from phyelds.calculus import aggregate, remember, neighbors
 from phyelds.data import NeighborhoodField, StateT
@@ -50,7 +50,7 @@ def cast_from(
     # neighbors potential
     neighbors_potential: NeighborhoodField[float] = neighbors(potential)
     # take the value from the minimum potential
-    values: zip[Tuple[float, T]] = zip(neighbors_potential, neighbors_value)
+    values = zip(neighbors_potential, neighbors_value)
     # select the minimum potential
     _, result = min(values, key=lambda x: x[0])
     if source:

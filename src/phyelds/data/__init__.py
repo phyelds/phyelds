@@ -1,5 +1,6 @@
 """
-Internal classes used to manage the state and the neighborhood of the system (namely `rep` and `nbr` of field calculus).
+Internal classes used to manage the state and the neighborhood of the system
+(namely `rep` and `nbr` of field calculus).
 """
 
 from typing import (
@@ -24,11 +25,12 @@ U = TypeVar("U")
 # S represents the type of the value held by State
 S = TypeVar("S")
 # StateT is the "mark" type for state values
-StateT = Union[S, "State[S]"]
+StateT = Union[S, "State[S]"] # pylint: disable=invalid-name
 
 class NeighborhoodField(Generic[T], Iterator[T]):
     """
-    NeighborhoodField class used to manage the interactions of between nodes (namely `nbr` of neighborhood calculus).
+    NeighborhoodField class used to manage the interactions of between nodes
+    (namely `nbr` of neighborhood calculus).
     It provides methods to perform operations on the neighborhood, such as addition,
     subtraction, multiplication, and division.
     You should never use it directly, but rather use the `neighbors` function
@@ -77,9 +79,11 @@ class NeighborhoodField(Generic[T], Iterator[T]):
 
     def select(self, neighborhood: "NeighborhoodField[Any]") -> List[T]:
         """
-        Select the values from the neighborhood that are present in the current neighborhood.
+        Select the values from the neighborhood that are present
+        in the current neighborhood.
         :param neighborhood: The neighborhood to select from (acts as a filter).
-        :return:  A list of values from the current neighborhood that are present in the given neighborhood.
+        :return:  A list of values from the current neighborhood
+                  that are present in the given neighborhood.
         """
         # We look at keys present in both, where the *other* neighborhood's value is truthy
         return [
@@ -155,7 +159,9 @@ class NeighborhoodField(Generic[T], Iterator[T]):
         return self._apply_binary_op(other, lambda a, b: a ^ b)
 
     def __invert__(self) -> "NeighborhoodField[Any]":
-        return NeighborhoodField({k: ~v for k, v in self.data.items()}, self.node_id)  # type: ignore
+        return NeighborhoodField(
+            {k: ~v for k, v in self.data.items()}, self.node_id
+        )  # type: ignore
 
     def __lt__(self, other: Any) -> "NeighborhoodField[bool]":
         return cast(NeighborhoodField[bool], self._apply_binary_op(other, lambda a, b: a < b))
