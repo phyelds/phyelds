@@ -1,3 +1,13 @@
+## [3.0.0](https://github.com/phyelds/phyelds/compare/2.6.1...3.0.0) (2025-12-03)
+
+### ⚠ BREAKING CHANGES
+
+* redesing the core abstraction of phyelds (#6)
+
+### Features
+
+* redesing the core abstraction of phyelds ([#6](https://github.com/phyelds/phyelds/issues/6)) ([b0b5e81](https://github.com/phyelds/phyelds/commit/b0b5e815c889deb7aabad3dc8d503d5a441a4ebd))
+
 ## [2.6.1](https://github.com/phyelds/phyelds/compare/2.6.0...2.6.1) (2025-08-24)
 
 ### Documentation
