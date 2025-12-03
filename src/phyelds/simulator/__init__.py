@@ -66,7 +66,7 @@ class Environment:
     """
 
     def __init__(
-        self, neighborhood_function: Callable[[Node, List[Node]], List[Node]] = None
+        self, neighborhood_function: Callable[[Node, Environment], List[Node]] = None
     ):
         self.nodes: Dict[any, Node] = {}
         self.neighborhood_function = neighborhood_function or self.no_neighbors
@@ -100,7 +100,7 @@ class Environment:
 
     def get_neighbors(self, node: Node) -> List[Node]:
         """Get neighbors for a node using the neighborhood function"""
-        return self.neighborhood_function(node, list(self.nodes.values()))
+        return self.neighborhood_function(node, self)
 
     @staticmethod
     def no_neighbors(
