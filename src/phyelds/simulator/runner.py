@@ -63,6 +63,21 @@ def aggregate_program_runner(
         time_delta, aggregate_program_runner, simulator, time_delta, node, program, **kwargs
     )
 
+def vmas_runner(
+    simulator: Simulator, time_delta: float, program: callable, **kwargs
+):
+
+    ## per ogni nodo
+        ## prendo l'azione
+
+    ## env.step(actions)
+
+    ## salvo i risultati nei nodi
+
+    ## mi rischedulo
+
+    pass
+
 
 def schedule_program_for_all(simulator: Simulator, frequency: float, program: callable, **kwargs):
     """
