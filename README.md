@@ -87,7 +87,9 @@ from phyelds.calculus import aggregate, remember
 @aggregate
 def counter():
     # Starts at 0 the first round, then increments each subsequent round
-    return remember(0).update_fn(lambda x: x + 1)
+    update_counter, counter_value = remember(0)
+    update_counter(counter_value + 1)
+    return counter_value
 ```
 **Idea:** `remember` gives you a mutable state cell; `.update_fn` rewrites it each round.
 
@@ -107,12 +109,12 @@ def neighbor_sum():
 ### 3. Combine State + Neighborhood
 
 ```python
-from phyelds.calculus import aggregate, remember, neighbors
+from phyelds.calculus import aggregate, remember_and_evolve, neighbors
 
 @aggregate
 def average_counter():
     # Each node advertises the value 1; summing counts (neighbors + self)
-    c = remember(0).update_fn(lambda x: x + 1)  # each device keeps its own counter
+    c = remember_and_evolve(0, lambda x: x + 1)  # each device keeps its own counter
     nbr_c = neighbors(c)                  # gather neighbor counters (and self)
     # Simple average of all visible counters
     return sum(nbr_c) / len(nbr_c.data)

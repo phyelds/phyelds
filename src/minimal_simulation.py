@@ -1,9 +1,9 @@
 """Minimal simulation example for phyelds.
 """
-from phyelds.calculus import aggregate, neighbors, remember
+from phyelds.calculus import aggregate, neighbors, remember_and_evolve
 from phyelds.simulator import Simulator
-from phyelds.simulator.runner import schedule_program_for_all
 from phyelds.simulator.neighborhood import full_neighborhood
+from phyelds.simulator.runner import schedule_program_for_all
 
 
 @aggregate
@@ -11,7 +11,7 @@ def neighbor_count():
     """
     Each node advertises the value 1; summing counts (neighbors + self)
     """
-    c = remember(0).update_fn(lambda x: x + 1)  # each device keeps its own counter
+    c = remember_and_evolve(0, lambda x: x + 1)  # each device keeps its own counter
     nbr_c = neighbors(c)                  # gather neighbor counters (and self)
     # Simple average of all visible counters
     return sum(nbr_c) / len(nbr_c.data)

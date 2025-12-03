@@ -38,8 +38,6 @@ class Node:
             self.position = new_position
         if new_data is not None:
             self.data = new_data
-        if self.environment:
-            self.environment.node_updated(self)
 
     def get_neighbors(self):
         """Get neighboring nodes from the environment"""
@@ -91,10 +89,7 @@ class Environment:
             self.nodes[node_id].environment = None
             del self.nodes[node_id]
 
-    def node_updated(self, node: Node):
-        """Called when a node is updated"""
-
-    def set_neighborhood_function(self, func: Callable[[Node, "Environment"], List[Node]]):
+    def set_neighborhood_function(self, func: Callable[[Node, List[Node]], List[Node]]):
         """Set the function that determines neighborhoods"""
         self.neighborhood_function = func
 
@@ -129,7 +124,7 @@ class VmasEnvironment(Environment):
     def step(self, actions: List[int]):
         """
         Step the VMAS environment with the given actions.
-        
+
         :param self: VmasEnvironment instance
         :param actions: List of actions to perform
         :type actions: List[int]
