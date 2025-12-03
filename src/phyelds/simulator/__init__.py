@@ -6,6 +6,7 @@ It also provides a way to schedule events and run the simulation.
 """
 
 from typing import Dict, Callable, Any, Optional, Tuple, List
+from vmas.simulator.scenario import BaseScenario
 from abc import ABC
 import heapq
 import uuid
@@ -93,7 +94,7 @@ class Environment:
     def node_updated(self, node: Node):
         """Called when a node is updated"""
 
-    def set_neighborhood_function(self, func: Callable[[Node, List[Node]], List[Node]]):
+    def set_neighborhood_function(self, func: Callable[[Node, Environment], List[Node]]):
         """Set the function that determines neighborhoods"""
         self.neighborhood_function = func
 
@@ -108,6 +109,18 @@ class Environment:
     ) -> List[Node]:
         """Default neighborhood function (no neighbors)"""
         return []
+
+class VmasEnvironment(Environment):
+
+    def __init__(
+        self,
+        vmas_scenario: BaseScenario,
+        neighborhood_function: Callable[[Node, Environment], List[Node]] = None,
+    ):
+        super().__init__(neighborhood_function)
+        self.vmas_scenario = vmas_scenario
+
+
 
 
 class Event:
