@@ -1,3 +1,14 @@
+## [4.1.0](https://github.com/phyelds/phyelds/compare/4.0.1...4.1.0) (2025-12-04)
+
+### Features
+
+* add support for jupyter rendering ([0ba6a22](https://github.com/phyelds/phyelds/commit/0ba6a221703e548df90899647404d9cf294f853d))
+
+### General maintenance
+
+* update poetry lock ([a8f87b2](https://github.com/phyelds/phyelds/commit/a8f87b27f27a6a998147239c5e0b8f93df750836))
+* update poetry lock ([bda5d41](https://github.com/phyelds/phyelds/commit/bda5d41eb0324573fe22cd6aa83de066c949d85e))
+
 ## [4.0.1](https://github.com/phyelds/phyelds/compare/4.0.0...4.0.1) (2025-12-04)
 
 ### Dependency updates
