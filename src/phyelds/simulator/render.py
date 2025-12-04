@@ -1,7 +1,8 @@
 """
 Render the nodes in the simulator's environment.
 """
-
+import sys
+from IPython.display import display, clear_output
 from matplotlib import pyplot as plt
 from matplotlib.animation import FFMpegWriter
 
@@ -44,8 +45,13 @@ class RenderMonitor(Monitor):
             if self.config.mode == RenderMode.SAVE:
                 self.fig.savefig(self.config.save_as.replace(".mp4", ".png"))
         elif self.config.mode == RenderMode.SHOW:
-            plt.ioff()
-            plt.show()
+
+            if 'ipykernel' in sys.modules:
+                clear_output(wait=True)
+                display(fig)
+            else:
+                plt.ioff()
+                plt.show()
         plt.close(self.fig)
 
     def _render(self):

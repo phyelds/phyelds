@@ -43,7 +43,7 @@ pre-commit = "^4.2.0"
 pandas = "^2.2.3"
 vmas = "^1.5.2"
 pydantic = "2.12.5"
-
+ipython = "^9.8.0"
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"
 pylint = "^3.0.0"
