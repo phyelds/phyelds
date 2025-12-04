@@ -3,6 +3,9 @@ This module contains the event to run the aggregate program in the simulator
 """
 from abc import ABC
 
+import numpy as np
+import torch
+
 from phyelds.internal import MutableEngine
 
 from phyelds import engine
@@ -46,6 +49,7 @@ def aggregate_program_runner(
     neighbors_messages = {
         neighbor.id: neighbor.data.get("messages", {}) for neighbor in all_neighbors
     }
+    node.data["time"] = simulator.current_time ### prepare time sensor
     engine.set(MutableEngine())
     engine.get().setup(
         SimulatorNodeContext.from_node(node),
@@ -65,45 +69,42 @@ def aggregate_program_runner(
 
 
 def vmas_runner(
-    simulator: Simulator, time_delta: float, program: callable, **kwargs
+    simulator: Simulator, time_delta: float
 ):
     """
     Run the VMAS program for all nodes in the simulator.
     :param simulator: the simulator to run the program on
     :param time_delta: the time delta to schedule the next run
-    :param program: the program to run
-    :param kwargs: additional arguments to pass to the program
     :return:
     """
     assert isinstance(simulator.environment, VmasEnvironment)
     env = simulator.environment
-
-    # For each node, get the action from its data
-    actions = [node.data["action"] for node in env.node_list()]
-
-    (obs, rews, done, info) = env.step(actions)
-
-    # Save the results back to each node
-    for node in env.node_list():
-        node.data["observation"] = obs[node.id]
-        node.data["reward"] = rews[node.id]
-        node.data["done"] = done[node.id]
-        node.data["info"] = info[node.id]
-
+    actions = [np.array(node.data["outputs"]["action"], dtype=np.float32) for node in env.node_list()]
+    actions_single_env = torch.tensor(np.stack(actions), device=env.vmas_environment.device)
+    actions_batch = actions_single_env.expand(env.vmas_environment.num_envs, -1, -1)
+    actions_per_agent = list(actions_batch.unbind(dim=1))
+    (observations, rewards, done, info) = env.vmas_environment.step(actions_per_agent)
+    simulator.environment.updates_node(observations, rewards, done, info)
     # Reschedule the VMAS runner
     simulator.schedule_event(
-        time_delta, vmas_runner, simulator, time_delta, program, **kwargs
+        time_delta, vmas_runner, simulator, time_delta
     )
 
 
-def schedule_program_for_all(simulator: Simulator, frequency: float, program: callable, **kwargs):
+def schedule_program_for_all(
+    simulator: Simulator,
+    start: float,
+    frequency: float,
+    program: callable, **kwargs
+):
     """
     Schedule the program for all nodes in the simulator.
     :param simulator: The simulator to schedule the program for.
+    :param start: The time to start the program.
     :param frequency: The frequency to run the program.
     :param program: The program to run.
     """
     for node in simulator.environment.nodes.values():
         simulator.schedule_event(
-            frequency, aggregate_program_runner, simulator, frequency, node, program, **kwargs
+            start, aggregate_program_runner, simulator, frequency, node, program, **kwargs
         )

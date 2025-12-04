@@ -14,7 +14,7 @@ def prepare_leader_election(area:float = 6, size = 5):
     @aggregate
     def program():
         return elect_leaders(area, neighbors_distances())
-    schedule_program_for_all(simulator, 1.0, program)
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
     simulator.run(10)
     return simulator
 

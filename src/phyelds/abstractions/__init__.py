@@ -50,6 +50,13 @@ class NodeContext(ABC):
         """
         return self.sensors.get("position")
 
+    def time(self) -> float:
+        """
+        Get the current time of the node.
+        :return: The current time of the node.
+        """
+        return self.sensors.get("time")
+
 
 @dataclass
 class EngineState:

@@ -15,7 +15,7 @@ def test_hop_distances_should_return_correct_distance():
     def program():
         return hops_distance().data
     # Act
-    schedule_program_for_all(simulator, 1.0, program)
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
     simulator.run(10)
     # Assert
     for node in simulator.environment.nodes.values():
@@ -36,7 +36,7 @@ def test_distance_should_return_correct_distance():
     def program():
         return neighbors_distances().data
     # Act
-    schedule_program_for_all(simulator, 1.0, program)
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
     simulator.run(10)
     # assert the distance form 1 to 0
     assert node_b.data["result"][node_b.id] == 0

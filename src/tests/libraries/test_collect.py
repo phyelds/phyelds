@@ -18,7 +18,7 @@ def test_collect_should_collect_data_towards_the_center():
     def program():
         potential = distance_to(sense("source"), hops_distance())
         return collect_with(potential, 1, lambda a, b: a + b)
-    schedule_program_for_all(simulator, 1.0, program)
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
     simulator.run(10)
     assert simulator.environment.nodes[0].data["result"] == 5
 
@@ -31,7 +31,7 @@ def test_sum_values_should_sum_value_over_the_path():
     def program():
         potential = distance_to(sense("source"), hops_distance())
         return sum_values(potential, 10)
-    schedule_program_for_all(simulator, 1.0, program)
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
     simulator.run(10)
     assert simulator.environment.nodes[0].data["result"] == 50
 
@@ -45,7 +45,7 @@ def test_count_node_should_return_the_right_number_of_nodes(size):
     def program():
         potential = distance_to(sense("source"), hops_distance())
         return count_nodes(potential)
-    schedule_program_for_all(simulator, 1.0, program)
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
     simulator.run(size * size)
     assert simulator.environment.nodes[0].data["result"] == size
 
@@ -59,7 +59,7 @@ def test_collect_or_should_create_a_path_between_two_zone():
     def program():
         potential = distance_to(sense("source"), hops_distance())
         return collect_or(potential, sense("target"))
-    schedule_program_for_all(simulator, 1.0, program)
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
     simulator.run(10)
     # 0 1 2 3 4 true, the other false
     for i in range(5):

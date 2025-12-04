@@ -9,6 +9,8 @@ from abc import ABC
 import heapq
 import uuid
 from typing import Dict, Callable, Any, Optional, Tuple, List
+
+import vmas.simulator.environment
 from vmas.simulator.scenario import BaseScenario
 
 
@@ -54,6 +56,9 @@ class Node:
     def __hash__(self):
         """Hash based on node id"""
         return hash(self.id)
+
+    def __str__(self):
+        return f"Node(id={self.id}, position={self.position}, data={self.data})"
 
 
 class Environment:
@@ -112,27 +117,39 @@ class VmasEnvironment(Environment):
     """
     def __init__(
         self,
-        vmas_scenario: BaseScenario,
+        vmas_environment: vmas.simulator.environment.Environment,
         neighborhood_function: Callable[[Node, BaseScenario], List[Node]] = None,
     ):
         super().__init__(neighborhood_function)
-        self.vmas_scenario = vmas_scenario
+        self.vmas_environment = vmas_environment
+        self.initialize_nodes()
 
-    def reset(self):
-        """
-        Reset the VMAS environment.
-        """
-        self.vmas_scenario.reset()
+    def initialize_nodes(self):
+        observations = self.vmas_environment.reset()
+        for idx, agent in enumerate(self.vmas_environment.agents):
+            data = {
+                "observations": observations[idx][0],
+                "rewards": 0.0,
+                "dones": False,
+                "infos": {},
+                "agent": agent
+            }
+            node = Node(
+                position=(agent.state.pos[0][0].item(),agent.state.pos[0][1].item()),
+                data=data,
+                node_id=idx
+            )
+            self.add_node(node)
 
-    def step(self, actions: List[int]):
-        """
-        Step the VMAS environment with the given actions.
-
-        :param self: VmasEnvironment instance
-        :param actions: List of actions to perform
-        :type actions: List[int]
-        """
-        self.vmas_scenario.step(actions)
+    def updates_node(self, observations, rewards, dones, infos):
+        for idx, agent in enumerate(self.vmas_environment.agents):
+            node = self.nodes[idx]
+            node.data["observations"] = observations[idx][0]
+            node.position = (agent.state.pos[0][0].item(),agent.state.pos[0][1].item())
+            node.data["rewards"] = rewards[idx][0]
+            node.data["dones"] = dones
+            node.data["infos"] = infos[idx]
+            node.data["agent"] = agent
 
 
 class Event:
@@ -154,6 +171,12 @@ class Event:
     def __lt__(self, other):
         """For priority queue ordering"""
         return self.time < other.time
+
+    def __str__(self):
+        return f"Event(time={self.time}, action={self.action.__name__})"
+
+    def __repr__(self):
+        return self.__str__()
 
 
 class Monitor(ABC):
@@ -206,7 +229,6 @@ class Simulator:
 
         while self.running and self.event_queue:
             event = heapq.heappop(self.event_queue)
-
             if until_time is not None and event.time > until_time:
                 heapq.heappush(self.event_queue, event)  # Put the event back
                 break

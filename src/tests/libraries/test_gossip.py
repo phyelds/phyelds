@@ -17,7 +17,7 @@ def test_gossip_max_min_should_gossip_the_correct_values():
         all_ids = gossip({local_id()}, set.union)
         return (max, min, all_ids)
     # Act
-    schedule_program_for_all(simulator, 1.0, program)
+    schedule_program_for_all(simulator, 0.0,1.0, program)
     simulator.run(ITERATIONS)
     # Assert
     # for all node result should be (size - 1, 0)
@@ -32,7 +32,7 @@ def test_normal_gossip_does_not_heal():
     def program():
         return gossip_max(local_id())
     # Act
-    schedule_program_for_all(simulator, 1.0, program)
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
     simulator.run(ITERATIONS)
     # Assert
     # for all node result should be (size - 1, 0)
@@ -53,7 +53,7 @@ def test_stabilizing_gossip_should_adapt_to_network_changes():
     def program():
         return stabilizing_gossip(local_id(), 10, max)
     # Act
-    schedule_program_for_all(simulator, 1.0, program)
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
     simulator.run(ITERATIONS)
     # Assert
     # for all node result should be (size - 1, 0)

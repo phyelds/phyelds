@@ -26,7 +26,7 @@ def main():
     for i in range(5):
         sim.create_node((i, 0), node_id=i)
 
-    schedule_program_for_all(sim, 1.0, neighbor_count)
+    schedule_program_for_all(sim, 0.0, 1.0, neighbor_count)
     sim.environment.set_neighborhood_function(full_neighborhood)
     sim.run(5)
 
