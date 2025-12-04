@@ -1,7 +1,4 @@
-
-from phyelds import engine
 from phyelds.calculus import aggregate, neighbors, remember_and_evolve
-from phyelds.internal import MutableEngine
 from phyelds.simulator import Node
 from phyelds.simulator import Simulator
 from phyelds.simulator.deployments import random_in_circle
