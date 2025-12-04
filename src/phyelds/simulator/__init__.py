@@ -257,6 +257,12 @@ class Simulator:
         for monitor in self.monitors:
             monitor.on_finish()
 
+    def continue_run(self, until_time: Optional[float] = None):
+        """Continue running the simulation until the specified time or until no more events"""
+        if self.running:
+            return  # Already running
+        self.run(self.current_time + until_time)
+
     def add_monitor(self, monitor: Monitor) -> None:
         """Add a monitor to the simulator"""
         self.monitors.append(monitor)
