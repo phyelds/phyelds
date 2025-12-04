@@ -66,7 +66,7 @@ class Environment:
     """
 
     def __init__(
-        self, neighborhood_function: Callable[[Node, Environment], List[Node]] = None
+        self, neighborhood_function: Callable[[Node, "Environment"], List[Node]] = None
     ):
         self.nodes: Dict[any, Node] = {}
         self.neighborhood_function = neighborhood_function or self.no_neighbors
@@ -94,7 +94,7 @@ class Environment:
     def node_updated(self, node: Node):
         """Called when a node is updated"""
 
-    def set_neighborhood_function(self, func: Callable[[Node, Environment], List[Node]]):
+    def set_neighborhood_function(self, func: Callable[[Node, "Environment"], List[Node]]):
         """Set the function that determines neighborhoods"""
         self.neighborhood_function = func
 
