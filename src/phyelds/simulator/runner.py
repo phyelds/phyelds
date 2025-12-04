@@ -49,7 +49,7 @@ def aggregate_program_runner(
     neighbors_messages = {
         neighbor.id: neighbor.data.get("messages", {}) for neighbor in all_neighbors
     }
-    node.data["time"] = simulator.current_time ### prepare time sensor
+    node.data["time"] = simulator.current_time  # prepare time sensor
     engine.set(MutableEngine())
     engine.get().setup(
         SimulatorNodeContext.from_node(node),
@@ -79,7 +79,9 @@ def vmas_runner(
     """
     assert isinstance(simulator.environment, VmasEnvironment)
     env = simulator.environment
-    actions = [np.array(node.data["outputs"]["action"], dtype=np.float32) for node in env.node_list()]
+    actions = [
+        np.array(node.data["outputs"]["action"], dtype=np.float32) for node in env.node_list()
+    ]
     actions_single_env = torch.tensor(np.stack(actions), device=env.vmas_environment.device)
     actions_batch = actions_single_env.expand(env.vmas_environment.num_envs, -1, -1)
     actions_per_agent = list(actions_batch.unbind(dim=1))
