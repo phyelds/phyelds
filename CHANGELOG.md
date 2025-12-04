@@ -1,3 +1,9 @@
+## [4.2.0](https://github.com/phyelds/phyelds/compare/4.1.0...4.2.0) (2025-12-04)
+
+### Features
+
+* support also each event rendering ([2a028da](https://github.com/phyelds/phyelds/commit/2a028da7e53e4392b49d71a5e63c925f92d9ccbf))
+
 ## [4.1.0](https://github.com/phyelds/phyelds/compare/4.0.1...4.1.0) (2025-12-04)
 
 ### Features
