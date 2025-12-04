@@ -1,4 +1,8 @@
+import pytest
+
+from phyelds import engine
 from phyelds.calculus import aggregate, remember, neighbors, remember_and_evolve
+from phyelds.internal import MutableEngine
 from phyelds.simulator import Node
 from phyelds.simulator import Simulator
 from phyelds.simulator.deployments import random_in_circle
@@ -6,6 +10,13 @@ from phyelds.simulator.neighborhood import full_neighborhood
 from phyelds.simulator.runner import (
     aggregate_program_runner, schedule_program_for_all,
 )
+
+
+@pytest.fixture(autouse=True)
+def run_around_tests():
+    print("Running around tests")
+    engine.set(MutableEngine())
+    yield  # Pass control to the test function
 
 def test_aggregate_program_runner_with_plain_result(monkeypatch):
     # real Node & real Simulator

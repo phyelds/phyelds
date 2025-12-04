@@ -89,7 +89,7 @@ class Environment:
             self.nodes[node_id].environment = None
             del self.nodes[node_id]
 
-    def set_neighborhood_function(self, func: Callable[[Node, List[Node]], List[Node]]):
+    def set_neighborhood_function(self, func: Callable[[Node, "Environment"], List[Node]]):
         """Set the function that determines neighborhoods"""
         self.neighborhood_function = func
 
@@ -175,11 +175,14 @@ class Simulator:
     """
     A class to represent the simulator for a simple aggregate computing system.
     """
-    def __init__(self, environment: Environment = Environment()):
+    def __init__(self, environment: Environment = None):
         self.event_queue = []
         self.current_time = 0.0
         self.running = False
-        self.environment = environment
+        if environment is None:
+            self.environment = Environment()
+        else:
+            self.environment = environment
         self.monitors = []
 
     def schedule_event(
