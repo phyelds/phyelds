@@ -1,3 +1,51 @@
+## [4.0.0](https://github.com/phyelds/phyelds/compare/3.2.0...4.0.0) (2025-12-04)
+
+### ⚠ BREAKING CHANGES
+
+* redesing the core abstraction of phyelds (#6)
+
+### Features
+
+* add basic structure for vmas environment ([c6a4729](https://github.com/phyelds/phyelds/commit/c6a4729719f00ab4fe991fcbb7ccfb560e291d2b))
+* add decay ([3544efc](https://github.com/phyelds/phyelds/commit/3544efc8e2210ce8691169c4cf32f83b33d3f4d7))
+* add decay ([cb2fe2e](https://github.com/phyelds/phyelds/commit/cb2fe2ecb8e4e72bdddc73e3af144260e3dd5e00))
+* add update on monitor ([a0d0210](https://github.com/phyelds/phyelds/commit/a0d0210b73c2f9f45284998c5f02a9d16242dd88))
+* add VMAS integration  ([#7](https://github.com/phyelds/phyelds/issues/7)) ([972b127](https://github.com/phyelds/phyelds/commit/972b1274dd037c844fe9cb8b23686c98a9a1a8dc)), closes [#6](https://github.com/phyelds/phyelds/issues/6) [#6](https://github.com/phyelds/phyelds/issues/6) [#6](https://github.com/phyelds/phyelds/issues/6)
+* align with main ([6c5922e](https://github.com/phyelds/phyelds/commit/6c5922ebc61522078d5e41707c6629fccd3b391b))
+* complete the support for vmas ([055174c](https://github.com/phyelds/phyelds/commit/055174cb2d54584eb221cfcf4cbf84fdd4e08767))
+* implement Vmas environment ([f603b26](https://github.com/phyelds/phyelds/commit/f603b2618ae5f2e78ba172b8ec84879b55a1d7e3))
+* redesing the core abstraction of phyelds ([#6](https://github.com/phyelds/phyelds/issues/6)) ([bf954c6](https://github.com/phyelds/phyelds/commit/bf954c63ac2f70b4a975e0cdf850a9c8e06010fb))
+
+### Dependency updates
+
+* **deps:** add vmas ([c5ac124](https://github.com/phyelds/phyelds/commit/c5ac1245b46f26019dffeb4312f5e3433559cd17))
+
+### Bug Fixes
+
+* merge with master ([33fde55](https://github.com/phyelds/phyelds/commit/33fde55a9837f422872523ebc78cc48a8d119c7a))
+* remove env as a default parameter ([0d02e73](https://github.com/phyelds/phyelds/commit/0d02e73e318a55e812d2314678dab9ed66db6acf))
+* remove styling problems ([383acaf](https://github.com/phyelds/phyelds/commit/383acaf66a1efdedf2616d76498788f4694bdea4))
+
+### Tests
+
+* fix test to accept an env instead a list of nodes ([194e5e0](https://github.com/phyelds/phyelds/commit/194e5e0fdb487ccffaf85b89b6a67bfc95a66c3e))
+
+### General maintenance
+
+* add poetry lock in deps ([efe9b13](https://github.com/phyelds/phyelds/commit/efe9b135b757b0a94bd7f860806a4c23b9e8116b))
+* add vmas_run mock ([d25d492](https://github.com/phyelds/phyelds/commit/d25d492d44e9f1df622567125b9537d17c2e1be6))
+* **release:** 3.0.0 [skip ci] ([e46540f](https://github.com/phyelds/phyelds/commit/e46540f9da18aafde011bc3769719e14fab7cef7)), closes [#6](https://github.com/phyelds/phyelds/issues/6) [#6](https://github.com/phyelds/phyelds/issues/6)
+* **release:** 3.1.0 [skip ci] ([5bd7d9c](https://github.com/phyelds/phyelds/commit/5bd7d9c1e5367e0f8c9af02cd7e45b2db91d61d9))
+* update poetry ([03d3aff](https://github.com/phyelds/phyelds/commit/03d3affe5324d3fe09e723326c7749053c30ba42))
+* update poetry ([08142c1](https://github.com/phyelds/phyelds/commit/08142c1259fa5d9be6e99229814d2384f12f83bf))
+
+### Style improvements
+
+* fix flake8 and pylint problems ([4ddc6c3](https://github.com/phyelds/phyelds/commit/4ddc6c3e1b2fd05402119855bccade952272fe29))
+* remove unused imports ([71db194](https://github.com/phyelds/phyelds/commit/71db1949894cb26d9e317f89ff66c7bb712bb14d))
+* remove useless parameter ([3a911d4](https://github.com/phyelds/phyelds/commit/3a911d463933758978ea8d34dc83334a7a3361d5))
+* solve flake8 and pylint problems ([bece9ea](https://github.com/phyelds/phyelds/commit/bece9ea4b15dde550ce9b0597ec75a33932f81df))
+
 ## [3.2.0](https://github.com/phyelds/phyelds/compare/3.1.0...3.2.0) (2025-12-04)
 
 ### Features
