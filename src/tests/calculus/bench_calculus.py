@@ -1,10 +1,8 @@
 import timeit
-import cProfile
-from phyelds.calculus import aggregate, remember, neighbors
-
-from phyelds.internal import MutableEngine
 
 from phyelds import engine
+from phyelds.calculus import aggregate, remember, neighbors, remember_and_evolve
+from phyelds.internal import MutableEngine
 from tests.calculus.mock import MockNodeContext, MockSimulator
 
 
@@ -17,7 +15,7 @@ def counter():
     Simple counter function that counts the number of times it is called.
     :return: a counter that counts the number of times it is called.
     """
-    return remember(0).update_fn(lambda x: x + 1)
+    return remember_and_evolve(0, lambda x: x + 1)
 
 @aggregate
 def depth_check(n):

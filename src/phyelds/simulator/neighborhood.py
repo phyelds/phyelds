@@ -5,14 +5,14 @@ and returns a list of neighbors.
 """
 
 from typing import List
-
-from phyelds.simulator import Node
+from phyelds.simulator import Node, Environment
 
 
 def radius_neighborhood(radius: float):
     """Create a neighborhood function that includes nodes within a certain radius"""
 
-    def neighborhood_func(node: Node, all_nodes: List[Node]) -> List[Node]:
+    def neighborhood_func(node: Node, environment: Environment) -> List[Node]:
+        all_nodes: List[Node] = environment.node_list()
         neighbors = []
         for other in all_nodes:
             if other.id == node.id:  # Skip self
@@ -33,7 +33,8 @@ def radius_neighborhood(radius: float):
 def k_nearest_neighbors(k: int):
     """Create a neighborhood function that includes the k nearest nodes"""
 
-    def neighborhood_func(node: Node, all_nodes: List[Node]) -> List[Node]:
+    def neighborhood_func(node: Node, environment: Environment) -> List[Node]:
+        all_nodes: List[Node] = environment.node_list()
         others = [n for n in all_nodes if n.id != node.id]
         if not others:
             return []
@@ -54,6 +55,7 @@ def k_nearest_neighbors(k: int):
     return neighborhood_func
 
 
-def full_neighborhood(node: Node, all_nodes: List[Node]) -> List[Node]:
+def full_neighborhood(node: Node, environment: Environment) -> List[Node]:
     """Include all nodes as neighbors"""
+    all_nodes: List[Node] = environment.node_list()
     return [n for n in all_nodes if n.id != node.id]

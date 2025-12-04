@@ -11,6 +11,6 @@ def test_counter():
     @aggregate
     def program():
         return counter()
-    schedule_program_for_all(simulator, 1.0, program)
+    schedule_program_for_all(simulator, 1.0, 1.0, program)
     simulator.run(10)
     assert node.data["result"] == 10

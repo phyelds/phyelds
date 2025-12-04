@@ -51,8 +51,8 @@ def test_adds_and_removes_nodes_correctly():
 
 
 def test_returns_correct_neighbors():
-    def mock_neighborhood_function(node, nodes):
-        return [n for n in nodes if n.id != node.id]
+    def mock_neighborhood_function(node, env):
+        return [n for n in env.node_list() if n.id != node.id]
 
     env = Environment(neighborhood_function=mock_neighborhood_function)
     node1 = Node((0.0, 0.0))

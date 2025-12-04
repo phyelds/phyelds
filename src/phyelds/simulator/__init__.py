@@ -5,10 +5,13 @@ and define their neighborhoods.
 It also provides a way to schedule events and run the simulation.
 """
 
-from typing import Dict, Callable, Any, Optional, Tuple, List
 from abc import ABC
 import heapq
 import uuid
+from typing import Dict, Callable, Any, Optional, Tuple, List
+
+import vmas.simulator.environment
+from vmas.simulator.scenario import BaseScenario
 
 
 class Node:
@@ -54,6 +57,9 @@ class Node:
         """Hash based on node id"""
         return hash(self.id)
 
+    def __str__(self):
+        return f"Node(id={self.id}, position={self.position}, data={self.data})"
+
 
 class Environment:
     """
@@ -63,7 +69,7 @@ class Environment:
     """
 
     def __init__(
-        self, neighborhood_function: Callable[[Node, List[Node]], List[Node]] = None
+        self, neighborhood_function: Callable[[Node, "Environment"], List[Node]] = None
     ):
         self.nodes: Dict[any, Node] = {}
         self.neighborhood_function = neighborhood_function or self.no_neighbors
@@ -88,13 +94,13 @@ class Environment:
             self.nodes[node_id].environment = None
             del self.nodes[node_id]
 
-    def set_neighborhood_function(self, func: Callable[[Node, List[Node]], List[Node]]):
+    def set_neighborhood_function(self, func: Callable[[Node, "Environment"], List[Node]]):
         """Set the function that determines neighborhoods"""
         self.neighborhood_function = func
 
     def get_neighbors(self, node: Node) -> List[Node]:
         """Get neighbors for a node using the neighborhood function"""
-        return self.neighborhood_function(node, list(self.nodes.values()))
+        return self.neighborhood_function(node, self)
 
     @staticmethod
     def no_neighbors(
@@ -103,6 +109,60 @@ class Environment:
     ) -> List[Node]:
         """Default neighborhood function (no neighbors)"""
         return []
+
+
+class VmasEnvironment(Environment):
+    """
+    A class to represent a VMAS environment that wraps around a VMAS scenario.
+    """
+    def __init__(
+        self,
+        vmas_environment: vmas.simulator.environment.Environment,
+        neighborhood_function: Callable[[Node, BaseScenario], List[Node]] = None,
+    ):
+        super().__init__(neighborhood_function)
+        self.vmas_environment = vmas_environment
+        self.initialize_nodes()
+
+    def initialize_nodes(self):
+        """
+        Initialize the nodes in the environment based on the VMAS environment.
+        :return: None
+        """
+        observations = self.vmas_environment.reset()
+        for idx, agent in enumerate(self.vmas_environment.agents):
+            data = {
+                "observations": observations[idx][0],
+                "rewards": 0.0,
+                "dones": False,
+                "infos": {},
+                "agent": agent
+            }
+            node = Node(
+                position=(agent.state.pos[0][0].item(), agent.state.pos[0][1].item()),
+                data=data,
+                node_id=idx
+            )
+            self.add_node(node)
+
+    def updates_node(self, observations, rewards, dones, infos):
+        """
+        Update the nodes with the latest observations, rewards, dones,
+        and infos from the VMAS environment.
+        :param observations: the observations from the VMAS environment
+        :param rewards: the rewards from the VMAS environment
+        :param dones: the dones from the VMAS environment
+        :param infos: the infos from the VMAS environment
+        :return:
+        """
+        for idx, agent in enumerate(self.vmas_environment.agents):
+            node = self.nodes[idx]
+            node.data["observations"] = observations[idx][0]
+            node.position = (agent.state.pos[0][0].item(), agent.state.pos[0][1].item())
+            node.data["rewards"] = rewards[idx][0]
+            node.data["dones"] = dones
+            node.data["infos"] = infos[idx]
+            node.data["agent"] = agent
 
 
 class Event:
@@ -124,6 +184,12 @@ class Event:
     def __lt__(self, other):
         """For priority queue ordering"""
         return self.time < other.time
+
+    def __str__(self):
+        return f"Event(time={self.time}, action={self.action.__name__})"
+
+    def __repr__(self):
+        return self.__str__()
 
 
 class Monitor(ABC):
@@ -148,11 +214,14 @@ class Simulator:
     """
     A class to represent the simulator for a simple aggregate computing system.
     """
-    def __init__(self):
+    def __init__(self, environment: Environment = None):
         self.event_queue = []
         self.current_time = 0.0
         self.running = False
-        self.environment = Environment()
+        if environment is None:
+            self.environment = Environment()
+        else:
+            self.environment = environment
         self.monitors = []
 
     def schedule_event(
@@ -173,7 +242,6 @@ class Simulator:
 
         while self.running and self.event_queue:
             event = heapq.heappop(self.event_queue)
-
             if until_time is not None and event.time > until_time:
                 heapq.heappush(self.event_queue, event)  # Put the event back
                 break

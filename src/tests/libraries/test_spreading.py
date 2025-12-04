@@ -17,7 +17,7 @@ def test_distance_to_should_compute_the_multi_hop_distance_from_source():
     def program():
         return distance_to(sense("source"), hops_distance())
     # Act
-    schedule_program_for_all(simulator, 1.0, program)
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
     simulator.run(ITERATIONS)
     # Assert
     # last node: size - 1 should be far 4 steps from the source
@@ -32,7 +32,7 @@ def test_broadcast_cast_multi_hop():
     def program():
         return broadcast(sense("source"), local_id(), hops_distance())
     # Act
-    schedule_program_for_all(simulator, 1.0, program)
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
     simulator.run(ITERATIONS)
     # for all node, result should be 0
     for node in simulator.environment.nodes.values():
@@ -48,7 +48,7 @@ def test_cast_should_accumulate_over_the_path():
     def program():
         return cast_from(sense("source"), 'a', lambda a: a + 'a', hops_distance())
     # Act
-    schedule_program_for_all(simulator, 1.0, program)
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
     simulator.run(ITERATIONS)
     # Assert
     for i in range(size):

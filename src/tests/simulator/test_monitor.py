@@ -1,6 +1,5 @@
-from unittest.mock import MagicMock, patch
 from phyelds.simulator import Simulator, Monitor
-from phyelds.simulator.render import RenderMonitor
+
 
 class MockMonitor(Monitor):
     def __init__(self, simulator):
