@@ -1,3 +1,9 @@
+## [3.2.0](https://github.com/phyelds/phyelds/compare/3.1.0...3.2.0) (2025-12-04)
+
+### Features
+
+* change rendering strategy, using monitors instead of events ([c7171e1](https://github.com/phyelds/phyelds/commit/c7171e1f52733aea31685d2a2e4ce553fcfa8163))
+
 ## [3.1.0](https://github.com/phyelds/phyelds/compare/3.0.0...3.1.0) (2025-12-03)
 
 ### Features
