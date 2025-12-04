@@ -56,6 +56,6 @@ def k_nearest_neighbors(k: int):
 
 
 def full_neighborhood(node: Node, environment: Environment) -> List[Node]:
-    all_nodes: List[Node] = environment.node_list()
     """Include all nodes as neighbors"""
+    all_nodes: List[Node] = environment.node_list()
     return [n for n in all_nodes if n.id != node.id]

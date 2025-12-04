@@ -63,9 +63,18 @@ def aggregate_program_runner(
         time_delta, aggregate_program_runner, simulator, time_delta, node, program, **kwargs
     )
 
+
 def vmas_runner(
     simulator: Simulator, time_delta: float, program: callable, **kwargs
 ):
+    """
+    Run the VMAS program for all nodes in the simulator.
+    :param simulator: the simulator to run the program on
+    :param time_delta: the time delta to schedule the next run
+    :param program: the program to run
+    :param kwargs: additional arguments to pass to the program
+    :return:
+    """
     assert isinstance(simulator.environment, VmasEnvironment)
     env = simulator.environment
 

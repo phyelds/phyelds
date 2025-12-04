@@ -5,11 +5,11 @@ and define their neighborhoods.
 It also provides a way to schedule events and run the simulation.
 """
 
-from typing import Dict, Callable, Any, Optional, Tuple, List
-from vmas.simulator.scenario import BaseScenario
 from abc import ABC
 import heapq
 import uuid
+from typing import Dict, Callable, Any, Optional, Tuple, List
+from vmas.simulator.scenario import BaseScenario
 
 
 class Node:
@@ -105,8 +105,11 @@ class Environment:
         """Default neighborhood function (no neighbors)"""
         return []
 
-class VmasEnvironment(Environment):
 
+class VmasEnvironment(Environment):
+    """
+    A class to represent a VMAS environment that wraps around a VMAS scenario.
+    """
     def __init__(
         self,
         vmas_scenario: BaseScenario,
