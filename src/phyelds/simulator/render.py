@@ -45,10 +45,9 @@ class RenderMonitor(Monitor):
             if self.config.mode == RenderMode.SAVE:
                 self.fig.savefig(self.config.save_as.replace(".mp4", ".png"))
         elif self.config.mode == RenderMode.SHOW:
-
             if 'ipykernel' in sys.modules:
                 clear_output(wait=True)
-                display(fig)
+                display(self.fig)
             else:
                 plt.ioff()
                 plt.show()
