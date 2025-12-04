@@ -1,3 +1,9 @@
+## [4.0.1](https://github.com/phyelds/phyelds/compare/4.0.0...4.0.1) (2025-12-04)
+
+### Dependency updates
+
+* **core-deps:** reduce the version for phyelds to 3.12 ([dd00187](https://github.com/phyelds/phyelds/commit/dd00187d64f6da9a217b2630cc3bc67253276a87))
+
 ## [4.0.0](https://github.com/phyelds/phyelds/compare/3.2.0...4.0.0) (2025-12-04)
 
 ### ⚠ BREAKING CHANGES
