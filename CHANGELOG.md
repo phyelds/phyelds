@@ -1,3 +1,9 @@
+## [4.2.1](https://github.com/phyelds/phyelds/compare/4.2.0...4.2.1) (2025-12-04)
+
+### Dependency updates
+
+* **core-deps:** reduce the version of ipython for colab ([9f4f451](https://github.com/phyelds/phyelds/commit/9f4f451d62e757974937ad63f18cc2084c8eb16b))
+
 ## [4.2.0](https://github.com/phyelds/phyelds/compare/4.1.0...4.2.0) (2025-12-04)
 
 ### Features
