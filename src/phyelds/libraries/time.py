@@ -2,11 +2,7 @@
 A group of functions based on the notion of time.
 """
 from phyelds import engine
-<<<<<<< HEAD
-from phyelds.calculus import aggregate, remember_and_evolve
-=======
 from phyelds.calculus import aggregate, remember_and_evolve, remember
->>>>>>> feat/vmas-integration
 from phyelds.data import StateT
 
 
@@ -25,6 +21,7 @@ def counter() -> StateT[int]:
     :return: a counter that counts the number of times it is called.
     """
     return remember_and_evolve(0, lambda x: x + 1)
+
 
 @aggregate
 def decay(value: float | int, rate: float | int) -> StateT[float | int]:
