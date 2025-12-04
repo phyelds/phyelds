@@ -8,7 +8,7 @@ from phyelds.internal import MutableEngine
 from phyelds import engine
 from phyelds.abstractions import NodeContext
 from phyelds.data import State
-from phyelds.simulator import Simulator, Node
+from phyelds.simulator import Simulator, Node, VmasEnvironment
 
 
 class SimulatorNodeContext(NodeContext, ABC):
@@ -66,17 +66,25 @@ def aggregate_program_runner(
 def vmas_runner(
     simulator: Simulator, time_delta: float, program: callable, **kwargs
 ):
+    assert isinstance(simulator.environment, VmasEnvironment)
+    env = simulator.environment
 
-    ## per ogni nodo
-        ## prendo l'azione
+    # For each node, get the action from its data
+    actions = [node.data["action"] for node in env.node_list()]
 
-    ## env.step(actions)
+    (obs, rews, done, info) = env.step(actions)
 
-    ## salvo i risultati nei nodi
+    # Save the results back to each node
+    for node in env.node_list():
+        node.data["observation"] = obs[node.id]
+        node.data["reward"] = rews[node.id]
+        node.data["done"] = done[node.id]
+        node.data["info"] = info[node.id]
 
-    ## mi rischedulo
-
-    pass
+    # Reschedule the VMAS runner
+    simulator.schedule_event(
+        time_delta, vmas_runner, simulator, time_delta, program, **kwargs
+    )
 
 
 def schedule_program_for_all(simulator: Simulator, frequency: float, program: callable, **kwargs):

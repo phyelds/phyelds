@@ -115,12 +115,26 @@ class VmasEnvironment(Environment):
     def __init__(
         self,
         vmas_scenario: BaseScenario,
-        neighborhood_function: Callable[[Node, Environment], List[Node]] = None,
+        neighborhood_function: Callable[[Node, BaseScenario], List[Node]] = None,
     ):
         super().__init__(neighborhood_function)
         self.vmas_scenario = vmas_scenario
 
+    def reset(self):
+        """
+        Reset the VMAS environment.
+        """
+        self.vmas_scenario.reset()
 
+    def step(self, actions: List[int]):
+        """
+        Step the VMAS environment with the given actions.
+        
+        :param self: VmasEnvironment instance
+        :param actions: List of actions to perform
+        :type actions: List[int]
+        """
+        self.vmas_scenario.step(actions)
 
 
 class Event:
@@ -162,11 +176,11 @@ class Simulator:
     """
     A class to represent the simulator for a simple aggregate computing system.
     """
-    def __init__(self):
+    def __init__(self, environment: Environment = Environment()):
         self.event_queue = []
         self.current_time = 0.0
         self.running = False
-        self.environment = Environment()
+        self.environment = environment
         self.monitors = []
 
     def schedule_event(
