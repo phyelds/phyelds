@@ -35,6 +35,8 @@ class RenderMonitor(Monitor):
             plt.show()
 
     def update(self):
+        if self.simulator.current_time < self.config.skip:
+            return
         if self.simulator.current_time - self.last_render_time >= self.config.dt:
             self._render()
             self.last_render_time = self.simulator.current_time

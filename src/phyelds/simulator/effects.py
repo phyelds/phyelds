@@ -160,6 +160,7 @@ class RenderConfig(BaseModel):
 
     effects: List[SerializeAsAny[EffectType]] = Field(default_factory=list)
     dt: float = 1.0
+    skip: float = 0.0
     pause_duration: float = 0.001
     xlim: Optional[Tuple[float, float]] = None
     ylim: Optional[Tuple[float, float]] = None
