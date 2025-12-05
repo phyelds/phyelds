@@ -72,8 +72,12 @@ class RenderMonitor(Monitor):
         if self.config.mode in [RenderMode.SAVE, RenderMode.SAVE_ALL]:
             self.writer.grab_frame()
         elif self.config.mode == RenderMode.SHOW:
-            plt.draw()
-            plt.pause(self.config.pause_duration)
+            if 'ipykernel' in sys.modules:
+                clear_output(wait=True)
+                display(self.fig)
+            else:
+                plt.draw()
+                plt.pause(self.config.pause_duration)
 
     def _setup_axis(self):
         if self.config.show_axis:
