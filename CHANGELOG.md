@@ -1,3 +1,13 @@
+## [4.3.0](https://github.com/phyelds/phyelds/compare/4.2.1...4.3.0) (2025-12-05)
+
+### Features
+
+* let the render work also on jupyter ([cb5b7a8](https://github.com/phyelds/phyelds/commit/cb5b7a88b2f52fba86844ad125261344cc141088))
+
+### Bug Fixes
+
+* remove styling problems ([dae34a1](https://github.com/phyelds/phyelds/commit/dae34a1b8b5b0ab12b9d05cc1370250e67eb92cd))
+
 ## [4.2.1](https://github.com/phyelds/phyelds/compare/4.2.0...4.2.1) (2025-12-04)
 
 ### Dependency updates
