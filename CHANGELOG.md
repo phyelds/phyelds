@@ -1,3 +1,10 @@
+## [4.3.1](https://github.com/phyelds/phyelds/compare/4.3.0...4.3.1) (2025-12-15)
+
+### Documentation
+
+* describe better the overall idea of phyelds ([5a40a2b](https://github.com/phyelds/phyelds/commit/5a40a2b629d82e93af653276aa1532da02db3167))
+* minor on readme flow ([357a131](https://github.com/phyelds/phyelds/commit/357a1313b7a6e9571b5f3e99b41993e605dd3617))
+
 ## [4.3.0](https://github.com/phyelds/phyelds/compare/4.2.1...4.3.0) (2025-12-05)
 
 ### Features
