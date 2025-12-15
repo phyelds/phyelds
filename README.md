@@ -156,7 +156,9 @@ This is the essence of aggregate computing: reasoning about global functions wit
 git clone https://github.com/phyelds/phyelds.git
 cd phyelds
 poetry install
-poetry run pytest -q
+poetry run pytest
+poetry run pylint src/
+
 ```
 
 ## Contributing
