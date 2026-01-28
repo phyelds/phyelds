@@ -6,10 +6,10 @@ from abc import ABC
 import numpy as np
 import torch
 
-from phyelds.internal import MutableEngine
+from phyelds.vm.internal import MutableEngine
 
 from phyelds import engine
-from phyelds.abstractions import NodeContext
+from phyelds.vm import NodeContext
 from phyelds.data import State
 from phyelds.simulator import Simulator, Node, VmasEnvironment
 

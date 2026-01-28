@@ -1,7 +1,7 @@
-from phyelds.internal import MutableEngine
+from phyelds.vm.internal import MutableEngine
 
 from phyelds import engine
-from phyelds.abstractions import NodeContext
+from phyelds.vm import NodeContext
 
 
 class MockNodeContext(NodeContext):

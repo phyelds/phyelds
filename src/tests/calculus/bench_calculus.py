@@ -1,8 +1,8 @@
 import timeit
 
 from phyelds import engine
-from phyelds.calculus import aggregate, remember, neighbors, remember_and_evolve
-from phyelds.internal import MutableEngine
+from phyelds.calculus import aggregate, neighbors, remember_and_evolve
+from phyelds.vm.internal import MutableEngine
 from tests.calculus.mock import MockNodeContext, MockSimulator
 
 

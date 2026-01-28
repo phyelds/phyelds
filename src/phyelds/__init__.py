@@ -12,6 +12,6 @@ In order to use it, you should:
 
 """
 from contextvars import ContextVar
-from phyelds.abstractions import Engine
+from phyelds.vm import Engine
 
 engine: ContextVar[Engine] = ContextVar("engine")

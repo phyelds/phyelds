@@ -1,7 +1,7 @@
 import pytest
 
 from phyelds import engine
-from phyelds.internal import MutableEngine
+from phyelds.vm.internal import MutableEngine
 from phyelds.libraries.device import local_id, local_position, sense, store
 from tests.calculus.mock import MockNodeContext
 

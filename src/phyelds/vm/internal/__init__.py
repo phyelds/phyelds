@@ -6,7 +6,7 @@ and manage the state of the system.
 
 from typing import Dict, List, Any, Optional
 
-from phyelds.abstractions import Engine, NodeContext, EngineState
+from phyelds.vm import Engine, NodeContext, EngineState
 
 
 class MutableEngine(Engine):

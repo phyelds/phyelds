@@ -1,5 +1,5 @@
 import pytest
-from phyelds.internal import MutableEngine
+from phyelds.vm.internal import MutableEngine
 from phyelds import engine
 from phyelds.calculus import neighbors, remember, aggregate
 from phyelds.libraries.device import local_id

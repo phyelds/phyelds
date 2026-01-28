@@ -16,7 +16,7 @@ from typing import (
     cast,
 )
 import wrapt
-from phyelds.abstractions import Engine
+from phyelds.vm import Engine
 
 # T represents the type of data held by the Neighborhood (e.g., int, float, bool)
 T = TypeVar("T")

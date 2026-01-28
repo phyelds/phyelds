@@ -1,8 +1,8 @@
 import pytest
-from phyelds.internal import MutableEngine
+from phyelds.vm.internal import MutableEngine
 
 from phyelds import engine
-from phyelds.calculus import remember, aggregate, align, align_left, align_right, remember_and_evolve
+from phyelds.calculus import remember, aggregate, align, remember_and_evolve
 from phyelds.data import State
 from tests.calculus.mock import MockSimulator, MockNodeContext
 
