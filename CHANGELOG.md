@@ -1,3 +1,13 @@
+## [5.0.0](https://github.com/phyelds/phyelds/compare/4.3.1...5.0.0) (2026-01-28)
+
+### ⚠ BREAKING CHANGES
+
+* change package structure, abstractions -> vm
+
+### Features
+
+* change package structure, abstractions -> vm ([1728a70](https://github.com/phyelds/phyelds/commit/1728a7056b6e4318b46defb58c1eb38e4910e849))
+
 ## [4.3.1](https://github.com/phyelds/phyelds/compare/4.3.0...4.3.1) (2025-12-15)
 
 ### Documentation
