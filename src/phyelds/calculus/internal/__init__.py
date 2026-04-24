@@ -33,4 +33,12 @@ class AggregateTransformer(ast.NodeTransformer):
                     body=node.orelse
                 )
             ]
+        else:
+            right_call = __prepare_call("align_right")
+            node.orelse = [
+                ast.With(
+                    items=[ast.withitem(context_expr=right_call, optional_vars=None)],
+                    body=[ast.Pass()]
+                )
+            ]
         return node

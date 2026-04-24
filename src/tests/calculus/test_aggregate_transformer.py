@@ -65,7 +65,9 @@ def test_if_without_else_transformed():
     assert isinstance(if_node, ast.If)
     assert len(if_node.body) == 1
     _assert_with_align(if_node.body[0], "align_left")
-    assert if_node.orelse == []
+    assert len(if_node.orelse) == 1
+    _assert_with_align(if_node.orelse[0], "align_right")
+    assert isinstance(if_node.orelse[0].body[0], ast.Pass)
 
 
 def test_nested_if_same_branch_transformed():
@@ -299,3 +301,40 @@ def test_sequential_ifs_independent_behavior():
         a, b = node.root
         assert set(a.data.values()) == {1}
         assert set(b.data.values()) == {10}
+
+
+def test_if_without_else_post_alignment_behavior():
+    simulator = MockSimulator(3)
+
+    @aggregate
+    def program():
+        if local_id() < 2:
+            return neighbors(local_id())
+        return neighbors(999)
+
+    simulator.cycle_for(program, 9)
+    # nodes 0 and 1: took align_left, see each other
+    # node 2: took implicit align_right, isolated
+    # The fix ensures counters are balanced after the if
+    assert simulator.nodes[0].root.data == {0: 0, 1: 1}
+    assert simulator.nodes[1].root.data == {0: 0, 1: 1}
+    assert simulator.nodes[2].root.data == {2: 999}
+
+
+def test_if_without_else_counter_alignment_after_branch():
+    simulator = MockSimulator(3)
+
+    @aggregate
+    def program():
+        if local_id() < 2:
+            x = 1
+        # After the if, all nodes should have balanced counters
+        # so subsequent aggregate calls work correctly
+        return neighbors(local_id())
+
+    simulator.cycle_for(program, 9)
+    # All nodes call neighbors(local_id()) after the if
+    # With balanced counters, they all share the same path
+    # and can communicate
+    for node in simulator.nodes:
+        assert node.root.data == {0: 0, 1: 1, 2: 2}
