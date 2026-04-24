@@ -196,7 +196,7 @@ def print_transformed_code(func):
         source = inspect.getsource(func)
     except TypeError:
         print(f"Could not retrieve source for {func}")
-        return
+        return None
     source = textwrap.dedent(source)
     tree = ast.parse(source)
     func_def = tree.body[0]
