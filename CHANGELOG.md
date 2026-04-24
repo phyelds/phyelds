@@ -1,3 +1,16 @@
+## [5.1.0](https://github.com/phyelds/phyelds/compare/5.0.0...5.1.0) (2026-04-24)
+
+### Features
+
+* add ast printing for code transform ([a9452d3](https://github.com/phyelds/phyelds/commit/a9452d3682bf050f8e3cd76972d8fb7af4d02a29))
+* prefer str_ instead of print_ ([5d3b73a](https://github.com/phyelds/phyelds/commit/5d3b73ab0fec31093f4b244417b7a2958e0cd2b5))
+
+### Bug Fixes
+
+* adjust tests for print_transformed_code ([0ccc4c4](https://github.com/phyelds/phyelds/commit/0ccc4c4ce4b8fbb226c7d4737778a17ff562654f))
+* remove style issue from calculus ([3098c86](https://github.com/phyelds/phyelds/commit/3098c861af9192a916fc3c29d0b0384537049d0e))
+* style incosistency in calculus ([38fd60d](https://github.com/phyelds/phyelds/commit/38fd60d00f6ba8d244cac5b09ba91cca09ade73f))
+
 ## [5.0.0](https://github.com/phyelds/phyelds/compare/4.3.1...5.0.0) (2026-01-28)
 
 ### ⚠ BREAKING CHANGES
