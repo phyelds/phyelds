@@ -3,7 +3,7 @@ import textwrap
 
 import pytest
 from phyelds import engine
-from phyelds.calculus import aggregate, neighbors, print_transformed_code
+from phyelds.calculus import aggregate, neighbors, str_transformed_code
 from phyelds.calculus.internal import AggregateTransformer
 from phyelds.libraries.device import local_id
 from phyelds.vm.internal import MutableEngine
@@ -177,7 +177,7 @@ def test_print_transformed_code_outputs_aligns(capsys):
             pass
         else:
             pass
-    output = print_transformed_code(sample)
+    output = str_transformed_code(sample)
     assert "align_left" in output
     assert "align_right" in output
 
