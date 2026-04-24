@@ -177,10 +177,9 @@ def test_print_transformed_code_outputs_aligns(capsys):
             pass
         else:
             pass
-    print_transformed_code(sample)
-    captured = capsys.readouterr()
-    assert "align_left" in captured.out
-    assert "align_right" in captured.out
+    output = print_transformed_code(sample)
+    assert "align_left" in output
+    assert "align_right" in output
 
 
 # ---------- Behavioral coherence tests ----------
