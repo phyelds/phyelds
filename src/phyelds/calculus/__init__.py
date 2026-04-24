@@ -16,6 +16,7 @@ Then, there is the core syntax of phyelds:
 """
 import ast
 import inspect
+import os
 import textwrap
 from typing import TypeVar, Callable, Tuple, Union, Any
 
@@ -23,6 +24,9 @@ from phyelds import engine
 from phyelds.calculus.align import AlignContext
 from phyelds.calculus.internal import AggregateTransformer
 from phyelds.data import State, NeighborhoodField
+
+_DEBUG_AST = os.environ.get("PHYELDS_DEBUG_AST", "0").lower() in ("1", "true", "yes")
+
 
 # Generic type variable to preserve types through functions
 T = TypeVar("T")
@@ -161,6 +165,10 @@ def ___transform_code(func):
             transformer = AggregateTransformer()
             tree = transformer.visit(tree)
             ast.fix_missing_locations(tree)
+            if _DEBUG_AST:
+                print(f"--- Transformed code for {func.__name__} ---")
+                print(ast.unparse(tree))
+                print("--- End transformed code ---")
             code_obj = compile(tree, filename="<aggregated_code>", mode="exec")
             _TRANSFORMATION_CACHE[func.__code__] = code_obj
         except Exception as e:
@@ -178,3 +186,26 @@ def ___transform_code(func):
     local_scope = {}
     exec(code_obj, scope, local_scope)
     return local_scope[func.__name__]
+
+def print_transformed_code(func):
+    """
+    Utility to print the transformed AST source for a given function.
+    Useful for debugging how the AggregateTransformer rewrites ``if`` statements.
+    """
+    try:
+        source = inspect.getsource(func)
+    except TypeError:
+        print(f"Could not retrieve source for {func}")
+        return
+    source = textwrap.dedent(source)
+    tree = ast.parse(source)
+    func_def = tree.body[0]
+    if hasattr(func_def, "decorator_list"):
+        func_def.decorator_list = [
+            d for d in func_def.decorator_list
+            if not (isinstance(d, ast.Name) and d.id == "aggregate")
+        ]
+    transformer = AggregateTransformer()
+    tree = transformer.visit(tree)
+    ast.fix_missing_locations(tree)
+    return ast.unparse(tree)
