@@ -1,3 +1,13 @@
+## [6.0.0](https://github.com/phyelds/phyelds/compare/5.1.0...6.0.0) (2026-04-24)
+
+### ⚠ BREAKING CHANGES
+
+* auto alignment work as expected
+
+### Bug Fixes
+
+* auto alignment work as expected ([261fbcc](https://github.com/phyelds/phyelds/commit/261fbcc38480a81c2ca11d2cf0ccf848b39def76))
+
 ## [5.1.0](https://github.com/phyelds/phyelds/compare/5.0.0...5.1.0) (2026-04-24)
 
 ### Features
