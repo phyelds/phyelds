@@ -1,3 +1,13 @@
+## [7.0.0](https://github.com/phyelds/phyelds/compare/6.0.0...7.0.0) (2026-08-07)
+
+### ⚠ BREAKING CHANGES
+
+* move VMAS as separated packages
+
+### Features
+
+* move VMAS as separated packages ([85d3afd](https://github.com/phyelds/phyelds/commit/85d3afd1bf4dbcaf7bb576868b348640e5c9b5f9))
+
 ## [6.0.0](https://github.com/phyelds/phyelds/compare/5.1.0...6.0.0) (2026-04-24)
 
 ### ⚠ BREAKING CHANGES
