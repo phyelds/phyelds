@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "phyelds-vmas"
-version = "6.0.0"
+version = "7.1.0"
 description = "VMAS integration for phyelds"
 license = "Apache-2.0"
 authors = [
