@@ -3,15 +3,12 @@ This module contains the event to run the aggregate program in the simulator
 """
 from abc import ABC
 
-import numpy as np
-import torch
-
 from phyelds.vm.internal import MutableEngine
 
 from phyelds import engine
 from phyelds.vm import NodeContext
 from phyelds.data import State
-from phyelds.simulator import Simulator, Node, VmasEnvironment
+from phyelds.simulator import Simulator, Node
 
 
 class SimulatorNodeContext(NodeContext, ABC):
@@ -65,31 +62,6 @@ def aggregate_program_runner(
     node.data["outputs"] = engine.get().node_context.outputs
     simulator.schedule_event(
         time_delta, aggregate_program_runner, simulator, time_delta, node, program, **kwargs
-    )
-
-
-def vmas_runner(
-    simulator: Simulator, time_delta: float
-):
-    """
-    Run the VMAS program for all nodes in the simulator.
-    :param simulator: the simulator to run the program on
-    :param time_delta: the time delta to schedule the next run
-    :return:
-    """
-    assert isinstance(simulator.environment, VmasEnvironment)
-    env = simulator.environment
-    actions = [
-        np.array(node.data["outputs"]["action"], dtype=np.float32) for node in env.node_list()
-    ]
-    actions_single_env = torch.tensor(np.stack(actions), device=env.vmas_environment.device)
-    actions_batch = actions_single_env.expand(env.vmas_environment.num_envs, -1, -1)
-    actions_per_agent = list(actions_batch.unbind(dim=1))
-    (observations, rewards, done, info) = env.vmas_environment.step(actions_per_agent)
-    simulator.environment.updates_node(observations, rewards, done, info)
-    # Reschedule the VMAS runner
-    simulator.schedule_event(
-        time_delta, vmas_runner, simulator, time_delta
     )
 
 

@@ -10,9 +10,6 @@ import heapq
 import uuid
 from typing import Dict, Callable, Any, Optional, Tuple, List
 
-import vmas.simulator.environment
-from vmas.simulator.scenario import BaseScenario
-
 
 class Node:
     """
@@ -109,60 +106,6 @@ class Environment:
     ) -> List[Node]:
         """Default neighborhood function (no neighbors)"""
         return []
-
-
-class VmasEnvironment(Environment):
-    """
-    A class to represent a VMAS environment that wraps around a VMAS scenario.
-    """
-    def __init__(
-        self,
-        vmas_environment: vmas.simulator.environment.Environment,
-        neighborhood_function: Callable[[Node, BaseScenario], List[Node]] = None,
-    ):
-        super().__init__(neighborhood_function)
-        self.vmas_environment = vmas_environment
-        self.initialize_nodes()
-
-    def initialize_nodes(self):
-        """
-        Initialize the nodes in the environment based on the VMAS environment.
-        :return: None
-        """
-        observations = self.vmas_environment.reset()
-        for idx, agent in enumerate(self.vmas_environment.agents):
-            data = {
-                "observations": observations[idx][0],
-                "rewards": 0.0,
-                "dones": False,
-                "infos": {},
-                "agent": agent
-            }
-            node = Node(
-                position=(agent.state.pos[0][0].item(), agent.state.pos[0][1].item()),
-                data=data,
-                node_id=idx
-            )
-            self.add_node(node)
-
-    def updates_node(self, observations, rewards, dones, infos):
-        """
-        Update the nodes with the latest observations, rewards, dones,
-        and infos from the VMAS environment.
-        :param observations: the observations from the VMAS environment
-        :param rewards: the rewards from the VMAS environment
-        :param dones: the dones from the VMAS environment
-        :param infos: the infos from the VMAS environment
-        :return:
-        """
-        for idx, agent in enumerate(self.vmas_environment.agents):
-            node = self.nodes[idx]
-            node.data["observations"] = observations[idx][0]
-            node.position = (agent.state.pos[0][0].item(), agent.state.pos[0][1].item())
-            node.data["rewards"] = rewards[idx][0]
-            node.data["dones"] = dones
-            node.data["infos"] = infos[idx]
-            node.data["agent"] = agent
 
 
 class Event:

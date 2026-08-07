@@ -12,6 +12,10 @@ In order to use it, you should:
 
 """
 from contextvars import ContextVar
+from pkgutil import extend_path
+
 from phyelds.vm import Engine
+
+__path__ = extend_path(__path__, __name__)
 
 engine: ContextVar[Engine] = ContextVar("engine")

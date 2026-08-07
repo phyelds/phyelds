@@ -1,0 +1,40 @@
+[tool.poetry]
+name = "phyelds-vmas"
+version = "0.1.0"
+description = "VMAS integration for phyelds"
+license = "Apache-2.0"
+authors = [
+  "Davide Domini <davide.domini@unibo.it>",
+  "Gianluca Aguzzi <gianluca.aguzzi@unibo.it>"
+]
+homepage = "https://github.com/phyelds/phyelds"
+repository = "https://github.com/phyelds/phyelds"
+readme = "README.md"
+
+packages = [
+    { include = "phyelds/vmas", from = "src" },
+]
+
+classifiers = [
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[tool.poetry.dependencies]
+python = ">=3.12,<3.14"
+phyelds = ">=7.0.0,<8.0.0"
+vmas = "1.5.2"
+numpy = ">=1.26"
+torch = ">=2.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"
+pylint = "^3.0.0"
+flake8 = "^7.0.0"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

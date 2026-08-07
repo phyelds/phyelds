@@ -48,6 +48,21 @@ pip install phyelds        # from PyPI
 poetry add phyelds
 ```
 
+VMAS support is provided by a separate package:
+
+```bash
+pip install phyelds-vmas
+```
+
+Use the generic simulator from `phyelds.simulator` and VMAS integration from
+`phyelds.vmas`:
+
+```python
+from phyelds.simulator import Simulator
+from phyelds.simulator.runner import schedule_program_for_all
+from phyelds.vmas import VmasEnvironment, vmas_runner
+```
+
 From source:
 
 ```bash
