@@ -1,3 +1,9 @@
+## [7.1.1](https://github.com/phyelds/phyelds/compare/7.1.0...7.1.1) (2026-09-03)
+
+### Documentation
+
+* update description to reflect large scale systems ([b05ae1b](https://github.com/phyelds/phyelds/commit/b05ae1b5c12f89a7f0c888484acaeec5b84a0e28))
+
 ## [7.1.0](https://github.com/phyelds/phyelds/compare/7.0.0...7.1.0) (2026-08-07)
 
 ### Features
