@@ -2,7 +2,7 @@
 
 # Phyelds
 
-Lightweight, pythonic aggregate computing & field calculus toolkit for building, simulating, and experimenting with decentralized adaptive systems.
+Lightweight, pythonic aggregate computing & field calculus toolkit for building, simulating, and experimenting with large scale distributed systems.
 
 [![PyPI version](https://img.shields.io/pypi/v/phyelds.svg)](https://pypi.org/project/phyelds/)
 [![Python versions](https://img.shields.io/pypi/pyversions/phyelds.svg)](https://pypi.org/project/phyelds/)
