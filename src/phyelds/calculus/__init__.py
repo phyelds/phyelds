@@ -143,6 +143,28 @@ def align_left():
 _TRANSFORMATION_CACHE = {}
 
 
+def _is_aggregate_decorator(node: ast.expr) -> bool:
+    """True for ``@aggregate`` and qualified forms such as ``@phyelds.calculus.aggregate``."""
+    if isinstance(node, ast.Name):
+        return node.id == "aggregate"
+    return isinstance(node, ast.Attribute) and node.attr == "aggregate"
+
+
+def _drop_applied_decorators(func_def: ast.AST) -> None:
+    """
+    Remove ``@aggregate`` and every decorator above it from the parsed definition.
+    Python has already applied those around the ``aggregate`` wrapper: keeping them would
+    apply them a second time on each call, re-evaluating their expressions in a scope
+    where the caller's locals do not exist. Decorators below ``@aggregate`` are kept,
+    since they are part of the function ``aggregate`` received.
+    """
+    decorators = getattr(func_def, "decorator_list", [])
+    for index, decorator in enumerate(decorators):
+        if _is_aggregate_decorator(decorator):
+            func_def.decorator_list = decorators[index + 1:]
+            return
+
+
 # pylint: disable=exec-used,broad-exception-caught
 def ___transform_code(func):
     """
@@ -158,11 +180,7 @@ def ___transform_code(func):
             source = textwrap.dedent(source)
             tree = ast.parse(source)
             func_def = tree.body[0]
-            if hasattr(func_def, 'decorator_list'):
-                func_def.decorator_list = [
-                    d for d in func_def.decorator_list
-                    if not (isinstance(d, ast.Name) and d.id == 'aggregate')
-                ]
+            _drop_applied_decorators(func_def)
 
             transformer = AggregateTransformer()
             tree = transformer.visit(tree)
@@ -203,11 +221,7 @@ def str_transformed_code(func):
     source = textwrap.dedent(source)
     tree = ast.parse(source)
     func_def = tree.body[0]
-    if hasattr(func_def, "decorator_list"):
-        func_def.decorator_list = [
-            d for d in func_def.decorator_list
-            if not (isinstance(d, ast.Name) and d.id == "aggregate")
-        ]
+    _drop_applied_decorators(func_def)
     transformer = AggregateTransformer()
     tree = transformer.visit(tree)
     ast.fix_missing_locations(tree)

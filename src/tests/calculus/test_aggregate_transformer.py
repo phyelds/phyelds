@@ -1,4 +1,5 @@
 import ast
+import functools
 import textwrap
 
 import pytest
@@ -338,3 +339,76 @@ def test_if_without_else_counter_alignment_after_branch():
     # and can communicate
     for node in simulator.nodes:
         assert node.root.data == {0: 0, 1: 1, 2: 2}
+
+
+
+# ---------- Decorators stacked with @aggregate ----------
+
+_CALLS = []
+
+
+def counted(fn):
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        _CALLS.append(fn)
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+def _run_once(program):
+    _CALLS.clear()
+    node_engine = MutableEngine()
+    engine.set(node_engine)
+    node_engine.setup(MockNodeContext(0), {}, {})
+    return program()
+
+
+def test_decorator_above_aggregate_runs_once():
+    @counted
+    @aggregate
+    def program():
+        return 1
+
+    assert _run_once(program) == 1
+    assert len(_CALLS) == 1
+
+
+def test_decorator_above_qualified_aggregate_runs_once():
+    import phyelds.calculus
+
+    @counted
+    @phyelds.calculus.aggregate
+    def program():
+        return 1
+
+    assert _run_once(program) == 1
+    assert len(_CALLS) == 1
+
+
+def test_decorator_above_aggregate_may_reference_locals():
+    calls = []
+
+    def recording(fn):
+        def wrapper():
+            calls.append(fn)
+            return fn()
+        return wrapper
+
+    @recording
+    @aggregate
+    def program():
+        return 1
+
+    assert _run_once(program) == 1
+    assert len(calls) == 1
+
+
+def test_decorator_below_aggregate_is_kept():
+    @aggregate
+    @counted
+    def program():
+        return 1
+
+    assert _run_once(program) == 1
+    assert len(_CALLS) == 1
+
