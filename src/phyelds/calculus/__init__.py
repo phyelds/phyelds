@@ -15,6 +15,7 @@ Then, there is the core syntax of phyelds:
 - neighbors_distances: used to get the distances to the neighbors.
 """
 import ast
+import functools
 import inspect
 import os
 import textwrap
@@ -43,6 +44,7 @@ def aggregate(func):
         return result
     """
 
+    @functools.wraps(func)
     def wrapper(*args, **kwargs):
         engine.get().enter(func.__name__)
         result = ___transform_code(func)(*args, **kwargs)
