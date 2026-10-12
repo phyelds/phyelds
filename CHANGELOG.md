@@ -1,3 +1,10 @@
+## [7.1.2](https://github.com/phyelds/phyelds/compare/7.1.1...7.1.2) (2026-10-12)
+
+### Bug Fixes
+
+* do not re-apply decorators stacked above [@aggregate](https://github.com/aggregate) ([#8](https://github.com/phyelds/phyelds/issues/8)) ([3cb43c6](https://github.com/phyelds/phyelds/commit/3cb43c6db338a99d581e79162f6030bca0a7b6a7))
+* keep the name and docs of [@aggregate](https://github.com/aggregate) functions ([#9](https://github.com/phyelds/phyelds/issues/9)) ([b1e400a](https://github.com/phyelds/phyelds/commit/b1e400aaac2ccef8affbd417b1d127b0844bd5a8))
+
 ## [7.1.1](https://github.com/phyelds/phyelds/compare/7.1.0...7.1.1) (2026-09-03)
 
 ### Documentation
