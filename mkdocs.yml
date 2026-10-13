@@ -7,6 +7,8 @@ edit_uri: edit/master/docs/
 
 exclude_docs: |
   examples/
+  hooks/
+  __pycache__/
 
 theme:
   name: material
@@ -35,6 +37,9 @@ theme:
 
 extra_css:
   - stylesheets/extra.css
+
+hooks:
+  - docs/hooks/playground.py
 
 markdown_extensions:
   - admonition
