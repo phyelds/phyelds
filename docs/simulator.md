@@ -70,7 +70,7 @@ from phyelds.simulator.render import RenderMonitor
 RenderMonitor(simulator, RenderConfig(
     effects=[
         DrawEdges(alpha=0.3),
-        DrawNodes(color_from="result", cmap="viridis_r", vmin=0, vmax=20),
+        DrawNodes(color_from="result", cmap="plasma_r", vmin=0, vmax=20),
         DrawValues(value_from="result", precision=1),
     ],
     dt=1.0,                  # simulated time between two frames

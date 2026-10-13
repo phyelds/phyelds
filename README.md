@@ -268,7 +268,7 @@ from phyelds.simulator.effects import DrawEdges, DrawNodes, RenderConfig, Render
 from phyelds.simulator.render import RenderMonitor
 
 RenderMonitor(simulator, RenderConfig(
-    effects=[DrawEdges(), DrawNodes(color_from="result", cmap="viridis_r", vmin=0, vmax=9)],
+    effects=[DrawEdges(), DrawNodes(color_from="result", cmap="plasma_r", vmin=0, vmax=9)],
     mode=RenderMode.SAVE,
     save_as="gradient.gif",
 ))

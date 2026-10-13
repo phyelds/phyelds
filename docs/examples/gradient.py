@@ -91,7 +91,7 @@ def record(
     """
     effects = [
         DrawEdges(alpha=0.3),
-        DrawNodes(color_from="result", cmap="viridis_r", vmin=0.0, vmax=vmax),
+        DrawNodes(color_from="result", cmap="plasma_r", vmin=0.0, vmax=vmax),
     ]
     if labels:
         effects.append(DrawValues(value_from="result", precision=1))
