@@ -19,10 +19,43 @@
   const output = element("pg-console");
   const images = element("pg-images");
   const INDENT = "    ";
+  const highlighted = createHighlightLayer();
 
   let worker = null;
   let examples = [];
   let imageUrls = [];
+
+  // The code is drawn, highlighted, under a transparent textarea that keeps the
+  // caret, the selection and undo. The layer is made of divs, not pre and code,
+  // so that Material does not take it for a code block and add a copy button.
+  function createHighlightLayer() {
+    const layer = document.createElement("div");
+    layer.className = "highlight pg-highlight";
+    layer.setAttribute("aria-hidden", "true");
+    const code = document.createElement("div");
+    code.className = "pg-highlight-code";
+    layer.append(code);
+    editor.before(layer);
+    return code;
+  }
+
+  function refreshHighlight() {
+    // A trailing newline would be invisible in the layer: a space keeps the last line.
+    highlighted.innerHTML = `${highlightPython(editor.value)} `;
+    syncScroll();
+  }
+
+  function syncScroll() {
+    // Moved rather than scrolled: the textarea can scroll further, past its scrollbars.
+    highlighted.style.transform = `translate(${-editor.scrollLeft}px, ${-editor.scrollTop}px)`;
+  }
+
+  function setCode(code) {
+    editor.value = code;
+    editor.scrollTop = 0;
+    editor.scrollLeft = 0;
+    refreshHighlight();
+  }
 
   function setRunning(running) {
     runButton.disabled = running;
@@ -149,7 +182,7 @@
     menu.value = example.name;
     summary.textContent = example.summary ? `${example.title}: ${example.summary}` : example.title;
     const response = await fetch(new URL(`examples/${example.name}.py`, base));
-    editor.value = await response.text();
+    setCode(await response.text());
     clearOutput();
     status.textContent = "Press Run, or Ctrl+Enter.";
   }
@@ -161,7 +194,7 @@
       return;
     }
     menu.value = "";
-    editor.value = decode(hash.get("code"));
+    setCode(decode(hash.get("code")));
     summary.textContent = "A shared program.";
     clearOutput();
     status.textContent = "Press Run, or Ctrl+Enter.";
@@ -174,6 +207,7 @@
     } else if (event.key === "Tab" && !event.shiftKey) {
       event.preventDefault();
       editor.setRangeText(INDENT, editor.selectionStart, editor.selectionEnd, "end");
+      refreshHighlight();
     }
   }
 
@@ -194,6 +228,8 @@
     stopButton.addEventListener("click", stop);
     shareButton.addEventListener("click", share);
     editor.addEventListener("keydown", onKeyDown);
+    editor.addEventListener("input", refreshHighlight);
+    editor.addEventListener("scroll", syncScroll);
   }
 
   start().catch((error) => {

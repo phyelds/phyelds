@@ -19,12 +19,15 @@ phyelds (about 20 MB, a few seconds); after that, they come from the browser cac
     <button id="pg-share" class="md-button" type="button">Share</button>
   </div>
   <p id="pg-summary" class="pg-summary"></p>
-  <textarea id="pg-code" class="pg-code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Program"></textarea>
+  <div id="pg-editor" class="pg-editor">
+    <textarea id="pg-code" class="pg-code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Program"></textarea>
+  </div>
   <p id="pg-status" class="pg-status" role="status">Loading the examples…</p>
   <pre id="pg-console" class="pg-console" hidden></pre>
   <div id="pg-images" class="pg-images"></div>
 </div>
 
+<script src="highlight.js"></script>
 <script src="playground.js"></script>
 
 ## How it works

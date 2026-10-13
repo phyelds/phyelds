@@ -78,27 +78,67 @@
   color: var(--md-default-fg-color--light);
 }
 
-.pg-code {
-  display: block;
+/*
+ * The editor: a transparent textarea over the same code, highlighted. Both share
+ * font, size, padding and border, so the text lines up to the pixel.
+ */
+.pg-editor {
+  position: relative;
+}
+
+.pg-code,
+.pg-highlight-code {
   box-sizing: border-box;
-  width: 100%;
-  min-height: 28rem;
+  margin: 0;
   padding: 0.8rem;
-  border: 1px solid var(--md-default-fg-color--lightest);
-  border-radius: 0.2rem;
-  background: var(--md-code-bg-color);
-  color: var(--md-code-fg-color);
+  border: 1px solid transparent;
   font-family: var(--md-code-font-family);
   font-size: 0.8rem;
+  font-variant-ligatures: none;
   line-height: 1.5;
+  letter-spacing: normal;
   tab-size: 4;
-  resize: vertical;
   white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+.pg-code {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  min-height: 28rem;
+  border-color: var(--md-default-fg-color--lightest);
+  border-radius: 0.2rem;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--md-code-fg-color);
+  resize: vertical;
+}
+
+.pg-code::selection {
+  background: var(--md-accent-fg-color--transparent);
+  color: transparent;
 }
 
 .pg-code:focus {
   outline: 2px solid var(--md-accent-fg-color);
   outline-offset: 1px;
+}
+
+.pg-highlight {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 0.2rem;
+  background: var(--md-code-bg-color);
+  pointer-events: none;
+}
+
+.pg-highlight-code {
+  color: var(--md-code-fg-color);
+  will-change: transform;
 }
 
 .pg-console {
