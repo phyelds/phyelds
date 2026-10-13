@@ -10,6 +10,8 @@ exclude_docs: |
 
 theme:
   name: material
+  logo: assets/logo.png
+  favicon: assets/logo.png
   features:
     - content.code.copy
     - navigation.sections

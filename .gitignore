@@ -3,7 +3,7 @@
 **/dist/
 
 # final snapshots written next to the generated docs animations
-docs/assets/*.png
+docs/assets/gradient-*.png
 
 # mkdocs build output
 site/
