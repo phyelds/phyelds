@@ -1,3 +1,5 @@
+import warnings
+
 import matplotlib
 
 matplotlib.use("Agg")
@@ -157,3 +159,19 @@ def test_render_monitor_draws_a_frame_only_after_every_event_at_that_time():
     simulator.run()
 
     assert monitor.frames == [[1, 1, 1], [2, 2, 2]]
+
+
+def test_render_monitor_frames_nodes_lying_on_a_line(tmp_path):
+    simulator = Simulator()
+    for index in range(3):
+        simulator.create_node((float(index), 0.0), node_id=index)
+    simulator.schedule_event(1.0, lambda: None)
+    config = RenderConfig(mode=RenderMode.SAVE, save_as=str(tmp_path / "line.gif"))
+    monitor = RenderMonitor(simulator, config)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        simulator.run()
+
+    low, high = monitor.ax.get_ylim()
+    assert low < 0.0 < high

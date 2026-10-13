@@ -29,6 +29,17 @@ def make_writer(config: RenderConfig) -> AbstractMovieWriter:
     return FFMpegWriter(fps=fps, metadata=metadata)
 
 
+def _padded_limits(values: tuple[float, ...], pad: float = 0.05) -> tuple[float, float]:
+    """
+    Axis limits enclosing ``values`` with a margin of ``pad`` times their range.
+    When all values coincide (e.g. nodes on a line) the margin is 1, so the limits
+    never collapse into a single point.
+    """
+    low, high = min(values), max(values)
+    margin = pad * (high - low) if high > low else 1.0
+    return low - margin, high + margin
+
+
 class RenderMonitor(Monitor):
     """
     Render the nodes in the simulator's environment.
@@ -126,11 +137,8 @@ class RenderMonitor(Monitor):
             ]
             if positions:
                 x, y = zip(*positions)
-                pad = 0.05
-                x_range = max(x) - min(x)
-                y_range = max(y) - min(y)
-                self.ax.set_xlim(min(x) - pad * x_range, max(x) + pad * x_range)
-                self.ax.set_ylim(min(y) - pad * y_range, max(y) + pad * y_range)
+                self.ax.set_xlim(*_padded_limits(x))
+                self.ax.set_ylim(*_padded_limits(y))
                 self.ax.set_aspect("equal")
         else:
             self.ax.axis("equal")
