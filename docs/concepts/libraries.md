@@ -62,6 +62,9 @@ def network_size():
     return count_nodes(potential)
 ```
 
+The [channel](../playground/index.md#example=channel) of the playground combines
+both: a collection of `collect_or` along one gradient, spread again by another.
+
 ## Gossip: `phyelds.libraries.gossip`
 
 | Function | Returns |

@@ -17,6 +17,8 @@ phyelds requires Python 3.12 or later.
 
 <div class="grid cards" markdown>
 
+- **[Playground](playground/index.md)**: write and run aggregate programs in
+  your browser, with nothing to install.
 - **[Tutorial](tutorial.md)**: build the gradient, the "hello world" of aggregate
   computing, step by step, and watch it converge and heal.
 - **[Concepts](concepts/aggregate-programs.md)**: fields, rounds, `remember`,
@@ -48,3 +50,5 @@ Every device runs these few lines; together, they compute the distance of every
 device from the nearest source, and keep it correct while the network changes.
 
 ![A distance gradient on an irregular network](assets/gradient-self-healing.gif){ width="480" }
+
+[Try it in the playground](playground/index.md#example=self_healing){ .md-button }

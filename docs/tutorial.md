@@ -97,6 +97,8 @@ def program():
 
 ![A distance gradient on an irregular lattice](assets/gradient-distance.gif){ width="480" }
 
+[Run it in the playground](playground/index.md#example=gradient){ .md-button }
+
 ## 6. Self-healing
 
 Nothing in the program refers to *when* the source appeared or *where* it is:
@@ -104,6 +106,8 @@ every round recomputes the field from the current state of the network. When the
 source jumps to the opposite corner, the field repairs itself with no extra code.
 
 ![The gradient re-converging after the source moves](assets/gradient-self-healing.gif){ width="480" }
+
+[Run it in the playground](playground/index.md#example=self_healing){ .md-button }
 
 The area around the new source settles quickly; the old one is slower, because its
 devices can only raise their stale, too-small estimates a little at a time, leaning

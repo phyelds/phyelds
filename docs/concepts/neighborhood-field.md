@@ -16,6 +16,8 @@ def neighborhood_size():
     return sum(neighbors(1))   # neighbors + the device itself
 ```
 
+[Count the neighbours in the playground](../playground/index.md#example=neighbours){ .md-button }
+
 ## Working with a `NeighborhoodField`
 
 A `NeighborhoodField` maps device ids to values. It supports:
