@@ -1,3 +1,10 @@
+## [7.1.6](https://github.com/phyelds/phyelds/compare/7.1.5...7.1.6) (2026-10-13)
+
+### Documentation
+
+* colour the site with the palette of the logo ([f7248d6](https://github.com/phyelds/phyelds/commit/f7248d6b6f5a26597a252a3d97f561d8c5c40b8d))
+* draw the gradient animations with the plasma colormap ([4d95bdd](https://github.com/phyelds/phyelds/commit/4d95bdddbd0451ec1a17b5cb2143e2bd27da34c8))
+
 ## [7.1.5](https://github.com/phyelds/phyelds/compare/7.1.4...7.1.5) (2026-10-13)
 
 ### Documentation
