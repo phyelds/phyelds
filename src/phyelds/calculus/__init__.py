@@ -140,6 +140,20 @@ def align_left():
     return align("left")
 
 
+def _aligned_branch(condition: Any, if_true: Callable[[], T], if_false: Callable[[], T]) -> T:
+    """
+    Evaluate a conditional expression like an ``if`` statement: the branch chosen by
+    ``condition`` runs in ``align_left`` or ``align_right``, so devices on different
+    branches do not exchange values. ``@aggregate`` rewrites ``a if c else b`` into a
+    call to this function.
+    """
+    if condition:
+        with align_left():
+            return if_true()
+    with align_right():
+        return if_false()
+
+
 _TRANSFORMATION_CACHE = {}
 
 
@@ -197,6 +211,7 @@ def ___transform_code(func):
     scope = func.__globals__.copy()
     scope['align_left'] = align_left
     scope['align_right'] = align_right
+    scope['_aligned_branch'] = _aligned_branch
     if func.__closure__ and func.__code__.co_freevars:
         for name, cell in zip(func.__code__.co_freevars, func.__closure__):
             try:

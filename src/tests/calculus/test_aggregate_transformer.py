@@ -342,6 +342,59 @@ def test_if_without_else_counter_alignment_after_branch():
 
 
 
+# ---------- Conditional expressions ----------
+
+def test_conditional_expression_isolates_its_branches():
+    simulator = MockSimulator(3)
+
+    @aggregate
+    def program():
+        return neighbors(local_id()) if local_id() < 2 else neighbors(local_id())
+
+    simulator.cycle_for(program, 9)
+    # nodes 0 and 1 take the first branch, node 2 the second: they do not meet
+    assert simulator.nodes[0].root.data == {0: 0, 1: 1}
+    assert simulator.nodes[1].root.data == {0: 0, 1: 1}
+    assert simulator.nodes[2].root.data == {2: 2}
+
+
+def test_conditional_expression_keeps_later_calls_aligned_when_a_branch_does_not_communicate():
+    simulator = MockSimulator(3)
+
+    @aggregate
+    def program():
+        nearest = float("inf") if local_id() == 0 else min(neighbors(1))
+        return nearest, neighbors(local_id())
+
+    simulator.cycle_for(program, 9)
+    # node 0 skips neighbors(1), yet all nodes meet in the call that follows
+    for node in simulator.nodes:
+        assert node.root[1].data == {0: 0, 1: 1, 2: 2}
+
+
+def test_conditional_expression_without_calls_is_left_as_is():
+    source = """
+    def f():
+        return 1 if x else y
+    """
+    tree = _transform_source(source)
+    returned = _get_function_body(tree)[0].value
+    assert isinstance(returned, ast.IfExp)
+
+
+def test_conditional_expression_keeps_an_assignment_expression_in_the_function():
+    simulator = MockSimulator(1)
+
+    @aggregate
+    def program():
+        size = None
+        _ = (size := sum(neighbors(1))) if True else 0
+        return size
+
+    simulator.cycle_for(program, 3)
+    assert simulator.nodes[0].root == 1
+
+
 # ---------- Decorators stacked with @aggregate ----------
 
 _CALLS = []
