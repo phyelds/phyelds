@@ -62,6 +62,8 @@ simulator.schedule_event(25.0, turn_off_source, simulator.environment.nodes[0])
 `RenderMonitor` draws the network with a list of effects, and either shows it live
 (`RenderMode.SHOW`), or saves an animation (`RenderMode.SAVE`) plus a final PNG.
 A `.gif` file name is enough to get an animated GIF; `.mp4` needs ffmpeg.
+Showing it live inside a Jupyter notebook needs the `jupyter` extra
+(`pip install "phyelds[jupyter]"`).
 
 ```python
 from phyelds.simulator.effects import DrawEdges, DrawNodes, DrawValues, RenderConfig, RenderMode

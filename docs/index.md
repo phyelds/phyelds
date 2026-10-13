@@ -6,8 +6,9 @@ a sensor network, a fleet of devices), and every device runs it, exchanging valu
 only with its neighbors.
 
 ```bash
-pip install phyelds        # core library and simulator
-pip install phyelds-vmas   # optional: VMAS multi-robot integration
+pip install phyelds             # core library and simulator
+pip install "phyelds[jupyter]"  # optional: live rendering inside Jupyter
+pip install phyelds-vmas        # optional: VMAS multi-robot integration
 ```
 
 phyelds requires Python 3.12 or later.

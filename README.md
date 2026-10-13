@@ -51,6 +51,12 @@ pip install phyelds        # from PyPI
 poetry add phyelds
 ```
 
+To watch simulations live inside Jupyter, install the `jupyter` extra:
+
+```bash
+pip install "phyelds[jupyter]"
+```
+
 VMAS support is provided by a separate package:
 
 ```bash
