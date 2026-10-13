@@ -51,11 +51,16 @@ class RenderMonitor(Monitor):
             plt.show()
 
     def update(self):
-        if self.simulator.current_time < self.config.skip:
+        if self.simulator.current_time < self.config.skip or self._instant_in_progress():
             return
         if self.simulator.current_time - self.last_render_time >= self.config.dt:
             self._render()
             self.last_render_time = self.simulator.current_time
+
+    def _instant_in_progress(self) -> bool:
+        """True while other events are still queued for the current time."""
+        queue = self.simulator.event_queue
+        return bool(queue) and queue[0].time <= self.simulator.current_time
 
     def on_finish(self):
         if self.config.mode in [RenderMode.SAVE, RenderMode.SAVE_ALL]:

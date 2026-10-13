@@ -130,3 +130,30 @@ def test_draw_values_marks_infinity_and_skips_missing_values():
     effect = DrawValues(value_from="result")
 
     assert _drawn_texts(effect, simulator) == ["∞"]
+
+
+class _RecordingRenderMonitor(RenderMonitor):
+    """Records the node values seen at each frame instead of drawing them."""
+
+    def __init__(self, simulator: Simulator, config: RenderConfig):
+        super().__init__(simulator, config)
+        self.frames: list[list[object]] = []
+
+    def _render(self):
+        nodes = self.simulator.environment.nodes.values()
+        self.frames.append([node.data.get("round") for node in nodes])
+
+
+def test_render_monitor_draws_a_frame_only_after_every_event_at_that_time():
+    simulator = Simulator()
+    nodes = [simulator.create_node((float(index), 0.0), node_id=index) for index in range(3)]
+    for round_number in (1, 2):
+        for node in nodes:
+            simulator.schedule_event(float(round_number), node.data.__setitem__, "round", round_number)
+    monitor = _RecordingRenderMonitor(simulator, RenderConfig(mode=RenderMode.SAVE_ALL))
+    monitor.on_start = lambda: None
+    monitor.on_finish = lambda: None
+
+    simulator.run()
+
+    assert monitor.frames == [[1, 1, 1], [2, 2, 2]]
