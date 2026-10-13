@@ -4,3 +4,6 @@
 
 # final snapshots written next to the generated docs animations
 docs/assets/*.png
+
+# mkdocs build output
+site/

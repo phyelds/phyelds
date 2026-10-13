@@ -31,6 +31,7 @@ ROUND = 0.5  # time between two rounds of a device, and between two frames
 LATTICE_DIAMETER = 16.0  # about the distance between opposite corners of a 12x12 lattice
 
 
+# --8<-- [start:hop_gradient]
 @aggregate
 def hop_gradient(source: bool) -> float:
     """Number of hops to the nearest source, built from remember and neighbors."""
@@ -39,6 +40,7 @@ def hop_gradient(source: bool) -> float:
     nearest = min(through_neighbors.exclude_self().values(), default=INFINITY)
     set_distance(0 if source else nearest)
     return distance
+# --8<-- [end:hop_gradient]
 
 
 @aggregate
