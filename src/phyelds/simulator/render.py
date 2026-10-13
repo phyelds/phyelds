@@ -2,12 +2,31 @@
 Render the nodes in the simulator's environment.
 """
 import sys
+from pathlib import Path
+
 from IPython.display import display, clear_output
 from matplotlib import pyplot as plt
-from matplotlib.animation import FFMpegWriter
+from matplotlib.animation import AbstractMovieWriter, FFMpegWriter, PillowWriter
 
 from phyelds.simulator import Simulator, Monitor
 from phyelds.simulator.effects import RenderConfig, RenderMode
+
+
+def make_writer(config: RenderConfig) -> AbstractMovieWriter:
+    """
+    Create the movie writer matching the extension of ``config.save_as``.
+
+    Args:
+        config: the render configuration.
+
+    Returns:
+        A ``PillowWriter`` for ``.gif`` files, an ``FFMpegWriter`` otherwise.
+    """
+    fps = 1 / config.dt if config.dt > 0 else 15
+    if Path(config.save_as).suffix.lower() == ".gif":
+        return PillowWriter(fps=fps)
+    metadata = {"title": "Simulation", "artist": "Phyelds"}
+    return FFMpegWriter(fps=fps, metadata=metadata)
 
 
 class RenderMonitor(Monitor):
@@ -25,10 +44,7 @@ class RenderMonitor(Monitor):
 
     def on_start(self):
         if self.config.mode in [RenderMode.SAVE, RenderMode.SAVE_ALL]:
-            metadata = {"title": "Simulation", "artist": "Phyelds"}
-            self.writer = FFMpegWriter(
-                fps=1 / self.config.dt if self.config.dt > 0 else 15, metadata=metadata
-            )
+            self.writer = make_writer(self.config)
             self.writer.setup(self.fig, self.config.save_as, dpi=100)
         elif self.config.mode == RenderMode.SHOW:
             plt.ion()
@@ -45,7 +61,7 @@ class RenderMonitor(Monitor):
         if self.config.mode in [RenderMode.SAVE, RenderMode.SAVE_ALL]:
             self.writer.finish()
             if self.config.mode == RenderMode.SAVE:
-                self.fig.savefig(self.config.save_as.replace(".mp4", ".png"))
+                self.fig.savefig(Path(self.config.save_as).with_suffix(".png"))
         elif self.config.mode == RenderMode.SHOW:
             if 'ipykernel' in sys.modules:
                 clear_output(wait=True)
