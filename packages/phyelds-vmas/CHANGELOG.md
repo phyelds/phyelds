@@ -1,3 +1,9 @@
+## [7.1.8](https://github.com/phyelds/phyelds/compare/7.1.7...7.1.8) (2026-10-13)
+
+### Documentation
+
+* highlight the code in the playground editor ([7e3937c](https://github.com/phyelds/phyelds/commit/7e3937c339d29c9d1abc477ff2b0a714319d1c17))
+
 ## [7.1.7](https://github.com/phyelds/phyelds/compare/7.1.6...7.1.7) (2026-10-13)
 
 ### Bug Fixes
