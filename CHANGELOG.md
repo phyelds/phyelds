@@ -1,3 +1,13 @@
+## [7.2.0](https://github.com/phyelds/phyelds/compare/7.1.8...7.2.0) (2026-10-13)
+
+### Features
+
+* **calculus:** align the branches of conditional expressions ([927e84e](https://github.com/phyelds/phyelds/commit/927e84e1cbce43e8a088170972e99f522be678be))
+
+### Documentation
+
+* describe the alignment of conditional expressions ([ed9fcb5](https://github.com/phyelds/phyelds/commit/ed9fcb518edbfd4ec354095f92d41e59b77f2507))
+
 ## [7.1.8](https://github.com/phyelds/phyelds/compare/7.1.7...7.1.8) (2026-10-13)
 
 ### Documentation
