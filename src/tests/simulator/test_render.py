@@ -11,7 +11,7 @@ from matplotlib.colors import to_rgba
 from PIL import Image
 
 from phyelds.simulator import Simulator
-from phyelds.simulator.effects import DrawNodes, RenderConfig, RenderMode
+from phyelds.simulator.effects import DrawNodes, DrawValues, RenderConfig, RenderMode
 from phyelds.simulator.render import RenderMonitor, make_writer
 
 
@@ -108,3 +108,25 @@ def test_draw_nodes_without_colormap_keeps_raw_colors():
     colors = _face_colors(effect, simulator)
 
     assert colors == [pytest.approx(to_rgba("green")), pytest.approx(to_rgba("blue"))]
+
+
+def _drawn_texts(effect, simulator: Simulator) -> list[str]:
+    figure, ax = plt.subplots()
+    effect.apply(ax, simulator.environment)
+    texts = [text.get_text() for text in ax.texts]
+    plt.close(figure)
+    return texts
+
+
+def test_draw_values_writes_the_rounded_value_of_each_node():
+    simulator = _simulator_with_results({0: 0.0, 1: 1.234, 2: 7})
+    effect = DrawValues(value_from="result", precision=1)
+
+    assert _drawn_texts(effect, simulator) == ["0.0", "1.2", "7"]
+
+
+def test_draw_values_marks_infinity_and_skips_missing_values():
+    simulator = _simulator_with_results({0: float("inf"), 1: None})
+    effect = DrawValues(value_from="result")
+
+    assert _drawn_texts(effect, simulator) == ["∞"]

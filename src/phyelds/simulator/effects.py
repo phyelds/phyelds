@@ -160,6 +160,46 @@ class DrawIDs(Effect):
             )
 
 
+class DrawValues(Effect):
+    """
+    Draw the value ``node.data[value_from]`` next to each node.
+    Floats are rounded to ``precision`` decimals, infinity is shown as ``∞``
+    and nodes without a value are skipped. ``offset`` is the vertical distance
+    between a node and its label, in data units.
+    """
+    type: Literal["DrawValues"] = "DrawValues"
+    value_from: str = "result"
+    precision: int = 1
+    offset: float = 0.15
+    fontsize: int = 8
+    z_order: int = 20
+
+    def apply(self, ax, environment: Environment):
+        """
+        Draw node values.
+        """
+        for node in environment.nodes.values():
+            value = node.data.get(self.value_from)
+            if value is None:
+                continue
+            ax.text(
+                node.position[0],
+                node.position[1] + self.offset,
+                self._format(value),
+                fontsize=self.fontsize,
+                ha="center",
+                va="bottom",
+                zorder=self.z_order,
+            )
+
+    def _format(self, value: Any) -> str:
+        if isinstance(value, float) and math.isinf(value):
+            return "∞" if value > 0 else "-∞"
+        if isinstance(value, float):
+            return f"{value:.{self.precision}f}"
+        return str(value)
+
+
 def validate_effect(v: Any) -> Any:
     """
     Validate the effect type.
