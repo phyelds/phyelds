@@ -1,3 +1,9 @@
+## [7.1.4](https://github.com/phyelds/phyelds/compare/7.1.3...7.1.4) (2026-10-13)
+
+### Documentation
+
+* improve README and prepare docs site ([#10](https://github.com/phyelds/phyelds/issues/10)) ([79e1607](https://github.com/phyelds/phyelds/commit/79e16070e3de41575fae4553877815ab7bf4938b))
+
 ## [7.1.3](https://github.com/phyelds/phyelds/compare/7.1.2...7.1.3) (2026-10-13)
 
 ### Documentation
