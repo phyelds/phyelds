@@ -50,21 +50,19 @@ def program():
 
 The same holds for comprehensions, `map`, and any other repetition.
 
-## Conditional expressions do not split the network
+## `:=` in a conditional expression does not split the network
 
-`@aggregate` rewrites `if` *statements* only. With a conditional *expression*, both
-branches are aligned with each other, so devices on different branches exchange
-values.
+`@aggregate` aligns the branches of a conditional expression by moving them into
+lambdas. A branch with `:=` (or `yield`, `await`) would change meaning there, so
+it is left as it is, and its two branches are aligned with each other: devices on
+different branches exchange values.
 
 ```python
-# ❌ robots and sensors hear each other
-values = neighbors("robot") if sense("is_robot") else neighbors("sensor")
+# ❌ the := keeps both branches together: robots and sensors hear each other
+values = (heard := neighbors("robot")) if sense("is_robot") else neighbors("sensor")
 
-# ✅ an if statement separates them
-if sense("is_robot"):
-    values = neighbors("robot")
-else:
-    values = neighbors("sensor")
+# ✅ assign outside the expression
+heard = neighbors("robot") if sense("is_robot") else neighbors("sensor")
 ```
 
 ## Helpers without `@aggregate`

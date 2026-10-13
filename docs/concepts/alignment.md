@@ -27,11 +27,11 @@ The same path also identifies the state of [`remember`](state.md).
 it:
 
 1. **pushes the function on the path**, so everything it calls is aligned under it;
-2. **rewrites every `if` statement** so that its two branches are aligned under
-   different names (`align_left` / `align_right`). Devices that take different
-   branches therefore do not see each other's values, and the state of a branch
-   that is not taken is dropped: the branches behave as separate, non-communicating
-   parts of the network.
+2. **rewrites every `if` statement and every conditional expression**
+   (`a if c else b`) so that their two branches are aligned under different names
+   (`align_left` / `align_right`). Devices that take different branches therefore
+   do not see each other's values, and the state of a branch that is not taken is
+   dropped: the branches behave as separate, non-communicating parts of the network.
 
 ```python
 @aggregate
@@ -42,10 +42,24 @@ def program():
         return neighbors("sensor")     # sensors only hear sensors
 ```
 
+The same holds for a conditional expression. It also keeps the devices in step
+when only one branch communicates: below, the sources never call `neighbors`, yet
+every device stays aligned for the calls that follow.
+
+```python
+@aggregate
+def program():
+    nearest = 0.0 if sense("source") else min(neighbors(estimate()))
+    return nearest, neighbors(sense("id"))  # every device meets here
+```
+
+A conditional expression is rewritten only when one of its branches calls
+something, since a branch without calls cannot communicate.
+
 !!! warning
-    Only `if` **statements** in `@aggregate` functions are rewritten. A conditional
-    *expression* (`a if c else b`), or an `if` in a helper function without
-    `@aggregate`, does not split the network. See [pitfalls](../pitfalls.md).
+    A branch that contains `:=`, `yield` or `await` is not rewritten, and neither is
+    an `if` in a helper function without `@aggregate`: they do not split the network.
+    See [pitfalls](../pitfalls.md).
 
 To see how a function is rewritten, use `str_transformed_code`, or set the
 environment variable `PHYELDS_DEBUG_AST=1` to print every transformed function:
