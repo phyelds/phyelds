@@ -3,7 +3,8 @@
 phyelds is a lightweight Python library for aggregate computing. The core package
 lives in `src/phyelds/` (`calculus`, `data`, `libraries`, `simulator`, `vm`), its
 tests in `src/tests/`, and the VMAS extension is a separate package in
-`packages/phyelds-vmas/`.
+`packages/phyelds-vmas/`. The documentation site (MkDocs Material) is in `docs/`,
+with runnable, tested examples in `docs/examples/`.
 
 ## Commands
 
@@ -14,10 +15,15 @@ poetry run pytest src/tests/libraries/test_gossip.py::test_name   # a single tes
 poetry run pylint src              # lint, as in CI
 poetry run flake8                  # style, max line length 120, as in CI
 PYTHONPATH="packages/phyelds-vmas/src" poetry run pytest packages/phyelds-vmas/tests
+poetry install --with docs         # documentation dependencies
+poetry run mkdocs build --strict   # build the docs, as in CI (mkdocs serve to preview)
+poetry run python docs/examples/gradient.py   # regenerate the gifs in docs/assets
 ```
 
 A change is done only when `pytest`, `pylint src` and `flake8` all pass: CI and the
-pre-commit hooks run exactly these.
+pre-commit hooks run exactly these. When a change touches the public API, also
+update the docs and check `mkdocs build --strict`; documentation examples are code,
+and are tested in `src/tests/examples/`.
 
 ## Workflow: test-driven development
 

@@ -2,12 +2,42 @@
 Render the nodes in the simulator's environment.
 """
 import sys
+from pathlib import Path
+
 from IPython.display import display, clear_output
 from matplotlib import pyplot as plt
-from matplotlib.animation import FFMpegWriter
+from matplotlib.animation import AbstractMovieWriter, FFMpegWriter, PillowWriter
 
 from phyelds.simulator import Simulator, Monitor
 from phyelds.simulator.effects import RenderConfig, RenderMode
+
+
+def make_writer(config: RenderConfig) -> AbstractMovieWriter:
+    """
+    Create the movie writer matching the extension of ``config.save_as``.
+
+    Args:
+        config: the render configuration.
+
+    Returns:
+        A ``PillowWriter`` for ``.gif`` files, an ``FFMpegWriter`` otherwise.
+    """
+    fps = 1 / config.dt if config.dt > 0 else 15
+    if Path(config.save_as).suffix.lower() == ".gif":
+        return PillowWriter(fps=fps)
+    metadata = {"title": "Simulation", "artist": "Phyelds"}
+    return FFMpegWriter(fps=fps, metadata=metadata)
+
+
+def _padded_limits(values: tuple[float, ...], pad: float = 0.05) -> tuple[float, float]:
+    """
+    Axis limits enclosing ``values`` with a margin of ``pad`` times their range.
+    When all values coincide (e.g. nodes on a line) the margin is 1, so the limits
+    never collapse into a single point.
+    """
+    low, high = min(values), max(values)
+    margin = pad * (high - low) if high > low else 1.0
+    return low - margin, high + margin
 
 
 class RenderMonitor(Monitor):
@@ -25,27 +55,29 @@ class RenderMonitor(Monitor):
 
     def on_start(self):
         if self.config.mode in [RenderMode.SAVE, RenderMode.SAVE_ALL]:
-            metadata = {"title": "Simulation", "artist": "Phyelds"}
-            self.writer = FFMpegWriter(
-                fps=1 / self.config.dt if self.config.dt > 0 else 15, metadata=metadata
-            )
+            self.writer = make_writer(self.config)
             self.writer.setup(self.fig, self.config.save_as, dpi=100)
         elif self.config.mode == RenderMode.SHOW:
             plt.ion()
             plt.show()
 
     def update(self):
-        if self.simulator.current_time < self.config.skip:
+        if self.simulator.current_time < self.config.skip or self._instant_in_progress():
             return
         if self.simulator.current_time - self.last_render_time >= self.config.dt:
             self._render()
             self.last_render_time = self.simulator.current_time
 
+    def _instant_in_progress(self) -> bool:
+        """True while other events are still queued for the current time."""
+        queue = self.simulator.event_queue
+        return bool(queue) and queue[0].time <= self.simulator.current_time
+
     def on_finish(self):
         if self.config.mode in [RenderMode.SAVE, RenderMode.SAVE_ALL]:
             self.writer.finish()
             if self.config.mode == RenderMode.SAVE:
-                self.fig.savefig(self.config.save_as.replace(".mp4", ".png"))
+                self.fig.savefig(Path(self.config.save_as).with_suffix(".png"))
         elif self.config.mode == RenderMode.SHOW:
             if 'ipykernel' in sys.modules:
                 clear_output(wait=True)
@@ -105,11 +137,8 @@ class RenderMonitor(Monitor):
             ]
             if positions:
                 x, y = zip(*positions)
-                pad = 0.05
-                x_range = max(x) - min(x)
-                y_range = max(y) - min(y)
-                self.ax.set_xlim(min(x) - pad * x_range, max(x) + pad * x_range)
-                self.ax.set_ylim(min(y) - pad * y_range, max(y) + pad * y_range)
+                self.ax.set_xlim(*_padded_limits(x))
+                self.ax.set_ylim(*_padded_limits(y))
                 self.ax.set_aspect("equal")
         else:
             self.ax.axis("equal")

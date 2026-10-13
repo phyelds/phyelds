@@ -1,0 +1,79 @@
+site_name: phyelds
+site_description: Lightweight, pythonic aggregate computing & field calculus toolkit.
+site_url: https://phyelds.github.io/phyelds/
+repo_url: https://github.com/phyelds/phyelds
+repo_name: phyelds/phyelds
+edit_uri: edit/master/docs/
+
+exclude_docs: |
+  examples/
+
+theme:
+  name: material
+  features:
+    - content.code.copy
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.snippets:
+      base_path: [docs/examples]
+      check_paths: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: sphinx
+            show_source: false
+            show_root_heading: true
+            members_order: source
+
+nav:
+  - Home: index.md
+  - Tutorial: tutorial.md
+  - Concepts:
+      - Aggregate programs: concepts/aggregate-programs.md
+      - State with remember: concepts/state.md
+      - Neighborhood fields: concepts/neighborhood-field.md
+      - Alignment and @aggregate: concepts/alignment.md
+      - Libraries: concepts/libraries.md
+  - Simulator: simulator.md
+  - Integration:
+      - Running phyelds anywhere: integration/index.md
+      - "Case study: VMAS": integration/vmas.md
+  - Pitfalls: pitfalls.md
+  - API reference:
+      - phyelds.calculus: reference/calculus.md
+      - phyelds.data: reference/data.md
+      - phyelds.libraries: reference/libraries.md
+      - phyelds.simulator: reference/simulator.md
+      - phyelds.vm: reference/vm.md

@@ -2,9 +2,12 @@
 This module contains the effects that can be applied to the simulation rendering.
 """
 
+import math
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Literal, Optional, Any, Annotated, Tuple, List
+from matplotlib import colormaps
+from matplotlib.colors import Normalize, to_rgba
 from pydantic import BaseModel, Field, BeforeValidator, SerializeAsAny
 from phyelds.simulator import Environment
 
@@ -72,12 +75,30 @@ class DrawEdges(Effect):
             )
 
 
+def _is_finite_number(value: Any) -> bool:
+    """True for real numbers that are not infinite or NaN (booleans excluded)."""
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+    )
+
+
 class DrawNodes(Effect):
     """
     Draw nodes.
+
+    With ``color_from`` alone, ``node.data[color_from]`` is used as a matplotlib color.
+    With ``cmap`` too, it is read as a number and mapped onto that colormap between
+    ``vmin`` and ``vmax`` (by default, the finite values on screen); nodes whose value is
+    missing, infinite or not a number are drawn in ``missing_color``.
     """
     type: Literal["DrawNodes"] = "DrawNodes"
     color_from: Optional[str] = None
+    cmap: Optional[str] = None
+    vmin: Optional[float] = None
+    vmax: Optional[float] = None
+    missing_color: str = "lightgray"
     z_order: int = 10
 
     def apply(self, ax, environment: Environment):
@@ -89,7 +110,10 @@ class DrawNodes(Effect):
             return
         x, y = zip(*positions)
 
-        if self.color_from:
+        if self.color_from and self.cmap:
+            values = [node.data.get(self.color_from) for node in environment.nodes.values()]
+            ax.scatter(x, y, c=self._map_to_colors(values), zorder=self.z_order)
+        elif self.color_from:
             colors = [
                 node.data.get(self.color_from, "blue")
                 for node in environment.nodes.values()
@@ -97,6 +121,18 @@ class DrawNodes(Effect):
             ax.scatter(x, y, c=colors, zorder=self.z_order)
         else:
             ax.scatter(x, y, c="blue", zorder=self.z_order)
+
+    def _map_to_colors(self, values: List[Any]) -> List[Tuple[float, float, float, float]]:
+        finite = [value for value in values if _is_finite_number(value)]
+        vmin = self.vmin if self.vmin is not None else min(finite, default=0.0)
+        vmax = self.vmax if self.vmax is not None else max(finite, default=1.0)
+        normalize = Normalize(vmin=vmin, vmax=vmax, clip=True)
+        colormap = colormaps[self.cmap]
+        missing = to_rgba(self.missing_color)
+        return [
+            colormap(normalize(value)) if _is_finite_number(value) else missing
+            for value in values
+        ]
 
 
 class DrawIDs(Effect):
@@ -122,6 +158,46 @@ class DrawIDs(Effect):
                 bbox={"facecolor": "white", "alpha": 0.1, "edgecolor": "none"},
                 zorder=self.z_order,
             )
+
+
+class DrawValues(Effect):
+    """
+    Draw the value ``node.data[value_from]`` next to each node.
+    Floats are rounded to ``precision`` decimals, infinity is shown as ``∞``
+    and nodes without a value are skipped. ``offset`` is the vertical distance
+    between a node and its label, in data units.
+    """
+    type: Literal["DrawValues"] = "DrawValues"
+    value_from: str = "result"
+    precision: int = 1
+    offset: float = 0.15
+    fontsize: int = 8
+    z_order: int = 20
+
+    def apply(self, ax, environment: Environment):
+        """
+        Draw node values.
+        """
+        for node in environment.nodes.values():
+            value = node.data.get(self.value_from)
+            if value is None:
+                continue
+            ax.text(
+                node.position[0],
+                node.position[1] + self.offset,
+                self._format(value),
+                fontsize=self.fontsize,
+                ha="center",
+                va="bottom",
+                zorder=self.z_order,
+            )
+
+    def _format(self, value: Any) -> str:
+        if isinstance(value, float) and math.isinf(value):
+            return "∞" if value > 0 else "-∞"
+        if isinstance(value, float):
+            return f"{value:.{self.precision}f}"
+        return str(value)
 
 
 def validate_effect(v: Any) -> Any:
