@@ -44,3 +44,94 @@
 .md-header__button.md-logo img {
   border-radius: 6px;
 }
+
+/* Playground: editor, console and images, in the colours of the theme. */
+.pg-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pg-toolbar select {
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--md-default-fg-color--lighter);
+  border-radius: 0.2rem;
+  background: var(--md-default-bg-color);
+  color: var(--md-default-fg-color);
+  font: inherit;
+}
+
+.pg-toolbar .md-button {
+  margin: 0;
+  padding: 0.35em 1.2em;
+  cursor: pointer;
+}
+
+.pg-toolbar .md-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.pg-summary,
+.pg-status {
+  color: var(--md-default-fg-color--light);
+}
+
+.pg-code {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 28rem;
+  padding: 0.8rem;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.2rem;
+  background: var(--md-code-bg-color);
+  color: var(--md-code-fg-color);
+  font-family: var(--md-code-font-family);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  tab-size: 4;
+  resize: vertical;
+  white-space: pre;
+}
+
+.pg-code:focus {
+  outline: 2px solid var(--md-accent-fg-color);
+  outline-offset: 1px;
+}
+
+.pg-console {
+  max-height: 16rem;
+  overflow: auto;
+  padding: 0.8rem;
+  border-radius: 0.2rem;
+  background: var(--md-code-bg-color);
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+}
+
+.pg-console .pg-stderr {
+  color: #b71c1c;
+}
+
+[data-md-color-scheme="slate"] .pg-console .pg-stderr {
+  color: #ff8a80;
+}
+
+.pg-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.pg-images figure {
+  margin: 0;
+  max-width: 100%;
+}
+
+.pg-images img {
+  max-width: 100%;
+  border-radius: 0.2rem;
+  background: #ffffff;
+}
