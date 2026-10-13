@@ -1,3 +1,9 @@
+## [7.1.5](https://github.com/phyelds/phyelds/compare/7.1.4...7.1.5) (2026-10-13)
+
+### Documentation
+
+* use the phyelds logo in the documentation site ([e70d3f0](https://github.com/phyelds/phyelds/commit/e70d3f06a0f9d5b18217a6725bcca243ddad21f0))
+
 ## [7.1.4](https://github.com/phyelds/phyelds/compare/7.1.3...7.1.4) (2026-10-13)
 
 ### Documentation
