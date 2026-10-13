@@ -46,7 +46,8 @@ def _show_in_notebook(figure: Figure) -> None:
     IPython is imported here, and not at module level, because it is only
     available inside Jupyter: rendering to a file must work without it.
     """
-    # pylint: disable=import-outside-toplevel
+    # IPython is the optional `jupyter` extra, so it may be missing where pylint runs.
+    # pylint: disable=import-outside-toplevel,import-error
     from IPython.display import clear_output, display
 
     clear_output(wait=True)
