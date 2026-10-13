@@ -1,3 +1,30 @@
+## [7.1.7](https://github.com/phyelds/phyelds/compare/7.1.6...7.1.7) (2026-10-13)
+
+### Bug Fixes
+
+* **simulator:** import IPython lazily in render ([6cc59c3](https://github.com/phyelds/phyelds/commit/6cc59c3009ece80cfa73727baa08b2dfd95e865f))
+
+### Documentation
+
+* add a playground that runs phyelds in the browser ([e959b4c](https://github.com/phyelds/phyelds/commit/e959b4c584722bf7dc0094edcb1b9a738e13a820))
+* add the examples of the playground ([9153afe](https://github.com/phyelds/phyelds/commit/9153afeeba8bdae533d366ad984063049e0b2556))
+* add the python runner of the browser playground ([73ca075](https://github.com/phyelds/phyelds/commit/73ca075a292ac83ac019429a490521866a926366))
+* link the docs to the playground examples ([50184e0](https://github.com/phyelds/phyelds/commit/50184e0d537018989f90c8ff458adc36306a3df0))
+* publish phyelds and the examples for the playground ([668af73](https://github.com/phyelds/phyelds/commit/668af7329da94e2ffe7a7ad8be45fb018a6b000e))
+
+### Tests
+
+* bound the playground examples in rounds, not seconds ([8dbfa4f](https://github.com/phyelds/phyelds/commit/8dbfa4fd7dfa60b68916c968370837441151308d))
+
+### Build and continuous integration
+
+* make ipython an optional jupyter extra ([4f09c9a](https://github.com/phyelds/phyelds/commit/4f09c9a4d85fc224cc5f0b657843c0fb9fd1feeb))
+* move pre-commit to the dev dependency group ([c858205](https://github.com/phyelds/phyelds/commit/c8582051b23046bf9554d1d7365662e3207d7004))
+
+### Style improvements
+
+* **simulator:** allow pylint to miss the optional IPython ([eeb496e](https://github.com/phyelds/phyelds/commit/eeb496e799b9df7f44f065447653660546d814b3))
+
 ## [7.1.6](https://github.com/phyelds/phyelds/compare/7.1.5...7.1.6) (2026-10-13)
 
 ### Documentation
