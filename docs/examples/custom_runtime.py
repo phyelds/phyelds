@@ -38,6 +38,7 @@ class Device:
     outputs: dict[str, Any] = field(default_factory=dict)
 
 
+# --8<-- [start:run_round]
 def run_round(device: Device, inbox: dict[int, dict[str, Any]], program: Callable) -> Any:
     """
     Run one round of ``program`` on ``device``.
@@ -57,6 +58,7 @@ def run_round(device: Device, inbox: dict[int, dict[str, Any]], program: Callabl
     device.state = engine.get().state_trace()
     device.outputs = engine.get().node_context.outputs
     return result.value if isinstance(result, State) else result
+# --8<-- [end:run_round]
 
 
 def collect_inbox(
