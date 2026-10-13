@@ -1,3 +1,9 @@
+## [7.1.3](https://github.com/phyelds/phyelds/compare/7.1.2...7.1.3) (2026-10-13)
+
+### Documentation
+
+* add CLAUDE.md with tdd, commit and style guidelines ([66e5113](https://github.com/phyelds/phyelds/commit/66e5113811399aec129a38fcb09341c0081910b5))
+
 ## [7.1.2](https://github.com/phyelds/phyelds/compare/7.1.1...7.1.2) (2026-10-12)
 
 ### Bug Fixes
