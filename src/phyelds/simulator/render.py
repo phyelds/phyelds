@@ -4,9 +4,9 @@ Render the nodes in the simulator's environment.
 import sys
 from pathlib import Path
 
-from IPython.display import display, clear_output
 from matplotlib import pyplot as plt
 from matplotlib.animation import AbstractMovieWriter, FFMpegWriter, PillowWriter
+from matplotlib.figure import Figure
 
 from phyelds.simulator import Simulator, Monitor
 from phyelds.simulator.effects import RenderConfig, RenderMode
@@ -38,6 +38,19 @@ def _padded_limits(values: tuple[float, ...], pad: float = 0.05) -> tuple[float,
     low, high = min(values), max(values)
     margin = pad * (high - low) if high > low else 1.0
     return low - margin, high + margin
+
+
+def _show_in_notebook(figure: Figure) -> None:
+    """
+    Replace the output of the current notebook cell with ``figure``.
+    IPython is imported here, and not at module level, because it is only
+    available inside Jupyter: rendering to a file must work without it.
+    """
+    # pylint: disable=import-outside-toplevel
+    from IPython.display import clear_output, display
+
+    clear_output(wait=True)
+    display(figure)
 
 
 class RenderMonitor(Monitor):
@@ -80,8 +93,7 @@ class RenderMonitor(Monitor):
                 self.fig.savefig(Path(self.config.save_as).with_suffix(".png"))
         elif self.config.mode == RenderMode.SHOW:
             if 'ipykernel' in sys.modules:
-                clear_output(wait=True)
-                display(self.fig)
+                _show_in_notebook(self.fig)
             else:
                 plt.ioff()
                 plt.show()
@@ -105,8 +117,7 @@ class RenderMonitor(Monitor):
             self.writer.grab_frame()
         elif self.config.mode == RenderMode.SHOW:
             if 'ipykernel' in sys.modules:
-                clear_output(wait=True)
-                display(self.fig)
+                _show_in_notebook(self.fig)
             else:
                 plt.draw()
                 plt.pause(self.config.pause_duration)

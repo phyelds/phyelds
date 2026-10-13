@@ -19,3 +19,18 @@ def test_simulator_import_does_not_load_vmas():
     )
 
     assert result.returncode == 0, result.stderr
+
+def test_render_import_works_without_ipython():
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys; sys.modules['IPython'] = None; "
+            "import phyelds.simulator.render",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
