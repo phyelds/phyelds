@@ -14,4 +14,6 @@
 
 ::: phyelds.libraries.time
 
+::: phyelds.libraries.processes
+
 ::: phyelds.libraries.utils

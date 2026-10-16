@@ -25,6 +25,8 @@ phyelds. All of them must be called from inside an aggregate program.
 | Function | Returns |
 | --- | --- |
 | `distance_to(source, distances=None, *, strategy=None)` | the gradient: distance from the nearest device where `source` is true |
+| `distance_between(source, target, distances=None, *, strategy=None)` | the shortest distance between `source` and `target`, broadcast across the network |
+| `channel(source, target, width=0.0, distances=None, *, strategy=None)` | `True` on devices within `width` of the shortest path between `source` and `target` |
 | `broadcast(source, data, distances=None, *, strategy=None)` | the `data` of the nearest source, spread along the gradient |
 | `cast_from(source, data, accumulation, distances=None, *, strategy=None)` | like `broadcast`, applying `accumulation` at each hop |
 
@@ -66,6 +68,7 @@ gradient (the `potential`), and are accumulated on the way.
 | `sum_values(potential, local, *, strategy=None)` | the sum of `local` |
 | `mean_values(potential, local, *, strategy=None)` | the arithmetic mean of `local` |
 | `collect_or(potential, local, *, strategy=None)` | whether any device has `local` true |
+| `summarize(sink, local, accumulation, distances=None, ...)` | collects `local` into `sink` and broadcasts the aggregated value back out (`G -> C -> G`) |
 
 Collection functions accept a pluggable `strategy`: `broadcast_collect()` (default,
 using `remember` + `neighbors`) or `point_to_point()` (using an anisotropic
@@ -116,7 +119,7 @@ expire and the election remains self-stabilizing. Supported strategies:
 - `candidacy(strength=None)`: deterministic, priority-based bounded election (ACSOS
   2022) with loop-free path validation.
 
-## Time: `phyelds.libraries.time`
+## Time & reactive state: `phyelds.libraries.time`
 
 | Function | Returns |
 | --- | --- |
@@ -124,6 +127,46 @@ expire and the election remains self-stabilizing. Supported strategies:
 | `delta_time(clock=None)` | elapsed time since the previous round on this device (`0.0` on the first round) |
 | `shared_clock(clock=None)` | a monotonic clock synchronized across the network, driven by the fastest device |
 | `timer(duration, *, periodic=False, clock=None)` | time remaining on a countdown of length `duration` |
+| `periodic_impulse(period, *, clock=None)` | `True` once every `period` time units |
+| `recently_true(condition, duration, *, clock=None)` | `True` while `condition` holds and for `duration` time units afterwards |
 | `time_replicated(process, period, *, max_replicas=2, clock=None)` | runs `process` in overlapping time-windowed replicas so obsolete state is periodically discarded |
+| `delay(value, initial=None)` | the value `value` had in the previous round |
+| `has_changed(value, *, initially=False)` | `True` on rounds where `value` differs from the previous round |
+| `rising_edge(condition)`, `falling_edge(condition)` | `True` when `condition` transitions `False -> True` or `True -> False` |
+| `once(value)` | `value` on the first round, `None` afterwards |
+| `exponential_filter(signal, alpha)` | exponential moving average of `signal` with smoothing factor `alpha` in `[0, 1]` |
 | `counter()` | how many rounds this call has run |
 | `decay(value, rate)` | a value that starts at `value` and decreases by `rate` each round, down to 0 |
+
+## Aggregate processes: `phyelds.libraries.processes`
+
+`spawn(process, keys, args=None)` dynamically starts and propagates spatially scoped
+aggregate computations (bubbles), one for each key in `keys` or received from active
+neighbors. Inside `process(key, args)` (or `process(key)`), return either a
+`ProcessOutput(value, status)` or a `(value, status)` tuple:
+
+| Status | Meaning |
+| --- | --- |
+| `OUTPUT` (or `True`) | inside the bubble: keeps state, propagates `key` to neighbors, and emits `key: value` in the result `dict` |
+| `BUBBLE` | inside the bubble: keeps state and propagates `key`, without emitting `key` in the local result `dict` |
+| `EXTERNAL` (or `False`) | outside the bubble: discards internal messages and state for `key` and does not propagate it |
+| `TERMINATED` | triggers a refractory termination wave that cleanly shuts down the entire bubble for `key` |
+
+```python
+from phyelds.calculus import aggregate
+from phyelds.libraries.device import local_id, sense
+from phyelds.libraries.processes import EXTERNAL, OUTPUT, TERMINATED, ProcessOutput, spawn
+from phyelds.libraries.spreading import distance_to
+
+@aggregate
+def alert_bubble(origin_id: int, max_hops: float) -> ProcessOutput[float]:
+    dist = float(distance_to(local_id() == origin_id))
+    if local_id() == origin_id and sense("clear"):
+        return ProcessOutput(dist, TERMINATED)
+    return ProcessOutput(dist, OUTPUT if dist <= max_hops else EXTERNAL)
+
+@aggregate
+def program():
+    new_alerts = {local_id()} if sense("smoke") else set()
+    return spawn(alert_bubble, new_alerts, args=3.0)
+```
