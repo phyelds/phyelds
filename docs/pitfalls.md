@@ -23,18 +23,30 @@
 
 Calls are aligned by their sequential position (`@0`, `@1`, `@2`, …). Inside a loop, the *i*-th iteration on one device is aligned with the *i*-th iteration on its neighbors, regardless of what elements they are iterating over.
 
-```mermaid
-flowchart LR
-    subgraph D0["Device 0: iterates ['a', 'b']"]
-        D0_0["neighbors@0 (for 'a')"]
-        D0_1["neighbors@1 (for 'b')"]
-    end
-    subgraph D1["Device 1: iterates ['b']"]
-        D1_0["neighbors@0 (for 'b')"]
-        D1_1["(no call @1)"]
-    end
-    D0_0 <== "❌ Misaligned! 'a' paired with 'b'" ==> D1_0
-```
+<div class="ph-figure">
+<svg viewBox="0 0 760 145" role="img" aria-label="Misaligned loop iterations across two devices">
+  <!-- Device 0 -->
+  <rect x="16" y="12" width="250" height="120" rx="8" fill="var(--ph-diag-card)" stroke="var(--ph-diag-border)" stroke-width="1.5" />
+  <text x="141" y="34" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ph-diag-text)">Device 0: iterates ["a", "b"]</text>
+  <rect x="34" y="46" width="214" height="32" rx="5" fill="var(--ph-diag-soft-orange)" stroke="var(--ph-diag-orange)" />
+  <text x="141" y="66" text-anchor="middle" font-size="11" font-weight="700" class="ph-code" fill="var(--ph-diag-orange)">neighbors@0 (key = "a")</text>
+  <rect x="34" y="88" width="214" height="32" rx="5" fill="var(--ph-diag-bg)" stroke="var(--ph-diag-border)" />
+  <text x="141" y="108" text-anchor="middle" font-size="11" class="ph-code" fill="var(--ph-diag-muted)">neighbors@1 (key = "b")</text>
+
+  <!-- Misaligned link -->
+  <line x1="252" y1="62" x2="508" y2="62" stroke="#dc2626" stroke-width="2.2" stroke-dasharray="5,3" />
+  <rect x="292" y="47" width="176" height="26" rx="13" fill="#fef2f2" stroke="#dc2626" stroke-width="1.2" />
+  <text x="380" y="64" text-anchor="middle" font-size="10.5" font-weight="700" fill="#b91c1c">Misaligned: "a" paired with "b"</text>
+
+  <!-- Device 1 -->
+  <rect x="494" y="12" width="250" height="120" rx="8" fill="var(--ph-diag-card)" stroke="var(--ph-diag-border)" stroke-width="1.5" />
+  <text x="619" y="34" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ph-diag-text)">Device 1: iterates ["b"]</text>
+  <rect x="512" y="46" width="214" height="32" rx="5" fill="var(--ph-diag-soft-orange)" stroke="var(--ph-diag-orange)" />
+  <text x="619" y="66" text-anchor="middle" font-size="11" font-weight="700" class="ph-code" fill="var(--ph-diag-orange)">neighbors@0 (key = "b")</text>
+  <rect x="512" y="88" width="214" height="32" rx="5" fill="var(--ph-diag-bg)" stroke="var(--ph-diag-border)" stroke-dasharray="4,3" />
+  <text x="619" y="108" text-anchor="middle" font-size="11" class="ph-code" fill="var(--ph-diag-muted)">(no call at @1)</text>
+</svg>
+</div>
 
 ```python
 # ❌ device 0 iterates over ["a", "b"], the others over ["b"]:

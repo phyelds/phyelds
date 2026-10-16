@@ -25,20 +25,41 @@ def counter():
 
 ## How state evolves across rounds
 
-```mermaid
-flowchart LR
-    subgraph R1["Round 1 (first execution)"]
-        I1["remember(0) → 0"] --> U1["set_count(0 + 1) → 1"]
-    end
-    subgraph R2["Round 2"]
-        I2["remember(0) → 1"] --> U2["set_count(1 + 1) → 2"]
-    end
-    subgraph R3["Round 3"]
-        I3["remember(0) → 2"] --> U3["set_count(2 + 1) → 3"]
-    end
-    U1 == "saved in state trace" ==> I2
-    U2 == "saved in state trace" ==> I3
-```
+<div class="ph-figure">
+<svg viewBox="0 0 800 135" role="img" aria-label="State evolution across three consecutive rounds using remember">
+  <defs>
+    <marker id="ph-st-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="var(--ph-diag-magenta)" />
+    </marker>
+  </defs>
+
+  <!-- Round 1 -->
+  <rect x="14" y="14" width="220" height="106" rx="8" fill="var(--ph-diag-card)" stroke="var(--ph-diag-border)" stroke-width="1.5" />
+  <text x="124" y="35" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ph-diag-orange)">ROUND 1 (initial)</text>
+  <text x="124" y="64" text-anchor="middle" font-size="11" class="ph-code" fill="var(--ph-diag-text)">remember(0) → 0</text>
+  <text x="124" y="94" text-anchor="middle" font-size="11" font-weight="700" class="ph-code" fill="var(--ph-diag-magenta)">set_count(0 + 1) → 1</text>
+
+  <!-- Arrow 1 -> 2 -->
+  <line x1="238" y1="67" x2="282" y2="67" stroke="var(--ph-diag-magenta)" stroke-width="2" marker-end="url(#ph-st-arr)" />
+  <text x="260" y="55" text-anchor="middle" font-size="9.5" fill="var(--ph-diag-muted)">saved</text>
+
+  <!-- Round 2 -->
+  <rect x="290" y="14" width="220" height="106" rx="8" fill="var(--ph-diag-card)" stroke="var(--ph-diag-border)" stroke-width="1.5" />
+  <text x="400" y="35" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ph-diag-orange)">ROUND 2</text>
+  <text x="400" y="64" text-anchor="middle" font-size="11" class="ph-code" fill="var(--ph-diag-text)">remember(0) → 1</text>
+  <text x="400" y="94" text-anchor="middle" font-size="11" font-weight="700" class="ph-code" fill="var(--ph-diag-magenta)">set_count(1 + 1) → 2</text>
+
+  <!-- Arrow 2 -> 3 -->
+  <line x1="514" y1="67" x2="558" y2="67" stroke="var(--ph-diag-magenta)" stroke-width="2" marker-end="url(#ph-st-arr)" />
+  <text x="536" y="55" text-anchor="middle" font-size="9.5" fill="var(--ph-diag-muted)">saved</text>
+
+  <!-- Round 3 -->
+  <rect x="566" y="14" width="220" height="106" rx="8" fill="var(--ph-diag-card)" stroke="var(--ph-diag-border)" stroke-width="1.5" />
+  <text x="676" y="35" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ph-diag-orange)">ROUND 3</text>
+  <text x="676" y="64" text-anchor="middle" font-size="11" class="ph-code" fill="var(--ph-diag-text)">remember(0) → 2</text>
+  <text x="676" y="94" text-anchor="middle" font-size="11" font-weight="700" class="ph-code" fill="var(--ph-diag-magenta)">set_count(2 + 1) → 3</text>
+</svg>
+</div>
 
 ---
 

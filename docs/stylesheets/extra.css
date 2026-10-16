@@ -175,3 +175,108 @@
   border-radius: 0.2rem;
   background: #ffffff;
 }
+
+/*
+ * Conceptual diagrams: theme-aware SVG figures and pipeline cards that adapt
+ * automatically to light (default) and dark (slate) modes.
+ */
+:root {
+  --ph-diag-bg: var(--md-code-bg-color);
+  --ph-diag-card: var(--md-default-bg-color);
+  --ph-diag-border: rgba(180, 19, 111, 0.22);
+  --ph-diag-muted: var(--md-default-fg-color--light);
+  --ph-diag-text: var(--md-default-fg-color);
+  --ph-diag-magenta: #b4136f;
+  --ph-diag-orange: #c55308;
+  --ph-diag-purple: #6b21a8;
+  --ph-diag-Soft-magenta: rgba(180, 19, 111, 0.1);
+  --ph-diag-soft-orange: rgba(197, 83, 8, 0.12);
+}
+
+[data-md-color-scheme="slate"] {
+  --ph-diag-border: rgba(244, 114, 182, 0.28);
+  --ph-diag-magenta: #f472b6;
+  --ph-diag-orange: #ffb061;
+  --ph-diag-purple: #c084fc;
+  --ph-diag-Soft-magenta: rgba(244, 114, 182, 0.12);
+  --ph-diag-soft-orange: rgba(255, 176, 97, 0.14);
+}
+
+.ph-figure {
+  margin: 1.4rem 0;
+  padding: 1.1rem 1.25rem;
+  border: 1px solid var(--ph-diag-border);
+  border-radius: 0.5rem;
+  background: var(--ph-diag-bg);
+  overflow-x: auto;
+}
+
+.ph-figure svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0 auto;
+  font-family: var(--md-text-font-family), sans-serif;
+}
+
+.ph-figure .ph-code {
+  font-family: var(--md-code-font-family), monospace;
+}
+
+.ph-figure-caption {
+  margin-top: 0.65rem;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--ph-diag-muted);
+}
+
+.ph-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.85rem;
+  margin: 1.25rem 0;
+}
+
+.ph-step {
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--ph-diag-border);
+  border-top: 3px solid var(--ph-diag-magenta);
+  border-radius: 0.45rem;
+  background: var(--ph-diag-bg);
+}
+
+.ph-step--orange {
+  border-top-color: var(--ph-diag-orange);
+}
+
+.ph-step--purple {
+  border-top-color: var(--ph-diag-purple);
+}
+
+.ph-step-title {
+  margin: 0 0 0.35rem 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ph-diag-magenta);
+}
+
+.ph-step--orange .ph-step-title {
+  color: var(--ph-diag-orange);
+}
+
+.ph-step--purple .ph-step-title {
+  color: var(--ph-diag-purple);
+}
+
+.ph-step p,
+.ph-step ul {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.ph-step ul {
+  padding-left: 1.1rem;
+}

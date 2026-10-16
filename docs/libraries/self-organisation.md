@@ -54,16 +54,24 @@ Decorate a function with `@process` and launch instances with `fn.spawn(keys, *a
 
 Each active bubble instance goes through four lifecycle states on each node:
 
-```mermaid
-stateDiagram-v2
-    [*] --> ACTIVE: Key in local `keys` or received from an active neighbor
-    ACTIVE --> ACTIVE: Default (executes body, emits result & relays messages)
-    ACTIVE --> BUBBLE: emit_if(False)\n(relays messages, hides output from returned dict)
-    ACTIVE --> EXTERNAL: in_bubble(False) or leave()\n(leaves bubble, drops state & messages)
-    ACTIVE --> TERMINATED: terminate_if(True) or terminate()\n(spreads shutdown wave across the bubble)
-    EXTERNAL --> [*]
-    TERMINATED --> [*]: Refractory cooldown prevents immediate re-entry
-```
+<div class="ph-steps">
+  <div class="ph-step">
+    <div class="ph-step-title">ACTIVE (default)</div>
+    <p>Entered when a key is in local <code>keys</code> or received from an active neighbor. Runs the body, relays messages, and emits its result in the returned <code>dict</code>.</p>
+  </div>
+  <div class="ph-step ph-step--orange">
+    <div class="ph-step-title">BUBBLE (emit_if(False))</div>
+    <p>Participates in the process and relays messages to neighbors, but hides this device's return value from the <code>dict</code> returned by <code>spawn</code>.</p>
+  </div>
+  <div class="ph-step ph-step--purple">
+    <div class="ph-step-title">EXTERNAL (in_bubble(False))</div>
+    <p>Immediately leaves the bubble, stops executing the remaining lines, and discards local state and outgoing messages for this key.</p>
+  </div>
+  <div class="ph-step">
+    <div class="ph-step-title">TERMINATED (terminate_if(True))</div>
+    <p>Broadcasts a refractory shutdown wave across the bubble so all participating nodes cleanly extinguish the process instance.</p>
+  </div>
+</div>
 
 ### Controlling bubble scope and termination
 

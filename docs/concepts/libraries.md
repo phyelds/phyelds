@@ -8,16 +8,20 @@
 
 In aggregate computing, complex collective behaviors are rarely written from scratch with raw `remember` and `neighbors`. Instead, they are composed from three universal coordination operators—historically called **G**, **C**, and **S**:
 
-```mermaid
-flowchart LR
-    S["S — Sparse Choice\nelect_leaders()\nPick distributed coordinators"]
-    G["G — Spreading\ndistance_to(), broadcast()\nPropagate outward from sources"]
-    C["C — Collection\ncollect_with(), sum_values()\nAggregate inward along a gradient"]
-
-    S -- "leaders act as sources" --> G
-    G -- "potential guides collection" --> C
-    C -- "summarize() broadcasts result back" --> G
-```
+<div class="ph-steps">
+  <div class="ph-step ph-step--purple">
+    <div class="ph-step-title">S — Sparse Choice</div>
+    <p><code>elect_leaders()</code> breaks symmetry across the network, picking distributed coordinators separated by a target grain radius.</p>
+  </div>
+  <div class="ph-step ph-step--orange">
+    <div class="ph-step-title">G — Spreading</div>
+    <p><code>distance_to()</code> and <code>broadcast()</code> propagate distances and information outward from leaders or sources.</p>
+  </div>
+  <div class="ph-step">
+    <div class="ph-step-title">C — Collection</div>
+    <p><code>collect_with()</code> and <code>sum_values()</code> aggregate data inward along a gradient potential toward the sink.</p>
+  </div>
+</div>
 
 | Operator | Module | Direction | Role |
 | --- | --- | --- | --- |

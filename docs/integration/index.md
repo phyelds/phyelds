@@ -8,20 +8,20 @@ The bundled simulator is just one host. Any system that can, for each device, ru
 
 A phyelds program does not know where it runs. For each device and each round, the host executes five steps:
 
-```mermaid
-sequenceDiagram
-    participant Host as Host / Platform
-    participant Engine as MutableEngine (phyelds.vm)
-    participant Prog as @aggregate program
-
-    Host->>Engine: 1. setup(NodeContext(id, sensors), state, inbox)
-    Host->>Prog: 2. Call @aggregate function()
-    Prog->>Engine: remember() / neighbors() / exchange() / store()
-    Prog-->>Host: return result (unwrap .value if State)
-    Host->>Engine: 3. outbox = cooldown() (also prunes unused state)
-    Host->>Engine: 4. new_state = state_trace()
-    Host->>Engine: 5. actuations = outputs
-```
+<div class="ph-steps">
+  <div class="ph-step ph-step--orange">
+    <div class="ph-step-title">1. Setup Engine</div>
+    <p>Build <code>NodeContext(id, sensors)</code>, gather <code>inbox</code> from current neighbors, and call <code>engine.setup(ctx, state, inbox)</code>.</p>
+  </div>
+  <div class="ph-step">
+    <div class="ph-step-title">2. Run Program</div>
+    <p>Execute the <code>@aggregate</code> function and unwrap <code>result.value</code> if it returns a <code>State</code> proxy.</p>
+  </div>
+  <div class="ph-step ph-step--purple">
+    <div class="ph-step-title">3. Cooldown &amp; Act</div>
+    <p>Call <code>cooldown()</code> (which returns the <code>outbox</code> and prunes unused state), then save <code>state_trace()</code> and apply <code>outputs</code>.</p>
+  </div>
+</div>
 
 1. Builds a **`NodeContext`** with the device ID and a dictionary of **sensors** (by convention `position` and `time`, plus anything the program `sense`s);
 2. Collects the **inbox**: the last *outbox* of each current neighbor, as `{neighbor_id: outbox}`;
