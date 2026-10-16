@@ -18,7 +18,7 @@ class _ReplicaTimer:
     """State of the distributed timer driving replica creation."""
 
     replica_id: int
-    remaining_ttl: float
+    spawn_time: float
 
 
 def local_time() -> float:
@@ -135,15 +135,14 @@ def timer(
 
 def _step_replica_timer(
     timers: NeighborhoodField[_ReplicaTimer],
-    elapsed: float,
+    now: float,
     period: float,
 ) -> _ReplicaTimer:
     """Advance the distributed replica timer and spawn a new replica ID when expired."""
-    best: _ReplicaTimer = timers.max(key=lambda t: (t.replica_id, -t.remaining_ttl))
-    remaining = best.remaining_ttl - elapsed
-    if remaining <= 0.0:
-        return _ReplicaTimer(best.replica_id + 1, period)
-    return _ReplicaTimer(best.replica_id, remaining)
+    best: _ReplicaTimer = timers.max(key=lambda t: (t.replica_id, t.spawn_time))
+    if now - best.spawn_time >= period:
+        return _ReplicaTimer(best.replica_id + 1, now)
+    return best
 
 
 def _evaluate_replica_slots(
@@ -172,9 +171,9 @@ def _run_time_replicated(
     clock: float | None,
 ) -> T:
     """Aggregate implementation of time_replicated."""
-    elapsed = delta_time(shared_clock(clock))
-    set_timer, timers = exchange(_ReplicaTimer(0, period))
-    next_timer = _step_replica_timer(timers, elapsed, period)
+    now = shared_clock(clock)
+    set_timer, timers = exchange(_ReplicaTimer(0, now))
+    next_timer = _step_replica_timer(timers, now, period)
     set_timer(next_timer)
     return _evaluate_replica_slots(process, max_replicas, next_timer.replica_id)
 
