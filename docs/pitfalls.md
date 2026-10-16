@@ -4,7 +4,7 @@
 
 | Category | Pitfall | Fix |
 | --- | --- | --- |
-| **Alignment** | [Data-dependent loops](#a-data-dependent-number-of-aggregate-calls) | Share a `dict` in one `neighbors(...)` call, or use [`@process` / `spawn`](concepts/libraries.md#aggregate-processes-phyeldslibrariesprocesses) |
+| **Alignment** | [Data-dependent loops](#a-data-dependent-number-of-aggregate-calls) | Share a `dict` in one `neighbors(...)` call, or use [`@process` / `spawn`](libraries/self-organisation.md#aggregate-processes-phyeldslibrariesprocesses) |
 | **Alignment** | [Helpers without `@aggregate`](#helpers-without-aggregate) | Decorate every function that calls `remember`, `neighbors`, or `exchange` |
 | **Alignment** | [`:=` in conditional expressions](#in-a-conditional-expression-does-not-split-the-network) | Move the assignment outside the ternary expression |
 | **Alignment** | [Functions without source code](#aggregate-functions-without-source-code) | Define `@aggregate` functions in `.py` files or notebook cells |
@@ -47,7 +47,7 @@ def program():
     return seen
 ```
 
-Wrapping the body in `with align(key):` does **not** fix it: the call index is still part of the path. Instead, either share a single dictionary, iterate over a fixed sequence known to all devices, or spawn dynamic [`@process` bubbles](concepts/libraries.md#aggregate-processes-phyeldslibrariesprocesses):
+Wrapping the body in `with align(key):` does **not** fix it: the call index is still part of the path. Instead, either share a single dictionary, iterate over a fixed sequence known to all devices, or spawn dynamic [`@process` bubbles](libraries/self-organisation.md#aggregate-processes-phyeldslibrariesprocesses):
 
 ```python
 # ✅ Option 1: one exchange — share a dictionary, then pick from it

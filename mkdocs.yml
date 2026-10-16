@@ -77,19 +77,24 @@ plugins:
 
 nav:
   - Home: index.md
-  - Tutorial: tutorial.md
-  - Playground: playground/index.md
-  - Concepts:
-      - Aggregate programs: concepts/aggregate-programs.md
+  - Getting Started:
+      - 1. Thinking in fields: concepts/aggregate-programs.md
+      - 2. Step-by-step tutorial: tutorial.md
+      - 3. Interactive playground: playground/index.md
+  - Core Concepts:
       - State with remember: concepts/state.md
-      - Neighborhood fields: concepts/neighborhood-field.md
-      - Alignment and @aggregate: concepts/alignment.md
-      - Libraries: concepts/libraries.md
-  - Simulator: simulator.md
-  - Integration:
+      - Neighborhoods & exchange: concepts/neighborhood-field.md
+      - Alignment & @aggregate: concepts/alignment.md
+      - Common pitfalls: pitfalls.md
+  - Standard Libraries:
+      - Overview & G-C-S pattern: concepts/libraries.md
+      - Spreading, collection & gossip: libraries/spreading-and-collect.md
+      - Leader election & processes: libraries/self-organisation.md
+      - Time, reactive state & logic: libraries/time-and-logic.md
+  - Simulator & Integration:
+      - Built-in simulator: simulator.md
       - Running phyelds anywhere: integration/index.md
       - "Case study: VMAS": integration/vmas.md
-  - Pitfalls: pitfalls.md
   - API reference:
       - phyelds.calculus: reference/calculus.md
       - phyelds.data: reference/data.md

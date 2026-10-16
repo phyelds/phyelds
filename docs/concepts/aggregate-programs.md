@@ -85,7 +85,7 @@ All collective behaviors in **phyelds** come from combining just four mechanisms
 | **Space only** | [`neighbors(x)`](neighborhood-field.md) | 1-hop perception: compare or aggregate values across immediate neighbors |
 | **Time only** | [`remember(init)`](state.md) | Local memory: counters, filters, timers, and state machines on a single node |
 | **Space + Time** | `remember` + `neighbors`, or [`exchange(init)`](neighborhood-field.md#exchange) | Global propagation: information travels hop-by-hop across the whole network (gradients, broadcasts, collections, gossip) |
-| **Domain splitting** | [`if` / `align`](alignment.md), [`@process`](libraries.md#aggregate-processes-phyeldslibrariesprocesses) | Network partitioning: split devices into independent sub-networks that do not mix messages |
+| **Domain splitting** | [`if` / `align`](alignment.md), [`@process`](../libraries/self-organisation.md#aggregate-processes-phyeldslibrariesprocesses) | Network partitioning: split devices into independent sub-networks that do not mix messages |
 
 ---
 

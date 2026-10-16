@@ -97,7 +97,7 @@ print([node.data["result"] for node in simulator.environment.nodes.values()])
 
 ## 5. From hops to metric distances
 
-Counting hops ignores physical distance between devices. Replacing the constant `+ 1` with the measured Euclidean distance to each neighbor produces a **metric gradient**. That is what [`distance_to`](concepts/libraries.md#spreading-phyeldslibrariesspreading) in `phyelds.libraries.spreading` does when paired with `neighbors_distances()`:
+Counting hops ignores physical distance between devices. Replacing the constant `+ 1` with the measured Euclidean distance to each neighbor produces a **metric gradient**. That is what [`distance_to`](libraries/spreading-and-collect.md#spreading-phyeldslibrariesspreading) in `phyelds.libraries.spreading` does when paired with `neighbors_distances()`:
 
 ```python
 from phyelds.libraries.distances import neighbors_distances
