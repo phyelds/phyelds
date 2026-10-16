@@ -1,55 +1,114 @@
-# Aggregate programs
+# Thinking in fields: aggregate programs
 
-Aggregate computing programs a *collective* instead of a single device. The main
-abstraction is the **computational field**: a value spread over space and time,
-one value per device at each moment. A field cannot be read or written from a
-single place; it emerges from every device running the same program and talking
-only to its neighbors.
+Aggregate computing programs a **collective** instead of a single device. Rather than writing message handlers, socket loops, or state machines for individual nodes, you write **one function** that describes how a global distributed data structure—a **computational field**—evolves over space and time.
 
-For the theory, see the
-[main paper on aggregate computing](https://www.sciencedirect.com/science/article/pii/S235222081930032X).
+For the theoretical foundations, see the [main paper on aggregate computing](https://www.sciencedirect.com/science/article/pii/S235222081930032X).
 
-## The execution model
+---
 
-Every device repeats *rounds*. In each round a device:
+## Local execution, global meaning
 
-1. **senses**: reads its sensors (position, time, anything the platform provides),
-   the messages its neighbors sent in their last round, and the state it kept
-   from its own previous round;
-2. **computes**: runs the whole aggregate program, from the top;
-3. **acts**: sends the values the program shared with `neighbors(...)`, keeps the
-   state written with `remember(...)`, and exposes the outputs written with
-   `store(...)`.
+A **computational field** assigns a value to every device at every moment in time (for example: a field of temperatures, a field of distances from an exit, or a field of cluster IDs). No single coordinator holds the whole field; instead, it emerges from every device repeatedly running the same program and exchanging values only with its immediate neighbors.
 
-Rounds of different devices are not synchronised, and neighbors may change between
-rounds. Aggregate programs are written to tolerate this: they *converge* to the
-right field, and *re-converge* when the network changes.
+```mermaid
+flowchart LR
+    subgraph Local["1. Local View (what one device does)"]
+        direction TB
+        N1(("Neighbor A")) -- "last message" --> Self(("Device i\nruns @aggregate"))
+        N2(("Neighbor B")) -- "last message" --> Self
+        Self -- "outbox" --> N1
+        Self -- "outbox" --> N2
+    end
 
-## Local and global reading
+    subgraph Global["2. Global View (what the collective computes)"]
+        direction LR
+        S(("Source\n0.0")) --- A(("1.0")) --- B(("2.0")) --- C(("3.0"))
+        S --- D(("1.2")) --- E(("2.4")) --- C
+    end
 
-The same code has two readings:
+    Local == "Emerges across space & time" ==> Global
+```
 
-- **local**: what one device does in one round (compare a few numbers);
-- **global**: what field the whole system computes over time (a distance map, a
-  leader, a sum over the network).
+Every aggregate function therefore has **two readings**:
 
-You design with the global reading in mind and write the local one. The
-[tutorial](../tutorial.md) shows both on the gradient.
+- **Local reading**: what one device computes in a single step (for instance, *"take the minimum of my neighbors' numbers and add 1"*).
+- **Global reading**: what field the entire network converges to over time (for instance, *"the shortest-path distance of every device from the nearest source"*).
 
-## The building blocks
+You design by composing **global** fields, while Python executes the **local** steps on each device.
+
+---
+
+## The execution model: Sense → Compute → Act
+
+Every device executes the aggregate program in periodic, asynchronous **rounds**. In each round, a device goes through three phases:
+
+```mermaid
+flowchart LR
+    subgraph Inputs["1. SENSE (Inputs)"]
+        Sensors["Sensors\nsense('temp'), local_position()"]
+        PrevState["Previous State\nfrom remember / exchange"]
+        Inbox["Neighbor Inbox\nmessages from aligned neighbors"]
+    end
+
+    subgraph Compute["2. COMPUTE"]
+        Prog["Run @aggregate program\nfrom top to bottom"]
+    end
+
+    subgraph Outputs["3. ACT (Outputs)"]
+        Actuate["Actuations\nstore('motor', v)"]
+        NextState["New State\nkept for next round"]
+        Outbox["Outbox Message\nsent to current neighbors"]
+    end
+
+    Sensors --> Prog
+    PrevState --> Prog
+    Inbox --> Prog
+    Prog --> Actuate
+    Prog --> NextState
+    Prog --> Outbox
+```
+
+1. **Sense**: the runtime gathers the device's current sensor readings, the state saved at the end of its own previous round, and the most recent messages received from its current neighbors.
+2. **Compute**: the device runs the `@aggregate` function from top to bottom. Whenever the code calls `remember(...)`, it reads from the previous state; whenever it calls `neighbors(...)`, it reads the neighbors' values for that exact call site and records its own value for the outbox.
+3. **Act**: the runtime stores the new local state for the next round, exposes any outputs written with `store(...)` to the platform (actuators, logs, metrics), and broadcasts the single outbox packet to neighboring devices.
+
+Rounds across different devices do **not** need to be synchronized, and devices can move, join, or leave at any time. Because every round recomputes the field from fresh inputs, aggregate programs naturally **self-heal** when the network topology changes.
+
+---
+
+## How space and time combine
+
+All collective behaviors in **phyelds** come from combining just four mechanisms:
+
+| Mechanism | Primitive | What it gives you |
+| --- | --- | --- |
+| **Space only** | [`neighbors(x)`](neighborhood-field.md) | 1-hop perception: compare or aggregate values across immediate neighbors |
+| **Time only** | [`remember(init)`](state.md) | Local memory: counters, filters, timers, and state machines on a single node |
+| **Space + Time** | `remember` + `neighbors`, or [`exchange(init)`](neighborhood-field.md#exchange) | Global propagation: information travels hop-by-hop across the whole network (gradients, broadcasts, collections, gossip) |
+| **Domain splitting** | [`if` / `align`](alignment.md), [`@process`](libraries.md#aggregate-processes-phyeldslibrariesprocesses) | Network partitioning: split devices into independent sub-networks that do not mix messages |
+
+---
+
+## The building blocks at a glance
 
 | Construct | Field calculus | What it does |
 | --- | --- | --- |
-| [`@aggregate`](alignment.md) | function call | marks code that takes part in the aggregate computation |
-| [`remember`](state.md) | `rep` | state that survives across rounds |
-| [`neighbors`](neighborhood-field.md) | `nbr` | share a value and get the neighbors' ones |
-| [`exchange`](neighborhood-field.md#exchange) | `exchange` | evolve state and send per-neighbor values across rounds |
-| [`if` / `align`](alignment.md) | branching | split the network into parts that do not interfere |
-| `sense`, `store`, `local_id` | sensors / actuators | talk to the device (`phyelds.libraries.device`) |
+| [`@aggregate`](alignment.md) | function call ($f$) | Marks a function as part of the aggregate computation and aligns its branches |
+| [`remember`](state.md) | `rep` | Keeps local state that survives from one round to the next |
+| [`neighbors`](neighborhood-field.md) | `nbr` | Shares a value with neighbors and returns their values as a `NeighborhoodField` |
+| [`exchange`](neighborhood-field.md#exchange) | `exchange` | Evolves state and sends (possibly distinct, per-neighbor) values in one step |
+| [`if` / `align`](alignment.md) | branching | Isolates branches into separate, non-interfering communication domains |
+| `sense`, `store`, `local_id` | sensors / actuators | Reads device sensors and writes actuation/metric outputs (`phyelds.libraries.device`) |
 
-## phyelds and the functional style
+---
 
-Most incarnations of aggregate computing are purely functional. phyelds is more
-pragmatic: programs are ordinary Python functions, with loops, dictionaries,
-lambdas and some controlled mutability. The price is that a few rules matter more,
-because Python does not enforce them: the [pitfalls](../pitfalls.md) page lists them.
+## Pragmatic and Pythonic
+
+Most aggregate computing frameworks (such as ScaFi, Protelis, or FCPP) enforce a strictly functional style. **phyelds** is intentionally pragmatic: aggregate programs are ordinary Python functions where you can use standard loops, dictionaries, classes, and controlled mutability.
+
+!!! tip "Three golden rules to keep in mind"
+    Because Python does not enforce purity at compile time, keep these three rules in mind (see [Common pitfalls](../pitfalls.md) for concrete examples):
+
+    1. **Decorate every aggregate helper with `@aggregate`** so its calls and `if`/`else` branches are properly aligned across devices.
+    2. **Never call `neighbors` a data-dependent number of times** (e.g., inside a `for` loop whose length varies from device to device).
+    3. **Keep device state in `remember`, not in Python globals or mutated neighbor objects**, because all simulated nodes share the same Python process.
