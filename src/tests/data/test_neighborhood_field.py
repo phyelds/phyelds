@@ -86,3 +86,21 @@ def next_raises_stopiteration_when_done():
     next(it)
     with pytest.raises(StopIteration):
         next(it)
+
+
+def test_neighborhood_field_for_node_returns_neighbor_value_or_default():
+    neighborhood = NeighborhoodField({1: 10, 2: 20}, 1)
+    assert neighborhood.for_node(2) == 20
+    assert neighborhood.for_node(99) == 10
+    custom_default = NeighborhoodField({1: 10, 2: 20}, 1, default=999)
+    assert custom_default.for_node(99) == 999
+
+
+def test_neighborhood_field_operations_propagate_default():
+    first = NeighborhoodField({1: 10, 2: 20}, 1, default=100)
+    second = NeighborhoodField({1: 1, 2: 2}, 1, default=5)
+    assert first.map(lambda x: x * 2).for_node(99) == 200
+    assert (first + 3).for_node(99) == 103
+    assert (first + second).for_node(99) == 105
+    assert (~NeighborhoodField({1: 0}, 1, default=1)).for_node(99) == -2
+

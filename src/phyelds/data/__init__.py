@@ -27,6 +27,8 @@ S = TypeVar("S")
 # StateT is the "mark" type for state values
 StateT = Union[S, "State[S]"]  # pylint: disable=invalid-name
 
+_MISSING = object()
+
 
 class NeighborhoodField(Generic[T], Iterator[T]):
     """
@@ -37,11 +39,14 @@ class NeighborhoodField(Generic[T], Iterator[T]):
     You should never use it directly, but rather use the `neighbors` function
     """
 
-    def __init__(self, data: Dict[int, T], node_id: int) -> None:
+    def __init__(self, data: Dict[int, T], node_id: int, default: Any = _MISSING) -> None:
         self.data: Dict[int, T] = dict(sorted(data.items()))
         self._iter_index: Optional[int] = None
         self._iter_keys: Optional[List[int]] = None
         self.node_id: int = node_id
+        self.default: Optional[T] = (
+            self.data.get(node_id, None) if default is _MISSING else cast(Optional[T], default)
+        )
 
     def __iter__(self) -> Iterator[T]:
         self._iter_index = 0
@@ -78,6 +83,18 @@ class NeighborhoodField(Generic[T], Iterator[T]):
         """
         return self.data.get(self.node_id, None)
 
+    def for_node(self, target_id: int) -> Optional[T]:
+        """
+        Return the value addressed to ``target_id``, falling back to ``default``.
+
+        Args:
+            target_id: The identifier of the recipient device.
+
+        Returns:
+            The value mapped to ``target_id`` if present, otherwise ``default``.
+        """
+        return self.data.get(target_id, self.default)
+
     def select(self, neighborhood: "NeighborhoodField[Any]") -> List[T]:
         """
         Select the values from the neighborhood that are present
@@ -113,21 +130,37 @@ class NeighborhoodField(Generic[T], Iterator[T]):
         :param func: The function to map.
         :return: A new Neighborhood object with the mapped values.
         """
-        return NeighborhoodField({k: func(v) for k, v in self.data.items()}, self.node_id)
+        mapped_default = None if self.default is None else func(self.default)
+        return NeighborhoodField(
+            {k: func(v) for k, v in self.data.items()},
+            self.node_id,
+            default=mapped_default,
+        )
 
     # Helper method to apply binary operations
     def _apply_binary_op(
         self, other: Union["NeighborhoodField[Any]", Any], op: Callable[[Any, Any], Any]
     ) -> "NeighborhoodField[Any]":
         if isinstance(other, NeighborhoodField):
+            combined_default = (
+                None
+                if self.default is None or other.default is None
+                else op(self.default, other.default)
+            )
             return NeighborhoodField(
                 {
                     k: op(self.data[k], other.data[k])
                     for k in self.data.keys() & other.data.keys()
                 },
                 self.node_id,
+                default=combined_default,
             )
-        return NeighborhoodField({k: op(v, other) for k, v in self.data.items()}, self.node_id)
+        scalar_default = None if self.default is None else op(self.default, other)
+        return NeighborhoodField(
+            {k: op(v, other) for k, v in self.data.items()},
+            self.node_id,
+            default=scalar_default,
+        )
 
     def __add__(self, other: Any) -> "NeighborhoodField[Any]":
         return self._apply_binary_op(other, lambda a, b: a + b)
@@ -160,8 +193,11 @@ class NeighborhoodField(Generic[T], Iterator[T]):
         return self._apply_binary_op(other, lambda a, b: a ^ b)
 
     def __invert__(self) -> "NeighborhoodField[Any]":
+        inverted_default = None if self.default is None else ~self.default  # type: ignore
         return NeighborhoodField(
-            {k: ~v for k, v in self.data.items()}, self.node_id
+            {k: ~v for k, v in self.data.items()},
+            self.node_id,
+            default=inverted_default,
         )  # type: ignore
 
     def __lt__(self, other: Any) -> "NeighborhoodField[bool]":
