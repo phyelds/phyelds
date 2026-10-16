@@ -1,3 +1,20 @@
+## [7.6.2](https://github.com/phyelds/phyelds/compare/7.6.1...7.6.2) (2026-10-16)
+
+### Documentation
+
+* **walkthrough:** add interactive 3D step-by-step field and channel explorer ([87d019a](https://github.com/phyelds/phyelds/commit/87d019aa4045f75e1f5016293c0c483de8c5df53))
+* **walkthrough:** keep a few neighbors per device as devices are added ([98d7a03](https://github.com/phyelds/phyelds/commit/98d7a03052956f40f013749b80e7bcb956c53aee))
+* **walkthrough:** redesign the walkthrough around one field at a time ([d24383b](https://github.com/phyelds/phyelds/commit/d24383bada1f4a6c780939cb6c9e2f38a21dd93a))
+* **walkthrough:** turn 3D walkthrough into a full-viewport standalone page ([d028942](https://github.com/phyelds/phyelds/commit/d028942b1a1bd2d73600788b00bff13f48f4fd89))
+
+### Tests
+
+* **examples:** check that the walkthrough references existing files ([ffcba48](https://github.com/phyelds/phyelds/commit/ffcba4814034dbd6eefd090dd5b3a512ba2dde34))
+
+### Refactoring
+
+* **docs:** publish only the walkthrough page from the hook ([78549f2](https://github.com/phyelds/phyelds/commit/78549f254765073a59276d608de439a3de90ada1))
+
 ## [7.6.1](https://github.com/phyelds/phyelds/compare/7.6.0...7.6.1) (2026-10-16)
 
 ### Documentation
