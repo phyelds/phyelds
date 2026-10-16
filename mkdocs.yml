@@ -75,8 +75,9 @@ nav:
   - Home: index.md
   - Getting Started:
       - 1. Thinking in fields: concepts/aggregate-programs.md
-      - 2. Step-by-step tutorial: tutorial.md
-      - 3. Interactive playground: playground/index.md
+      - 2. Interactive 3D walkthrough: walkthrough/index.md
+      - 3. Step-by-step tutorial: tutorial.md
+      - 4. Browser playground: playground/index.md
   - Core Concepts:
       - State with remember: concepts/state.md
       - Neighborhoods & exchange: concepts/neighborhood-field.md

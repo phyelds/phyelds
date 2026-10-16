@@ -19,11 +19,12 @@ The documentation is organized as a linear journey from zero to advanced collect
 <div class="grid cards" markdown>
 
 - **1. [Thinking in fields](concepts/aggregate-programs.md)** — Understand computational fields, the *Sense → Compute → Act* round lifecycle, and the local vs. global reading of a program.
-- **2. [Step-by-step tutorial](tutorial.md)** — Build the gradient from scratch, watch it self-heal when the network changes, and compose spreading + collection into a communication channel.
-- **3. [Interactive playground](playground/index.md)** — Edit and run aggregate programs directly in your browser (via Pyodide) with nothing to install.
-- **4. [Core concepts](concepts/state.md) & [Common pitfalls](pitfalls.md)** — Master [`remember`](concepts/state.md), [`NeighborhoodField` & `exchange`](concepts/neighborhood-field.md), [`@aggregate` alignment](concepts/alignment.md), and the mistakes to avoid.
-- **5. [Standard libraries](concepts/libraries.md)** — Ready-to-use blocks for [spreading, collection & gossip](libraries/spreading-and-collect.md), [leader election & `@process` bubbles](libraries/self-organisation.md), and [time & spatial/temporal logic](libraries/time-and-logic.md).
-- **6. [Simulator](simulator.md) & [Integration](integration/index.md)** — Run experiments with animations and CSV export, or embed phyelds into [VMAS](integration/vmas.md) and custom robot runtimes.
+- **2. [Interactive 3D walkthrough](walkthrough/index.md)** — Build a self-healing channel step by step in an interactive 3D view with stacked fields, live rounds, and branching domains.
+- **3. [Step-by-step tutorial](tutorial.md)** — Build the gradient from scratch, watch it self-heal when the network changes, and compose spreading + collection into a communication channel.
+- **4. [Browser playground](playground/index.md)** — Edit and run aggregate programs directly in your browser (via Pyodide) with nothing to install.
+- **5. [Core concepts](concepts/state.md) & [Common pitfalls](pitfalls.md)** — Master [`remember`](concepts/state.md), [`NeighborhoodField` & `exchange`](concepts/neighborhood-field.md), [`@aggregate` alignment](concepts/alignment.md), and the mistakes to avoid.
+- **6. [Standard libraries](concepts/libraries.md)** — Ready-to-use blocks for [spreading, collection & gossip](libraries/spreading-and-collect.md), [leader election & `@process` bubbles](libraries/self-organisation.md), and [time & spatial/temporal logic](libraries/time-and-logic.md).
+- **7. [Simulator](simulator.md) & [Integration](integration/index.md)** — Run experiments with animations and CSV export, or embed phyelds into [VMAS](integration/vmas.md) and custom robot runtimes.
 
 </div>
 
@@ -47,7 +48,8 @@ Every device runs these five lines; together, they compute the shortest-path dis
 
 ![A distance gradient on an irregular network](assets/gradient-self-healing.gif){ width="480" }
 
-[Try it in the playground](playground/index.md#example=self_healing){ .md-button .md-button--primary }
+[Explore the 3D Walkthrough](walkthrough/index.md){ .md-button .md-button--primary }
+[Try it in the playground](playground/index.md#example=self_healing){ .md-button }
 [Start with Thinking in Fields](concepts/aggregate-programs.md){ .md-button }
 
 ---
