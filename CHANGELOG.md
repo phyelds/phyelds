@@ -1,3 +1,16 @@
+## [7.5.0](https://github.com/phyelds/phyelds/compare/7.4.0...7.5.0) (2026-10-16)
+
+### Features
+
+* **libraries:** add [@process](https://github.com/process) decorator, guard functions, and bubble context manager ([84595c2](https://github.com/phyelds/phyelds/commit/84595c233b2eb1a8b80cc74207e9243843c2bcd7))
+* **libraries:** add distance_between, channel, and summarize blocks from ScaFi ([7734cc2](https://github.com/phyelds/phyelds/commit/7734cc2c2b3024476b8b33eaa0df5f442880d5ff))
+* **libraries:** add reactive state and time operators from ScaFi ([5b1d02e](https://github.com/phyelds/phyelds/commit/5b1d02e27c13c905712ba6fe954895b5cce9aad2))
+* **libraries:** add ScaFi-style aggregate processes (spawn) with lifecycle management ([dd3068f](https://github.com/phyelds/phyelds/commit/dd3068f92771f4ce353dbbd8cf2c4d7c3b724068))
+
+### Documentation
+
+* **libraries:** document aggregate processes, channel, summarize, and reactive operators ([ea0f976](https://github.com/phyelds/phyelds/commit/ea0f97655c3e641c2a1ad4d542730739f84cc310))
+
 ## [7.4.0](https://github.com/phyelds/phyelds/compare/7.3.0...7.4.0) (2026-10-16)
 
 ### Features
