@@ -56,26 +56,7 @@ def smoke_detector():
 
 Given a boolean field `region` (where `True` marks nodes inside the region), SLCS operators classify the topological structure of the region and its reachability:
 
-<div class="ph-figure">
-<svg viewBox="0 0 760 190" role="img" aria-label="Topological regions in Spatial Logic for Closure Spaces (SLCS)">
-  <!-- Concentric spatial regions -->
-  <!-- Exterior -->
-  <rect x="14" y="12" width="732" height="166" rx="10" fill="var(--ph-diag-card)" stroke="var(--ph-diag-border)" stroke-width="1.5" />
-  <text x="72" y="36" font-size="11.5" font-weight="700" fill="var(--ph-diag-muted)">EXTERIOR (region = False, no True neighbor)</text>
-
-  <!-- closure(region) -->
-  <rect x="115" y="46" width="530" height="120" rx="55" fill="var(--ph-diag-soft-orange)" stroke="var(--ph-diag-orange)" stroke-width="1.8" stroke-dasharray="6,4" />
-  <text x="380" y="66" text-anchor="middle" font-size="11" font-weight="700" class="ph-code" fill="var(--ph-diag-orange)">closure_boundary(R) — False, touches R</text>
-
-  <!-- region = True (interior_boundary) -->
-  <rect x="185" y="76" width="390" height="80" rx="40" fill="var(--ph-diag-Soft-magenta)" stroke="var(--ph-diag-magenta)" stroke-width="2.2" />
-  <text x="380" y="96" text-anchor="middle" font-size="11" font-weight="700" class="ph-code" fill="var(--ph-diag-magenta)">interior_boundary(R) — True, touches outside</text>
-
-  <!-- interior(region) -->
-  <rect x="265" y="106" width="230" height="38" rx="19" fill="#b4136f" />
-  <text x="380" y="129" text-anchor="middle" font-size="11.5" font-weight="700" class="ph-code" fill="#ffffff">interior(R) — all neighbors True</text>
-</svg>
-</div>
+![Topological regions in Spatial Logic for Closure Spaces (SLCS)](../assets/slcs-regions.png)
 
 | Spatial operator (SLCS) | Returns |
 | --- | --- |

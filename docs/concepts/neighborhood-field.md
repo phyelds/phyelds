@@ -77,60 +77,7 @@ def closest_neighbor_distance():
 
 While `neighbors(v)` broadcasts the **same** value `v` to every neighbor, `exchange(initial)` combines state evolution and neighbor communication into a single operator (from *Exchange Calculus*) that can send **different values to different neighbors**.
 
-<div class="ph-figure">
-<svg viewBox="0 0 800 205" role="img" aria-label="Comparison between isotropic neighbors(v) and anisotropic exchange(init)">
-  <defs>
-    <marker id="ph-nb-o" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-      <path d="M 0 1 L 9 5 L 0 9 z" fill="var(--ph-diag-orange)" />
-    </marker>
-    <marker id="ph-nb-m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-      <path d="M 0 1 L 9 5 L 0 9 z" fill="var(--ph-diag-magenta)" />
-    </marker>
-  </defs>
-
-  <!-- Left Card: Isotropic neighbors(v) -->
-  <rect x="12" y="12" width="372" height="180" rx="8" fill="var(--ph-diag-card)" stroke="var(--ph-diag-border)" stroke-width="1.5" />
-  <text x="198" y="35" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--ph-diag-orange)">neighbors(v) — ISOTROPIC BROADCAST</text>
-
-  <circle cx="95" cy="112" r="24" fill="#c55308" />
-  <text x="95" y="116" text-anchor="middle" font-size="11.5" font-weight="700" fill="#ffffff">Device i</text>
-
-  <line x1="122" y1="98" x2="262" y2="70" stroke="var(--ph-diag-orange)" stroke-width="2" marker-end="url(#ph-nb-o)" />
-  <text x="192" y="75" text-anchor="middle" font-size="11" font-weight="700" class="ph-code" fill="var(--ph-diag-orange)">v</text>
-
-  <line x1="122" y1="126" x2="262" y2="154" stroke="var(--ph-diag-orange)" stroke-width="2" marker-end="url(#ph-nb-o)" />
-  <text x="192" y="155" text-anchor="middle" font-size="11" font-weight="700" class="ph-code" fill="var(--ph-diag-orange)">v</text>
-
-  <circle cx="292" cy="65" r="20" fill="var(--ph-diag-bg)" stroke="var(--ph-diag-orange)" stroke-width="2" />
-  <text x="292" y="69" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ph-diag-text)">Nbr A</text>
-
-  <circle cx="292" cy="158" r="20" fill="var(--ph-diag-bg)" stroke="var(--ph-diag-orange)" stroke-width="2" />
-  <text x="292" y="162" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ph-diag-text)">Nbr B</text>
-
-  <!-- Right Card: Anisotropic exchange(init) -->
-  <rect x="416" y="12" width="372" height="180" rx="8" fill="var(--ph-diag-card)" stroke="var(--ph-diag-border)" stroke-width="1.5" />
-  <text x="602" y="35" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--ph-diag-magenta)">exchange(init) — ANISOTROPIC + STATE</text>
-
-  <circle cx="515" cy="112" r="24" fill="#b4136f" />
-  <text x="515" y="116" text-anchor="middle" font-size="11.5" font-weight="700" fill="#ffffff">Device i</text>
-
-  <!-- Self state loop -->
-  <path d="M 494 98 C 446 68, 446 156, 494 126" fill="none" stroke="var(--ph-diag-magenta)" stroke-width="1.8" stroke-dasharray="4,3" marker-end="url(#ph-nb-m)" />
-  <text x="454" y="115" text-anchor="middle" font-size="10" font-weight="700" class="ph-code" fill="var(--ph-diag-magenta)">f[i]</text>
-
-  <line x1="542" y1="98" x2="678" y2="70" stroke="var(--ph-diag-magenta)" stroke-width="2" marker-end="url(#ph-nb-m)" />
-  <text x="610" y="74" text-anchor="middle" font-size="10.5" font-weight="700" class="ph-code" fill="var(--ph-diag-magenta)">f.for_node(A)</text>
-
-  <line x1="542" y1="126" x2="678" y2="154" stroke="var(--ph-diag-magenta)" stroke-width="2" marker-end="url(#ph-nb-m)" />
-  <text x="610" y="156" text-anchor="middle" font-size="10.5" font-weight="700" class="ph-code" fill="var(--ph-diag-magenta)">f.for_node(B)</text>
-
-  <circle cx="708" cy="65" r="20" fill="var(--ph-diag-bg)" stroke="var(--ph-diag-magenta)" stroke-width="2" />
-  <text x="708" y="69" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ph-diag-text)">Nbr A</text>
-
-  <circle cx="708" cy="158" r="20" fill="var(--ph-diag-bg)" stroke="var(--ph-diag-magenta)" stroke-width="2" />
-  <text x="708" y="162" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ph-diag-text)">Nbr B</text>
-</svg>
-</div>
+![Comparison between isotropic neighbors(v) and anisotropic exchange(init)](../assets/neighbors-vs-exchange.png)
 
 `exchange(initial)` returns a pair `(set_field, field)`:
 

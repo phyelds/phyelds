@@ -36,48 +36,7 @@ A source device is at distance `0`. Every other device picks the shortest path o
 
 Read **locally**, these four lines compare a few numbers from neighboring nodes. Read **globally**, they implement a distributed Bellman-Ford shortest-path algorithm: at every round the wave of distances expands outward from the source until the entire network converges.
 
-<div class="ph-figure">
-<svg viewBox="0 0 780 140" role="img" aria-label="Hop-count gradient spreading along a line of four nodes">
-  <!-- Panel 1: Initially -->
-  <rect x="10" y="12" width="236" height="116" rx="8" fill="var(--ph-diag-card)" stroke="var(--ph-diag-border)" stroke-width="1.5" />
-  <text x="128" y="34" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--ph-diag-orange)">1. INITIALLY</text>
-  <line x1="48" y1="80" x2="208" y2="80" stroke="var(--ph-diag-muted)" stroke-width="2" />
-  <circle cx="48" cy="80" r="18" fill="#f59e0b" />
-  <text x="48" y="84" text-anchor="middle" font-size="11" font-weight="700" fill="#1f1a24">0</text>
-  <circle cx="101" cy="80" r="18" fill="var(--ph-diag-bg)" stroke="var(--ph-diag-muted)" stroke-width="1.5" />
-  <text x="101" y="84" text-anchor="middle" font-size="12" fill="var(--ph-diag-muted)">∞</text>
-  <circle cx="155" cy="80" r="18" fill="var(--ph-diag-bg)" stroke="var(--ph-diag-muted)" stroke-width="1.5" />
-  <text x="155" y="84" text-anchor="middle" font-size="12" fill="var(--ph-diag-muted)">∞</text>
-  <circle cx="208" cy="80" r="18" fill="var(--ph-diag-bg)" stroke="var(--ph-diag-muted)" stroke-width="1.5" />
-  <text x="208" y="84" text-anchor="middle" font-size="12" fill="var(--ph-diag-muted)">∞</text>
-
-  <!-- Panel 2: After 1 hop -->
-  <rect x="272" y="12" width="236" height="116" rx="8" fill="var(--ph-diag-card)" stroke="var(--ph-diag-border)" stroke-width="1.5" />
-  <text x="390" y="34" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--ph-diag-orange)">2. AFTER 1 HOP</text>
-  <line x1="310" y1="80" x2="470" y2="80" stroke="var(--ph-diag-muted)" stroke-width="2" />
-  <circle cx="310" cy="80" r="18" fill="#f59e0b" />
-  <text x="310" y="84" text-anchor="middle" font-size="11" font-weight="700" fill="#1f1a24">0</text>
-  <circle cx="363" cy="80" r="18" fill="#ea580c" />
-  <text x="363" y="84" text-anchor="middle" font-size="11" font-weight="700" fill="#ffffff">1</text>
-  <circle cx="417" cy="80" r="18" fill="var(--ph-diag-bg)" stroke="var(--ph-diag-muted)" stroke-width="1.5" />
-  <text x="417" y="84" text-anchor="middle" font-size="12" fill="var(--ph-diag-muted)">∞</text>
-  <circle cx="470" cy="80" r="18" fill="var(--ph-diag-bg)" stroke="var(--ph-diag-muted)" stroke-width="1.5" />
-  <text x="470" y="84" text-anchor="middle" font-size="12" fill="var(--ph-diag-muted)">∞</text>
-
-  <!-- Panel 3: Converged -->
-  <rect x="534" y="12" width="236" height="116" rx="8" fill="var(--ph-diag-card)" stroke="var(--ph-diag-border)" stroke-width="1.5" />
-  <text x="652" y="34" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--ph-diag-magenta)">3. CONVERGED</text>
-  <line x1="572" y1="80" x2="732" y2="80" stroke="var(--ph-diag-muted)" stroke-width="2" />
-  <circle cx="572" cy="80" r="18" fill="#f59e0b" />
-  <text x="572" y="84" text-anchor="middle" font-size="11" font-weight="700" fill="#1f1a24">0</text>
-  <circle cx="625" cy="80" r="18" fill="#ea580c" />
-  <text x="625" y="84" text-anchor="middle" font-size="11" font-weight="700" fill="#ffffff">1</text>
-  <circle cx="679" cy="80" r="18" fill="#b4136f" />
-  <text x="679" y="84" text-anchor="middle" font-size="11" font-weight="700" fill="#ffffff">2</text>
-  <circle cx="732" cy="80" r="18" fill="#6b21a8" />
-  <text x="732" y="84" text-anchor="middle" font-size="11" font-weight="700" fill="#ffffff">3</text>
-</svg>
-</div>
+![Hop-count gradient spreading along a line of four nodes](assets/hop-gradient-stages.png)
 
 ![A hop-count gradient spreading along a line of ten devices](assets/gradient-hops.gif){ width="640" }
 
