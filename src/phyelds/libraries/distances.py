@@ -3,20 +3,33 @@ This module contains functions to calculate distances between nodes in the neigh
 These functions may be used by other library to compute system-wise properties
 """
 
+from collections.abc import Sequence
+import math
+
 from phyelds.calculus import neighbors, aggregate
 from phyelds.data import NeighborhoodField
 from phyelds.libraries.device import local_id, local_position
 
 
 @aggregate
-def neighbors_distances() -> NeighborhoodField[float]:
+def neighbors_distances(
+    position: Sequence[float] | None = None,
+) -> NeighborhoodField[float]:
     """
-    Get the distances to the neighbors from the current node.
-    :return: the neighborhood representing the distances to the neighbors
+    Compute the Euclidean distance to each neighbor in the neighborhood.
+
+    Args:
+        position: Optional coordinate sequence for the current node. When
+            omitted, ``local_position()`` is used. Supports any dimension
+            (2D, 3D, N-D).
+
+    Returns:
+        A ``NeighborhoodField[float]`` with the distance to each neighbor
+        (0.0 for the local node).
     """
-    positions: NeighborhoodField = neighbors(local_position())
-    x, y = local_position()
-    return positions.map(lambda v: ((v[0] - x) ** 2 + (v[1] - y) ** 2) ** 0.5)
+    my_position = tuple(local_position() if position is None else position)
+    positions: NeighborhoodField[tuple[float, ...]] = neighbors(my_position)
+    return positions.map(lambda other: math.dist(my_position, other))
 
 
 @aggregate

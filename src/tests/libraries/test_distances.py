@@ -1,4 +1,5 @@
 from phyelds.calculus import aggregate
+from phyelds.libraries.device import local_position
 from phyelds.libraries.distances import hops_distance, neighbors_distances
 from phyelds.simulator.neighborhood import full_neighborhood
 from phyelds.simulator.deployments import grid_generation
@@ -44,3 +45,25 @@ def test_distance_should_return_correct_distance():
     assert node_a.data["result"][node_b.id] == 2
     # assert the distance form 1 to 2
     assert node_c.data["result"][node_b.id] == 2
+
+
+def test_neighbors_distances_supports_3d_and_custom_positions():
+    simulator = Simulator()
+    node_a = simulator.create_node((0.0, 0.0, 0.0), node_id=0)
+    node_b = simulator.create_node((3.0, 4.0, 12.0), node_id=1)
+    simulator.environment.set_neighborhood_function(full_neighborhood)
+
+    @aggregate
+    def program():
+        return (
+            neighbors_distances().data,
+            neighbors_distances((0.0, 5.0 * local_position()[0])).data,
+        )
+
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
+    simulator.run(3)
+    dist_3d, dist_custom = node_a.data["result"]
+    assert dist_3d[0] == 0.0
+    assert dist_3d[1] == 13.0
+    assert dist_custom[1] == 15.0
+
