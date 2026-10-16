@@ -5,8 +5,16 @@ from phyelds.libraries.gossip import gossip_max
 from phyelds.libraries.time import (
     counter,
     decay,
+    delay,
     delta_time,
+    exponential_filter,
+    falling_edge,
+    has_changed,
     local_time,
+    once,
+    periodic_impulse,
+    recently_true,
+    rising_edge,
     shared_clock,
     time_replicated,
     timer,
@@ -162,4 +170,90 @@ def test_time_replicated_validates_arguments():
         time_replicated(lambda: 1, period=0.0)
     with pytest.raises(ValueError):
         time_replicated(lambda: 1, period=5.0, max_replicas=0)
+
+
+def test_delay_once_and_has_changed_track_state_transitions():
+    simulator = Simulator()
+    node = Node(node_id=1, position=(0, 0), data={"val": 10})
+    simulator.environment.add_node(node)
+
+    @aggregate
+    def program():
+        v = sense("val")
+        return (
+            delay(v, initial=-1),
+            has_changed(v, initially=True),
+            once("boot"),
+        )
+
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
+    simulator.run(0.0)
+    assert node.data["result"] == (-1, True, "boot")
+
+    simulator.continue_run(1.0)
+    assert node.data["result"] == (10, False, None)
+
+    node.data["val"] = 25
+    simulator.continue_run(1.0)
+    assert node.data["result"] == (10, True, None)
+
+    simulator.continue_run(1.0)
+    assert node.data["result"] == (25, False, None)
+
+
+def test_rising_and_falling_edge_detect_boolean_flanks():
+    simulator = Simulator()
+    node = Node(node_id=1, position=(0, 0), data={"flag": False})
+    simulator.environment.add_node(node)
+
+    @aggregate
+    def program():
+        flag = sense("flag")
+        return rising_edge(flag), falling_edge(flag)
+
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
+    simulator.run(0.0)
+    assert node.data["result"] == (False, False)
+
+    node.data["flag"] = True
+    simulator.continue_run(1.0)
+    assert node.data["result"] == (True, False)
+
+    simulator.continue_run(1.0)
+    assert node.data["result"] == (False, False)
+
+    node.data["flag"] = False
+    simulator.continue_run(1.0)
+    assert node.data["result"] == (False, True)
+
+
+def test_periodic_impulse_recently_true_and_exponential_filter():
+    simulator = Simulator()
+    node = Node(node_id=1, position=(0, 0), data={"event": True, "signal": 0.0})
+    simulator.environment.add_node(node)
+
+    @aggregate
+    def program():
+        return (
+            periodic_impulse(2.0),
+            recently_true(sense("event"), duration=2.0),
+            exponential_filter(sense("signal"), alpha=0.5),
+        )
+
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
+    simulator.run(0.0)
+    assert node.data["result"] == (False, True, 0.0)
+
+    node.data["event"] = False
+    node.data["signal"] = 10.0
+    simulator.continue_run(1.0)
+    assert node.data["result"] == (False, True, 5.0)
+
+    simulator.continue_run(1.0)
+    # At t=2.0: periodic_impulse fires, recently_true expires (2.0s elapsed), filter = 7.5
+    assert node.data["result"] == (True, False, 7.5)
+
+    with pytest.raises(ValueError):
+        exponential_filter(1.0, alpha=1.5)
+
 

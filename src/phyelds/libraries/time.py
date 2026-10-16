@@ -208,3 +208,142 @@ def time_replicated(
     if max_replicas < 1:
         raise ValueError(f"max_replicas must be at least 1, got {max_replicas}")
     return _run_time_replicated(process, float(period), max_replicas, clock)
+
+
+_UNSET = object()
+
+
+@aggregate
+def delay(value: T, initial: T | None = None) -> T:
+    """
+    Return the value held by ``value`` in the previous round.
+
+    Args:
+        value: Current value to remember for the next round.
+        initial: Optional value returned on the very first round. When omitted,
+            ``value`` itself is returned on the first round.
+
+    Returns:
+        The previous round's value (or ``initial`` on the first round).
+    """
+    first_value = value if initial is None else initial
+    set_previous, previous = remember(first_value)
+    old_value: T = previous.value
+    set_previous(value)
+    return old_value
+
+
+@aggregate
+def has_changed(value: T, *, initially: bool = False) -> bool:
+    """
+    Return True when ``value`` differs from its value in the previous round.
+
+    Args:
+        value: Value to observe across rounds.
+        initially: Result returned on the first observation round.
+
+    Returns:
+        True if ``value`` changed since the last round, False otherwise.
+    """
+    set_state, state = remember((_UNSET, False))
+    prev_value, initialized = state.value
+    changed = initially if not initialized else bool(prev_value != value)
+    set_state((value, True))
+    return changed
+
+
+@aggregate
+def rising_edge(condition: bool) -> bool:
+    """Return True on the round where ``condition`` transitions from False to True."""
+    current = bool(condition)
+    previous = delay(current, initial=False)
+    return current and not previous
+
+
+@aggregate
+def falling_edge(condition: bool) -> bool:
+    """Return True on the round where ``condition`` transitions from True to False."""
+    current = bool(condition)
+    previous = delay(current, initial=False)
+    return (not current) and previous
+
+
+@aggregate
+def once(value: T) -> T | None:
+    """Return ``value`` on the first round it is evaluated, and ``None`` thereafter."""
+    set_done, done = remember(False)
+    is_first = not bool(done.value)
+    set_done(True)
+    return value if is_first else None
+
+
+@aggregate
+def periodic_impulse(period: float, *, clock: float | None = None) -> bool:
+    """
+    Emit True every ``period`` time units, and False on intermediate rounds.
+
+    Args:
+        period: Interval between impulses.
+        clock: Optional clock value (defaults to ``local_time()``).
+
+    Returns:
+        True when the periodic timer expires in the current round.
+    """
+    return timer(period, periodic=True, clock=clock) <= 0.0
+
+
+@aggregate
+def recently_true(
+    condition: bool,
+    duration: float,
+    *,
+    clock: float | None = None,
+) -> bool:
+    """
+    Return True while ``condition`` is True and for ``duration`` time units after.
+
+    Args:
+        condition: Boolean condition to monitor.
+        duration: How long the True state persists after ``condition`` becomes False.
+        clock: Optional clock value (defaults to ``local_time()``).
+
+    Returns:
+        True if ``condition`` held within the last ``duration`` time units.
+    """
+    elapsed = delta_time(clock)
+    set_remaining, remaining = remember(0.0)
+    next_remaining = (
+        float(duration) if condition else max(0.0, float(remaining.value) - elapsed)
+    )
+    set_remaining(next_remaining)
+    return bool(condition) or next_remaining > 0.0
+
+
+@aggregate
+def _run_exponential_filter(signal: float, alpha: float) -> float:
+    """Aggregate implementation of exponential_filter."""
+    set_filtered, filtered = remember(float(signal))
+    updated = alpha * float(filtered.value) + (1.0 - alpha) * float(signal)
+    set_filtered(updated)
+    return updated
+
+
+def exponential_filter(signal: float, alpha: float) -> float:
+    """
+    Smooth a numeric ``signal`` over time with an exponential moving average.
+
+    Computes ``alpha * previous + (1 - alpha) * signal`` at each round.
+
+    Args:
+        signal: Current numeric reading.
+        alpha: Smoothing factor in ``[0.0, 1.0]`` (higher retains more history).
+
+    Returns:
+        The smoothed signal value.
+
+    Raises:
+        ValueError: If ``alpha`` is outside ``[0.0, 1.0]``.
+    """
+    if not 0.0 <= alpha <= 1.0:
+        raise ValueError(f"alpha must be in [0.0, 1.0], got {alpha}")
+    return _run_exponential_filter(signal, float(alpha))
