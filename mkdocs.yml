@@ -15,7 +15,9 @@ theme:
   logo: assets/logo.png
   favicon: assets/logo.png
   features:
+    - content.code.annotate
     - content.code.copy
+    - navigation.footer
     - navigation.sections
     - navigation.top
     - search.highlight
@@ -51,7 +53,11 @@ markdown_extensions:
   - pymdownx.snippets:
       base_path: [docs/examples]
       check_paths: true
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.tabbed:
       alternate_style: true
   - toc:
