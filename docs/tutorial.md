@@ -1,19 +1,18 @@
-# Tutorial: the gradient
+# Tutorial: from basics to self-healing fields
 
-The *gradient* is a field in which every device holds its distance from the
-nearest *source*. It needs nothing but local state and neighbor exchanges, yet it
-has a global meaning, and it is the building block of most other patterns:
-[`broadcast`, `collect_with` and `elect_leaders`](concepts/libraries.md) are all
-built on top of it.
+In this tutorial you will build your first aggregate programs step by step:
 
-The complete code, including the script that produced the animations, is in
-[`docs/examples/gradient.py`](https://github.com/phyelds/phyelds/blob/master/docs/examples/gradient.py).
+1. **The gradient** — every device computes its distance from the nearest *source* using only [`remember`](concepts/state.md) (time) and [`neighbors`](concepts/neighborhood-field.md) (space).
+2. **Self-healing** — watch the field automatically repair itself when the source moves.
+3. **Composing blocks: the channel** — combine spreading (`distance_to`) and collection (`collect_or`) to form a self-healing routing corridor between two nodes.
+
+The complete runnable code for the gradient animations is in [`docs/examples/gradient.py`](https://github.com/phyelds/phyelds/blob/master/docs/examples/gradient.py).
+
+---
 
 ## 1. Each device remembers its estimate
 
-A device cannot know its distance in one shot: it keeps an estimate and refines it
-at every round. State that survives across rounds is [`remember`](concepts/state.md)
-(the `rep` of field calculus). Before knowing anything, the estimate is infinity:
+A device cannot know its distance from a distant source in a single round: it keeps a local estimate and refines it round after round. Local state that survives across rounds is [`remember`](concepts/state.md) (the `rep` of field calculus). Before discovering any path to a source, the estimate starts at infinity:
 
 ```python
 set_distance, distance = remember(float("inf"))
@@ -21,10 +20,7 @@ set_distance, distance = remember(float("inf"))
 
 ## 2. Look at the neighbors' estimates
 
-[`neighbors(distance)`](concepts/neighborhood-field.md) sends the local estimate to
-the neighbors and returns a `NeighborhoodField`: one value per neighbor, plus the
-device itself. Arithmetic on fields is element-wise, so `+ 1` adds one hop to each
-neighbor's estimate, giving the distance *through* that neighbor:
+[`neighbors(distance)`](concepts/neighborhood-field.md) shares the device's current estimate with its immediate neighbors and returns a `NeighborhoodField`: one value per neighbor (plus the device itself). Arithmetic on fields is element-wise, so `+ 1` adds one hop to every neighbor's estimate, giving the distance *through* that neighbor:
 
 ```python
 through_neighbors = neighbors(distance) + 1
@@ -32,30 +28,41 @@ through_neighbors = neighbors(distance) + 1
 
 ## 3. Keep the best one
 
-A source is at distance 0; any other device takes the shortest path its neighbors
-offer. `exclude_self()` drops the device's own entry, so that it cannot lean on
-itself:
+A source device is at distance `0`. Every other device picks the shortest path offered by its neighbors. Calling `exclude_self()` drops the device's own entry so that a node cannot reinforce its own outdated estimate:
 
 ```python
 --8<-- "gradient.py:hop_gradient"
 ```
 
-Read *locally*, it compares a few numbers. Read *globally*, it is a distributed
-shortest-path algorithm: round after round the correct distances spread from the
-source, until the whole network holds its hop count.
+Read **locally**, these four lines compare a few numbers from neighboring nodes. Read **globally**, they implement a distributed Bellman-Ford shortest-path algorithm: at every round the wave of distances expands outward from the source until the entire network converges.
+
+```mermaid
+flowchart LR
+    subgraph R0["Initially"]
+        direction LR
+        A0(("0\n0")) --- B0(("1\n∞")) --- C0(("2\n∞")) --- D0(("3\n∞"))
+    end
+    subgraph R1["After 1 hop"]
+        direction LR
+        A1(("0\n0")) --- B1(("1\n1")) --- C1(("2\n∞")) --- D1(("3\n∞"))
+    end
+    subgraph R3["Converged"]
+        direction LR
+        A2(("0\n0")) --- B2(("1\n1")) --- C2(("2\n2")) --- D2(("3\n3"))
+    end
+    R0 --> R1 --> R3
+```
 
 ![A hop-count gradient spreading along a line of ten devices](assets/gradient-hops.gif){ width="640" }
 
 !!! note "Why does the wave move more than one hop per round?"
-    In the phyelds simulator the devices of one round run one after the other and
-    read the freshest messages of the neighbors that already ran. The final field
-    does not depend on that order; only the speed does.
+    In the bundled simulator, the devices scheduled at the same timestamp run one after another and read the freshest outboxes of neighbors that already ran in that step. The final converged field does not depend on execution order—only the transient speed does.
 
-## 4. Run it
+---
 
-Every device runs the *same* program, and reads whether it is a source from a
-sensor. The [simulator](simulator.md) provides the deployment, the neighborhood
-relation and the scheduling:
+## 4. Run it in the simulator
+
+Every device runs the **exact same** `@aggregate` function and reads whether it is a source from its `"source"` sensor. The [simulator](simulator.md) sets up the node positions, the neighborhood relation, and the round schedule:
 
 ```python
 from phyelds.calculus import aggregate
@@ -67,13 +74,13 @@ from phyelds.simulator.runner import schedule_program_for_all
 
 @aggregate
 def program():
-    return hop_gradient(sense("source"))
+    return hop_gradient(sense("source"))                                     # (1)!
 
 simulator = Simulator()
-grid_generation(simulator, width=10, height=1, spacing=1.0)   # a line of 10 devices
-simulator.environment.set_neighborhood_function(radius_neighborhood(1.1))
+grid_generation(simulator, width=10, height=1, spacing=1.0)                  # (2)!
+simulator.environment.set_neighborhood_function(radius_neighborhood(1.1))    # (3)!
 simulator.environment.add_data_for_all_nodes({"source": False})
-simulator.environment.nodes[0].data["source"] = True          # device 0 is the source
+simulator.environment.nodes[0].data["source"] = True                         # (4)!
 
 schedule_program_for_all(simulator, start=0.0, frequency=1.0, program=program)
 simulator.run(12)
@@ -81,10 +88,16 @@ print([node.data["result"] for node in simulator.environment.nodes.values()])
 # [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 ```
 
-## 5. From hops to distances
+1. Each device reads its own `"source"` sensor (`True` on device `0`, `False` on all others) and runs `hop_gradient`.
+2. Deploys 10 nodes on a line at coordinates `(0, 0), (1, 0), ..., (9, 0)`.
+3. Two nodes are neighbors if their Euclidean distance is at most `1.1` (adjacent nodes on the line).
+4. Marks node `0` as the source of the gradient.
 
-Replacing the constant `1` with the measured distance to each neighbor gives a
-metric gradient. That is what the library `distance_to` does:
+---
+
+## 5. From hops to metric distances
+
+Counting hops ignores physical distance between devices. Replacing the constant `+ 1` with the measured Euclidean distance to each neighbor produces a **metric gradient**. That is what [`distance_to`](concepts/libraries.md#spreading-phyeldslibrariesspreading) in `phyelds.libraries.spreading` does when paired with `neighbors_distances()`:
 
 ```python
 from phyelds.libraries.distances import neighbors_distances
@@ -99,24 +112,69 @@ def program():
 
 [Run it in the playground](playground/index.md#example=gradient){ .md-button }
 
-## 6. Self-healing
+---
 
-Nothing in the program refers to *when* the source appeared or *where* it is:
-every round recomputes the field from the current state of the network. When the
-source jumps to the opposite corner, the field repairs itself with no extra code.
+## 6. Self-healing { #6-self-healing }
+
+Nothing in the program refers to *when* the source appeared or *where* it is located: every round recomputes the field from the current sensors and neighbor messages. When the source jumps from the bottom-left corner to the top-right corner halfway through the run, the field repairs itself with zero extra code:
 
 ![The gradient re-converging after the source moves](assets/gradient-self-healing.gif){ width="480" }
 
 [Run it in the playground](playground/index.md#example=self_healing){ .md-button }
 
-The area around the new source settles quickly; the old one is slower, because its
-devices can only raise their stale, too-small estimates a little at a time, leaning
-on each other. This is the *rising value problem* of the classic gradient: see
-[Pitfalls](pitfalls.md#expecting-instant-answers).
+Look closely at the animation: the region around the *new* source settles rapidly, whereas the region around the *old* source takes longer to clear. When the old source turns off, its former neighbors still see each other's low estimates and mutually increment them little by little. This is the classic **rising-value problem** (see [Common pitfalls](pitfalls.md#expecting-instant-answers)).
+
+!!! tip "Fast self-healing with `path_coherent`"
+    When sources can disappear or move fast, pass the `path_coherent` strategy to `distance_to`:
+    ```python
+    from phyelds.libraries.spreading import distance_to, path_coherent
+
+    distance_to(sense("source"), neighbors_distances(), strategy=path_coherent(max_diameter=20))
+    ```
+    It tracks loop-free routing paths via `exchange` so stale estimates are invalidated immediately instead of slowly counting up.
+
+---
+
+## 7. Composing blocks: building a channel
+
+The real power of aggregate computing comes from **composing** field functions just like ordinary Python functions.
+
+Suppose we want to highlight a communication corridor (a **channel** of width $w$) along the shortest path between a `source` device and a `target` device. We can build it in three steps by combining spreading (`distance_to`) and collection (`collect_or`):
+
+```mermaid
+flowchart LR
+    G1["1. Gradient to target\nto_target = distance_to(target)"]
+    C["2. Collect back from source\non_path = collect_or(to_target, source)"]
+    G2["3. Dilate path by width W\ndistance_to(on_path) < WIDTH"]
+    G1 --> C --> G2
+```
+
+```python
+from phyelds.calculus import aggregate
+from phyelds.libraries.collect import collect_or
+from phyelds.libraries.device import sense
+from phyelds.libraries.distances import neighbors_distances
+from phyelds.libraries.spreading import distance_to
+
+@aggregate
+def my_channel(width: float = 1.6) -> float:
+    distances = neighbors_distances()
+    to_target = distance_to(sense("target"), distances)          # (1)!
+    on_path = collect_or(to_target, sense("source"))             # (2)!
+    return 1.0 if distance_to(on_path, distances) < width else 0.0  # (3)!
+```
+
+1. **Spread (`G`)**: every device computes its distance to the `target`.
+2. **Collect (`C`)**: `collect_or` flows downhill along `to_target` from `source` to `target`, setting `on_path = True` on every node along the shortest path.
+3. **Spread (`G`)**: a second `distance_to(on_path, ...)` measures how far each node is from the shortest path, selecting all devices within `width`. (This pattern is also available ready-made as `phyelds.libraries.spreading.channel`.)
+
+![A self-organizing channel between bottom-left and top-right corners](assets/channel.gif){ width="480" }
+
+[Run the channel in the playground](playground/index.md#example=channel){ .md-button }
+
+---
 
 ## Where next
 
-- [Aggregate programs](concepts/aggregate-programs.md): the execution model behind
-  what you just ran.
-- [Libraries](concepts/libraries.md): broadcast, collection, gossip and leader
-  election, all built on gradients.
+- **[Core Concepts](concepts/state.md)**: dive deeper into [`remember`](concepts/state.md), [`NeighborhoodField` & `exchange`](concepts/neighborhood-field.md), [`@aggregate` alignment](concepts/alignment.md), and [Common pitfalls](pitfalls.md).
+- **[Standard Libraries](concepts/libraries.md)**: explore ready-to-use blocks for spreading, collection, gossip, leader election, `@process` bubbles, time, and spatial/temporal logic.
