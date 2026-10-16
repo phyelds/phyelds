@@ -16,4 +16,6 @@
 
 ::: phyelds.libraries.processes
 
+::: phyelds.libraries.logic
+
 ::: phyelds.libraries.utils

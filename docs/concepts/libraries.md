@@ -71,8 +71,9 @@ gradient (the `potential`), and are accumulated on the way.
 | `summarize(sink, local, accumulation, distances=None, ...)` | collects `local` into `sink` and broadcasts the aggregated value back out (`G -> C -> G`) |
 
 Collection functions accept a pluggable `strategy`: `broadcast_collect()` (default,
-using `remember` + `neighbors`) or `point_to_point()` (using an anisotropic
-`exchange` that sends data only to the selected parent).
+using `remember` + `neighbors`), `point_to_point()` (using an anisotropic
+`exchange` that sends data only to the selected parent), or `multi_path()` (which
+splits each device's contribution equally across all parents in the DAG).
 
 ```python
 from phyelds.libraries.collect import count_nodes, point_to_point
@@ -92,6 +93,7 @@ both: a collection of `collect_or` along one gradient, spread again by another.
 | Function | Returns |
 | --- | --- |
 | `gossip_min(value, *, key=None, strategy=None)`, `gossip_max(value, *, key=None, strategy=None)` | the minimum / maximum of `value` over the network |
+| `gossip_mean(value)` | local neighborhood averaging of `value` |
 | `gossip(value, callback, *, strategy=None)` | `value` combined over the network with `callback` (e.g. `set.union`) |
 | `any_node(condition, *, strategy=None)` | whether `condition` holds on at least one device |
 | `stabilizing_gossip(value, max_diameter, callback)` | a gossip that forgets devices farther than `max_diameter` hops, so it can adapt when values change |
@@ -174,3 +176,26 @@ def program():
     new_alerts = {local_id()} if sense("smoke") else set()
     return alert_bubble.spawn(new_alerts, max_hops=3.0)
 ```
+
+## Spatial & temporal logic: `phyelds.libraries.logic`
+
+Provides **Spatial Logic for Closure Spaces (SLCS)** and **Past Computation Tree
+Logic (Past-CTL)** operators from FCPP:
+
+| Spatial (SLCS) | Returns |
+| --- | --- |
+| `interior(region)`, `closure(region)` | `True` on the topological interior (`all` neighbors) / closure (`any` neighbor) of `region` |
+| `boundary(region)` | `closure(region) and not interior(region)` |
+| `interior_boundary(region)`, `closure_boundary(region)` | the inner frontier (`region and not interior`) / outer fringe (`closure and not region`) |
+| `somewhere(condition, *, max_diameter=20.0, strategy=None)` | `True` if `condition` holds on a reachable device within `max_diameter` |
+| `everywhere(condition, *, max_diameter=20.0, strategy=None)` | `True` if `condition` holds on all reachable devices within `max_diameter` |
+| `reaches(region, target, *, max_diameter=20.0, strategy=None)` | `True` if a path entirely inside `region` reaches a `target` device |
+| `touches(region, target, *, max_diameter=20.0, strategy=None)` | `True` on devices in `region` whose connected component touches `target` |
+| `surrounds(region, barrier, *, max_diameter=20.0, strategy=None)` | `True` on devices in `region` enclosed by `barrier` |
+
+| Temporal (Past-CTL) | Returns (`scope="local" \| "all" \| "any"`) |
+| --- | --- |
+| `yesterday(condition, *, scope="local")` | whether `condition` held in the previous round (locally, in all neighbors, or in any neighbor) |
+| `since(sustained, triggered, *, scope="local")` | whether `sustained` has held continuously since `triggered` occurred |
+| `previously(condition, *, scope="local")` | whether `condition` held at least once in the past causal cone |
+| `historically(condition, *, scope="local")` | whether `condition` has always held in the past causal cone |
