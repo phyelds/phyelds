@@ -4,11 +4,14 @@ from phyelds.libraries.device import sense, local_id, local_position
 from phyelds.libraries.distances import hops_distance, neighbors_distances
 from phyelds.libraries.spreading import (
     distance_to,
+    distance_between,
+    channel,
     cast_from,
     broadcast,
     bellman_ford,
     path_coherent,
 )
+import pytest
 from phyelds.simulator import Simulator
 from phyelds.simulator.neighborhood import radius_neighborhood
 from phyelds.simulator.runner import schedule_program_for_all
@@ -148,4 +151,29 @@ def test_path_coherent_respects_max_diameter_and_three_arg_accumulation():
     assert simulator.environment.nodes[2].data["result"] == (2.0, 3.0)
     assert math.isinf(simulator.environment.nodes[3].data["result"][0])
     assert simulator.environment.nodes[3].data["result"][1] == 0.0
+
+
+def test_distance_between_and_channel_select_shortest_path_in_grid():
+    # 3x3 grid: source at 0=(0,0), target at 2=(0,2).
+    # Shortest path is row 0: nodes 0, 1, 2 (distance = 2 hops).
+    simulator = setup_up_simulator(3, 3)
+    simulator.environment.nodes[0].data["source"] = True
+    simulator.environment.nodes[2].data["target"] = True
+
+    @aggregate
+    def program():
+        dist = distance_between(sense("source"), sense("target"))
+        in_channel = channel(sense("source"), sense("target"), width=0.0)
+        return dist, in_channel
+
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
+    simulator.run(12)
+    for node_id, node in simulator.environment.nodes.items():
+        dist, in_channel = node.data["result"]
+        assert dist == 2.0
+        assert in_channel is (node_id in {0, 1, 2})
+
+    with pytest.raises(ValueError):
+        channel(True, False, width=-1.0)
+
 

@@ -11,6 +11,7 @@ from typing import Any, Optional, Tuple, TypeVar, Union
 from phyelds.calculus import aggregate, exchange, neighbors, remember
 from phyelds.data import NeighborhoodField, StateT
 from phyelds.libraries.device import local_id
+from phyelds.libraries.spreading import SpreadingStrategy, broadcast, distance_to
 
 T = TypeVar("T")
 
@@ -240,3 +241,34 @@ def collect_or(
         True if any node in the sub-tree satisfies ``local``.
     """
     return collect_with(potential, local, lambda x, y: x or y, strategy=strategy)
+
+
+@aggregate
+def summarize(  # pylint: disable=too-many-arguments
+    sink: bool,
+    local: T,
+    accumulation: Callable[[T, T], T],
+    distances: NeighborhoodField[float] | None = None,
+    *,
+    spreading_strategy: SpreadingStrategy | None = None,
+    collect_strategy: CollectStrategy | None = None,
+) -> StateT[T]:
+    """
+    Collect ``local`` values into ``sink`` and broadcast the aggregated result back out.
+
+    Implements the ``G -> C -> G`` coordination pattern from ScaFi (``BlocksWithGC.summarize``).
+
+    Args:
+        sink: True on sink/leader devices that aggregate the region's values.
+        local: Local value contributed by each device.
+        accumulation: Binary function combining two values.
+        distances: Field of edge distances to neighbors. Defaults to ``hops_distance()``.
+        spreading_strategy: Optional strategy for gradient and broadcast steps.
+        collect_strategy: Optional strategy for the collection step.
+
+    Returns:
+        The aggregated value broadcast from the nearest ``sink``.
+    """
+    potential = distance_to(sink, distances, strategy=spreading_strategy)
+    collected = collect_with(potential, local, accumulation, strategy=collect_strategy)
+    return broadcast(sink, collected, distances, strategy=spreading_strategy)

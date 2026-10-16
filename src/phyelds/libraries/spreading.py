@@ -9,6 +9,7 @@ Provides high-level spreading primitives (``distance_to``, ``cast_from``,
 from collections.abc import Callable
 from dataclasses import dataclass
 import inspect
+import math
 import sys
 from typing import Any, TypeVar
 
@@ -328,3 +329,78 @@ def broadcast(
         The value broadcast from the nearest source.
     """
     return cast_from(source, data, lambda x: x, distances, strategy=strategy)
+
+
+@aggregate
+def distance_between(
+    source: bool,
+    target: bool,
+    distances: NeighborhoodField[float] | None = None,
+    *,
+    strategy: SpreadingStrategy | None = None,
+) -> StateT[float]:
+    """
+    Compute the distance between ``source`` and ``target`` and broadcast it across the network.
+
+    Args:
+        source: True on source devices.
+        target: True on target devices.
+        distances: Field of edge distances to neighbors. Defaults to ``hops_distance()``.
+        strategy: Optional spreading strategy (``bellman_ford()`` or ``path_coherent()``).
+
+    Returns:
+        The distance between the nearest ``source`` and ``target``.
+    """
+    metric = hops_distance() if distances is None else distances
+    dist_to_target = distance_to(target, metric, strategy=strategy)
+    return broadcast(source, dist_to_target, metric, strategy=strategy)
+
+
+@aggregate
+def _run_channel(
+    source: bool,
+    target: bool,
+    width: float,
+    distances: NeighborhoodField[float] | None,
+    strategy: SpreadingStrategy | None,
+) -> bool:
+    """Aggregate implementation of channel."""
+    metric = hops_distance() if distances is None else distances
+    dist_source = float(distance_to(source, metric, strategy=strategy))
+    dist_target = float(distance_to(target, metric, strategy=strategy))
+    dist_between = float(distance_between(source, target, metric, strategy=strategy))
+    total = dist_source + dist_target
+    return (
+        math.isfinite(total)
+        and math.isfinite(dist_between)
+        and total <= dist_between + width + 1e-12
+    )
+
+
+def channel(
+    source: bool,
+    target: bool,
+    width: float = 0.0,
+    distances: NeighborhoodField[float] | None = None,
+    *,
+    strategy: SpreadingStrategy | None = None,
+) -> bool:
+    """
+    Select devices lying within ``width`` of the shortest path between ``source`` and ``target``.
+
+    Args:
+        source: True on source devices.
+        target: True on target devices.
+        width: Non-negative slack around the shortest path length.
+        distances: Field of edge distances to neighbors. Defaults to ``hops_distance()``.
+        strategy: Optional spreading strategy (``bellman_ford()`` or ``path_coherent()``).
+
+    Returns:
+        True if the current device belongs to the channel between ``source`` and ``target``.
+
+    Raises:
+        ValueError: If ``width < 0`` or is NaN.
+    """
+    if math.isnan(width) or width < 0:
+        raise ValueError(f"width must be non-negative, got {width}")
+    return _run_channel(source, target, float(width), distances, strategy)

@@ -10,6 +10,7 @@ from phyelds.libraries.collect import (
     mean_values,
     point_to_point,
     sum_values,
+    summarize,
 )
 from phyelds.libraries.device import local_id, sense
 from phyelds.libraries.distances import hops_distance
@@ -113,3 +114,23 @@ def test_point_to_point_collect_and_mean_values_accumulate_accurately():
     simulator.run(12)
     # Values are 0, 10, 20, 30, 40 -> sum = 100, mean = 20.0
     assert simulator.environment.nodes[0].data["result"] == (100, 20.0, 20.0)
+
+
+def test_summarize_collects_and_broadcasts_total_across_all_nodes():
+    simulator = setup_up_simulator(5)
+    simulator.environment.nodes[2].data["source"] = True
+
+    @aggregate
+    def program():
+        return summarize(
+            sense("source"),
+            10,
+            lambda a, b: a + b,
+            collect_strategy=point_to_point(),
+        )
+
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
+    simulator.run(12)
+    for node in simulator.environment.nodes.values():
+        assert node.data["result"] == 50
+
