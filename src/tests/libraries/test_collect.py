@@ -8,6 +8,7 @@ from phyelds.libraries.collect import (
     count_nodes,
     find_parents,
     mean_values,
+    multi_path,
     point_to_point,
     sum_values,
     summarize,
@@ -133,4 +134,24 @@ def test_summarize_collects_and_broadcasts_total_across_all_nodes():
     simulator.run(12)
     for node in simulator.environment.nodes.values():
         assert node.data["result"] == 50
+
+
+def test_multi_path_collect_splits_contributions_across_all_parents_in_dag():
+    # 2x2 grid: node 3 has two parents (1 and 2) at potential 1.
+    # Node 3 splits its 10.0 equally (5.0 to node 1, 5.0 to node 2).
+    simulator = setup_up_simulator(2, 2)
+    simulator.environment.nodes[0].data["source"] = True
+
+    @aggregate
+    def program():
+        potential = distance_to(sense("source"))
+        return sum_values(potential, 10.0, strategy=multi_path())
+
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
+    simulator.run(8)
+    assert simulator.environment.nodes[3].data["result"] == 10.0
+    assert simulator.environment.nodes[1].data["result"] == 15.0
+    assert simulator.environment.nodes[2].data["result"] == 15.0
+    assert simulator.environment.nodes[0].data["result"] == 40.0
+
 

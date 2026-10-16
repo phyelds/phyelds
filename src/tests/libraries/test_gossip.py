@@ -4,12 +4,14 @@ from phyelds.libraries.gossip import (
     any_node,
     gossip,
     gossip_max,
+    gossip_mean,
     gossip_min,
     monotonic_gossip,
     path_coherent_gossip,
     stabilizing_gossip,
     time_replicated_gossip,
 )
+import pytest
 from phyelds.simulator.runner import schedule_program_for_all
 from tests.libraries.simulator_utils import setup_up_simulator
 
@@ -144,4 +146,21 @@ def test_time_replicated_gossip_heals_combining_reducers_like_set_union():
     simulator.continue_run(12)
     for node in simulator.environment.nodes.values():
         assert node.data["result"] == frozenset({0, 1, 2})
+
+
+def test_gossip_mean_converges_to_harmonic_equilibrium_and_self_stabilizes():
+    simulator = setup_up_simulator(3)
+
+    @aggregate
+    def program():
+        return gossip_mean(float(local_id() * 30))
+
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
+    simulator.run(25)
+    # On line 0 - 1 - 2 with inputs 0, 30, 60:
+    # equilibrium is x1 = (x0 + 30 + x2)/3 = 30, x0 = (0 + 30)/2 = 15, x2 = (30 + 60)/2 = 45
+    assert simulator.environment.nodes[0].data["result"] == pytest.approx(15.0, abs=1e-2)
+    assert simulator.environment.nodes[1].data["result"] == pytest.approx(30.0, abs=1e-2)
+    assert simulator.environment.nodes[2].data["result"] == pytest.approx(45.0, abs=1e-2)
+
 

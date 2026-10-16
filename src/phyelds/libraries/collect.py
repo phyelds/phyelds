@@ -126,11 +126,64 @@ def point_to_point() -> CollectStrategy:
     return strategy
 
 
+@aggregate
+def _multi_path_collect(
+    potential: StateT[float],
+    local: T,
+    accumulation: Callable[[T, T], T],
+    divide: Callable[[T, int], T],
+) -> T:
+    """Collect values up a DAG by splitting each node's total equally among all parents."""
+    node_id = local_id()
+    parents = find_parents(potential)
+    init_field: NeighborhoodField[Any] = NeighborhoodField({}, node_id, default=_NO_DATA)
+    set_field, incoming = exchange(init_field)
+
+    accumulated: T = local
+    for value in incoming.exclude_self().values():
+        if value is not _NO_DATA:
+            accumulated = accumulation(accumulated, value)
+
+    if parents:
+        share = divide(accumulated, len(parents))
+        outgoing_data = {pid: share for pid in parents}
+    else:
+        outgoing_data = {}
+    set_field(NeighborhoodField(outgoing_data, node_id, default=_NO_DATA))
+    return accumulated
+
+
+def multi_path(
+    divide: Callable[[Any, int], Any] = lambda val, count: val / count,
+) -> CollectStrategy:
+    """
+    Create a multi-path DAG collection strategy (FCPP ``mp_collection``).
+
+    Each node divides its accumulated value across all neighbors with lower
+    potential using ``divide(value, num_parents)``.
+
+    Args:
+        divide: Function splitting a value across ``count`` parents.
+
+    Returns:
+        A pluggable ``CollectStrategy``.
+    """
+
+    def strategy(
+        potential: StateT[float],
+        local: Any,
+        accumulation: Callable[[Any, Any], Any],
+    ) -> Any:
+        return _multi_path_collect(potential, local, accumulation, divide)
+
+    return strategy
+
+
 def _resolve_collect_strategy(strategy: Any) -> CollectStrategy:
     """Resolve ``None`` or an uncalled strategy factory into a ``CollectStrategy``."""
     if strategy is None:
         return broadcast_collect()
-    if strategy in (broadcast_collect, point_to_point):
+    if strategy in (broadcast_collect, point_to_point, multi_path):
         return strategy()
     return strategy
 

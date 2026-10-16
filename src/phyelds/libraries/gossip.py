@@ -266,6 +266,27 @@ def any_node(
 
 
 @aggregate
+def gossip_mean(value: float) -> float:
+    """
+    Smooth and diffuse ``value`` across the network by neighborhood averaging.
+
+    At each round, averages the current local ``value`` with the estimates received
+    from neighbors, remaining self-stabilizing when input values change.
+
+    Args:
+        value: Local numeric value.
+
+    Returns:
+        The locally averaged estimate.
+    """
+    set_estimate, neighbor_estimates = exchange(float(value))
+    peer_sum = float(neighbor_estimates.sum(include_self=False))
+    avg = (float(value) + peer_sum) / len(neighbor_estimates.data)
+    set_estimate(avg)
+    return avg
+
+
+@aggregate
 def stabilizing_gossip(
     value: T,
     max_diameter: int,
