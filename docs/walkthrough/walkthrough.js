@@ -1,959 +1,684 @@
 /*
- * Full-Viewport Interactive 3D Field Walkthrough for Phyelds.
- * Renders stacked computational fields (Sense -> Neighbors -> Gradient ->
- * Collect -> Channel -> Branching) with high-DPI 3D projection, zoom, and
- * configurable vertical layer separation.
+ * The walkthrough page: a few steps, each running a program on the network.
+ * The network is drawn in 3D and from above, next to the same field at
+ * infinite density, and the program shows what the inspected device computed.
  */
-(function () {
-  "use strict";
-
-  const canvas = document.getElementById("wt-canvas");
-  if (!canvas) return;
-  const ctx = canvas.getContext("2d");
-  const stageEl = document.getElementById("wt-stage") || canvas.parentElement;
-
-  const GRID = 6;
-  const NUM_NODES = GRID * GRID;
-  const COMM_RADIUS = 1.65;
-  const INF = 999;
-
-  const STEPS = [
-    {
-      kicker: "Step 1 of 6 — Local Sensors",
-      title: "What is a Computational Field?",
-      desc:
-        "<p>A <strong>computational field</strong> assigns a value to every device in the network at every moment in time.</p>" +
-        "<p>Here, 36 devices sit on a 2D physical network. Every device runs the exact same Python function and reads its local sensors (<code>sense('source')</code> and <code>sense('target')</code>). Without neighbor communication, each device only knows its own local reading.</p>" +
-        "<p><strong>Try it:</strong> Click any node to move the <span class='wt-dot wt-dot--source'></span><strong>Source</strong>, switch the bottom-left mode to move the <span class='wt-dot wt-dot--target'></span><strong>Target</strong>, or toggle <strong>Obstacles</strong>.</p>",
-      code:
-        "from phyelds.calculus import aggregate\n" +
-        "from phyelds.libraries.device import sense\n\n" +
-        "@aggregate\n" +
-        "def sensor_field() -> str:\n" +
-        "    if sense(\"source\"):\n" +
-        "        return \"SOURCE\"\n" +
-        "    if sense(\"target\"):\n" +
-        "        return \"TARGET\"\n" +
-        "    return \"IDLE\"",
-      layers: [
-        { id: "sensors", name: "Layer 0: Local Sensors (sense)", color: "#f59e0b" },
-      ],
-    },
-    {
-      kicker: "Step 2 of 6 — Space Only (1-Hop)",
-      title: "Perceiving Immediate Neighbors",
-      desc:
-        "<p><code>neighbors(value)</code> is the spatial primitive: each device shares <code>value</code> with devices within communication range and receives their values back as a <code>NeighborhoodField</code>.</p>" +
-        "<p>Above the physical network (Layer 0), <strong>Layer 1</strong> shows how many active neighbors each device hears: <code>len(neighbors(1).exclude_self())</code>. Boundary nodes and nodes adjacent to obstacles have fewer neighbors and lower elevation.</p>" +
-        "<p><strong>Try it:</strong> Hover over any node to highlight its 1-hop <code>NeighborhoodField</code> in yellow, or toggle an <strong>Obstacle</strong> to see its neighbors adapt on the next round.</p>",
-      code:
-        "from phyelds.calculus import aggregate, neighbors\n\n" +
-        "@aggregate\n" +
-        "def neighbor_count() -> int:\n" +
-        "    # Share 1 with neighbors; count who we hear (excluding self)\n" +
-        "    field = neighbors(1)\n" +
-        "    return len(field.exclude_self())",
-      layers: [
-        { id: "sensors", name: "Layer 0: Physical Network", color: "#94a3b8" },
-        { id: "degree", name: "Layer 1: neighbors(1) count", color: "#f97316" },
-      ],
-    },
-    {
-      kicker: "Step 3 of 6 — Space + Time (Spreading G)",
-      title: "The Gradient: Propagating Across the Network",
-      desc:
-        "<p>Combining local state across rounds (<code>remember</code>) with neighbor exchange (<code>neighbors</code>) lets information travel across the entire network.</p>" +
-        "<p><code>distance_to(sense('target'))</code> computes a <strong>gradient</strong>: a 3D funnel sloping down toward the Target. Click <strong>Reset State</strong> and then <strong>+1 Round</strong> repeatedly to watch the wave expand one hop per round!</p>" +
-        "<p><strong>Try it:</strong> Switch <strong>View</strong> to <em>3D Height Surface</em> or place a wall of <strong>Obstacles</strong>—the gradient self-heals around obstacles automatically.</p>",
-      code:
-        "from phyelds.calculus import aggregate\n" +
-        "from phyelds.libraries.device import sense\n" +
-        "from phyelds.libraries.distances import neighbors_distances\n" +
-        "from phyelds.libraries.spreading import distance_to\n\n" +
-        "@aggregate\n" +
-        "def to_target() -> float:\n" +
-        "    # G block: shortest metric distance to the target\n" +
-        "    return distance_to(sense(\"target\"), neighbors_distances())",
-      layers: [
-        { id: "sensors", name: "Layer 0: Network & Obstacles", color: "#94a3b8" },
-        { id: "grad_target", name: "Layer 1 (G): distance_to(target)", color: "#ec4899" },
-      ],
-    },
-    {
-      kicker: "Step 4 of 6 — Inward Flow (Collection C)",
-      title: "Collecting Along a Gradient: Shortest Path",
-      desc:
-        "<p>Once Layer 1 forms a gradient potential toward the Target, we can flow data <strong>downhill</strong> along that potential using <code>collect_or(to_target, sense('source'))</code>.</p>" +
-        "<p>In 3D you now see <strong>two stacked functions</strong>: Layer 1 (below) is the distance potential <code>to_target</code>, and Layer 2 (above) is the boolean field <code>on_path</code> that lights up every device along the shortest path from Source to Target.</p>" +
-        "<p><strong>Try it:</strong> Drag the <strong>Layer Gap</strong> slider to separate the planes and see how each node on Layer 2 follows the parent pointers of Layer 1 below it.</p>",
-      code:
-        "@aggregate\n" +
-        "def shortest_path() -> bool:\n" +
-        "    distances = neighbors_distances()\n" +
-        "    # Layer 1 (G): potential field sloping down to target\n" +
-        "    to_target = distance_to(sense(\"target\"), distances)\n" +
-        "    # Layer 2 (C): flow True from source downhill to target\n" +
-        "    on_path = collect_or(to_target, sense(\"source\"))\n" +
-        "    return on_path",
-      layers: [
-        { id: "grad_target", name: "Layer 1 (G): to_target potential", color: "#ec4899" },
-        { id: "on_path", name: "Layer 2 (C): collect_or(to_target, source)", color: "#f59e0b" },
-      ],
-    },
-    {
-      kicker: "Step 5 of 6 — Functional Composition (G → C → G)",
-      title: "Composing Three Fields into a Channel",
-      desc:
-        "<p>In aggregate computing, the field returned by one function is passed directly as the input to the next. Feeding <code>on_path</code> (Layer 2) as the source of a second gradient <code>distance_to(on_path, distances) &lt;= width</code> (Layer 3) dilates the path into a fault-tolerant <strong>Channel</strong> corridor.</p>" +
-        "<p>Vertical alignment fibres connect every device across <strong>Layer 1 → Layer 2 → Layer 3</strong>, showing how three simple field functions stack into a self-healing collective behavior.</p>" +
-        "<p><strong>Try it:</strong> Drag the <strong>Channel Width</strong> slider at the top of the 3D stage to widen or narrow the corridor live.</p>",
-      code:
-        "@aggregate\n" +
-        "def channel(width: float = 1.6) -> bool:\n" +
-        "    distances = neighbors_distances()\n" +
-        "    # Layer 1 (G): distance to target\n" +
-        "    to_target = distance_to(sense(\"target\"), distances)\n" +
-        "    # Layer 2 (C): shortest path from source to target\n" +
-        "    on_path = collect_or(to_target, sense(\"source\"))\n" +
-        "    # Layer 3 (G): dilate path into a corridor of radius `width`\n" +
-        "    return distance_to(on_path, distances) <= width",
-      layers: [
-        { id: "grad_target", name: "Layer 1 (G): distance_to(target)", color: "#ec4899" },
-        { id: "on_path", name: "Layer 2 (C): collect_or (path)", color: "#f59e0b" },
-        { id: "channel", name: "Layer 3 (G): distance_to(on_path) <= width", color: "#10b981" },
-      ],
-    },
-    {
-      kicker: "Step 6 of 6 — Branching & Alignment (if / else)",
-      title: "Splitting Space into Isolated Domains",
-      desc:
-        "<p>What happens when we write <code>if in_channel: ... else: ...</code> inside an <code>@aggregate</code> function? Phyelds rewrites the AST so the <code>True</code> branch (<code>align_left</code>) and the <code>False</code> branch (<code>align_right</code>) execute in <strong>isolated communication domains</strong>.</p>" +
-        "<p>On <strong>Layer 4 (top)</strong>, channel nodes compute an internal gradient from the Source (warm colors, elevated), while outside nodes compute an independent degree field (sky blue, lower plane). Red dashed links mark physical connections across the border—<strong>no messages cross between the two branches!</strong></p>",
-      code:
-        "@aggregate\n" +
-        "def branched_channel(width: float = 1.6) -> float:\n" +
-        "    in_channel = channel(width)\n" +
-        "    if in_channel:\n" +
-        "        # align_left: only channel nodes hear each other!\n" +
-        "        return distance_to(sense(\"source\"), neighbors_distances())\n" +
-        "    else:\n" +
-        "        # align_right: isolated outside domain\n" +
-        "        return -float(len(neighbors(1).exclude_self()))",
-      layers: [
-        { id: "grad_target", name: "Layer 1 (G): distance_to(target)", color: "#ec4899" },
-        { id: "on_path", name: "Layer 2 (C): collect_or (path)", color: "#f59e0b" },
-        { id: "channel", name: "Layer 3 (G): channel mask", color: "#10b981" },
-        { id: "branch", name: "Layer 4 (if/else): align_left vs align_right", color: "#38bdf8" },
-      ],
-    },
-  ];
-
-  // State
-  let currentStep = 0;
-  let roundCount = 0;
-  let playing = true;
-  let viewMode = "stacked";
-  let focusedLayer = null;
-  let layerGap = 3.2;
-  let channelWidth = 1.6;
-  let clickMode = "source";
-  let hoveredNode = null;
-  let selectedNode = 8;
-
-  // Camera
-  const DEFAULT_YAW = -0.62;
-  const DEFAULT_PITCH = 0.54;
-  const DEFAULT_ZOOM = 1.0;
-  let camYaw = DEFAULT_YAW;
-  let camPitch = DEFAULT_PITCH;
-  let camZoom = DEFAULT_ZOOM;
-  let isDragging = false;
-  let dragStart = { x: 0, y: 0 };
-  let dragMoved = false;
-
-  // Viewport logical size
-  let viewW = 860;
-  let viewH = 640;
-
-  const nodes = [];
-  const edges = [];
-
-  function seededJitter(idx) {
-    const s = Math.sin(idx * 127.1 + 311.7) * 43758.5453;
-    return s - Math.floor(s) - 0.5;
-  }
-
-  function initNetwork() {
-    nodes.length = 0;
-    for (let r = 0; r < GRID; r++) {
-      for (let c = 0; c < GRID; c++) {
-        const id = r * GRID + c;
-        const inner = r > 0 && r < GRID - 1 && c > 0 && c < GRID - 1;
-        const jx = inner ? seededJitter(id) * 0.25 : 0;
-        const jy = inner ? seededJitter(id + 99) * 0.25 : 0;
-        nodes.push({
-          id: id,
-          x: c + jx,
-          y: r + jy,
-          source: id === 0,
-          target: id === NUM_NODES - 1,
-          obstacle: id === 14 || id === 21,
-          degree: 0,
-          dTarget: INF,
-          parentTarget: null,
-          onPath: false,
-          dPath: INF,
-          inChannel: false,
-          branchLeftDist: INF,
-          branchRightVal: 0,
-        });
-      }
-    }
-    rebuildEdges();
-    resetFieldState();
-  }
-
-  function rebuildEdges() {
-    edges.length = 0;
-    for (let i = 0; i < NUM_NODES; i++) {
-      for (let j = i + 1; j < NUM_NODES; j++) {
-        const dist = Math.hypot(nodes[i].x - nodes[j].x, nodes[i].y - nodes[j].y);
-        if (dist <= COMM_RADIUS) {
-          edges.push({ a: i, b: j, dist: dist });
-        }
-      }
-    }
-  }
-
-  function activeNeighbors(id) {
-    if (nodes[id].obstacle) return [];
-    const list = [];
-    for (const e of edges) {
-      if (e.a === id && !nodes[e.b].obstacle) list.push({ id: e.b, dist: e.dist });
-      else if (e.b === id && !nodes[e.a].obstacle) list.push({ id: e.a, dist: e.dist });
-    }
-    return list;
-  }
-
-  function resetFieldState() {
-    roundCount = 0;
-    for (const n of nodes) {
-      n.degree = 0;
-      n.dTarget = n.target && !n.obstacle ? 0.0 : INF;
-      n.parentTarget = null;
-      n.onPath = n.source && !n.obstacle;
-      n.dPath = n.onPath ? 0.0 : INF;
-      n.inChannel = false;
-      n.branchLeftDist = n.source && !n.obstacle ? 0.0 : INF;
-      n.branchRightVal = 0;
-    }
-    updateRoundBadge();
-    updateInspector();
-  }
-
-  function stepRound() {
-    roundCount += 1;
-    const prev = nodes.map((n) => ({
-      dTarget: n.dTarget,
-      parentTarget: n.parentTarget,
-      onPath: n.onPath,
-      dPath: n.dPath,
-      inChannel: n.inChannel,
-      branchLeftDist: n.branchLeftDist,
-    }));
-
-    for (let i = 0; i < NUM_NODES; i++) {
-      const n = nodes[i];
-      if (n.obstacle) {
-        n.degree = 0;
-        n.dTarget = INF;
-        n.parentTarget = null;
-        n.onPath = false;
-        n.dPath = INF;
-        n.inChannel = false;
-        n.branchLeftDist = INF;
-        n.branchRightVal = 0;
-        continue;
-      }
-
-      const nbrs = activeNeighbors(i);
-      n.degree = nbrs.length;
-
-      // Layer 1: distance_to(target)
-      if (n.target) {
-        n.dTarget = 0.0;
-        n.parentTarget = null;
-      } else {
-        let best = INF;
-        let bestParent = null;
-        for (const nb of nbrs) {
-          const cand = prev[nb.id].dTarget + nb.dist;
-          if (cand < best) {
-            best = cand;
-            bestParent = nb.id;
-          }
-        }
-        n.dTarget = Math.min(best, INF);
-        n.parentTarget = bestParent;
-      }
-
-      // Layer 2: collect_or(to_target, source)
-      let childOnPath = false;
-      for (const nb of nbrs) {
-        if (prev[nb.id].onPath && prev[nb.id].parentTarget === i) {
-          childOnPath = true;
-          break;
-        }
-      }
-      n.onPath = Boolean((n.source && n.dTarget < INF) || childOnPath || (n.target && childOnPath));
-
-      // Layer 3: distance_to(on_path) <= channelWidth
-      if (n.onPath) {
-        n.dPath = 0.0;
-      } else {
-        let bestP = INF;
-        for (const nb of nbrs) {
-          const cand = prev[nb.id].dPath + nb.dist;
-          if (cand < bestP) bestP = cand;
-        }
-        n.dPath = Math.min(bestP, INF);
-      }
-      n.inChannel = n.dPath <= channelWidth;
-
-      // Layer 4: Branching (if in_channel: align_left else: align_right)
-      if (n.inChannel) {
-        if (n.source) {
-          n.branchLeftDist = 0.0;
-        } else {
-          let bestL = INF;
-          for (const nb of nbrs) {
-            if (prev[nb.id].inChannel) {
-              const cand = prev[nb.id].branchLeftDist + nb.dist;
-              if (cand < bestL) bestL = cand;
-            }
-          }
-          n.branchLeftDist = Math.min(bestL, INF);
-        }
-        n.branchRightVal = 0;
-      } else {
-        n.branchLeftDist = INF;
-        let alignedOutside = 0;
-        for (const nb of nbrs) {
-          if (!prev[nb.id].inChannel) alignedOutside += 1;
-        }
-        n.branchRightVal = alignedOutside;
-      }
-    }
-
-    updateRoundBadge();
-    updateInspector();
-  }
-
-  function resizeCanvas() {
-    const rect = stageEl.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    viewW = Math.max(320, rect.width);
-    viewH = Math.max(320, rect.height);
-    canvas.width = Math.round(viewW * dpr);
-    canvas.height = Math.round(viewH * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    render();
-  }
-
-  function project3D(gx, gy, gz) {
-    const cx = (GRID - 1) / 2;
-    const cy = (GRID - 1) / 2;
-    const x0 = gx - cx;
-    const y0 = gy - cy;
-
-    const cosY = Math.cos(camYaw);
-    const sinY = Math.sin(camYaw);
-    const cosP = Math.cos(camPitch);
-    const sinP = Math.sin(camPitch);
-
-    const rx = x0 * cosY - y0 * sinY;
-    const ry = x0 * sinY + y0 * cosY;
-
-    const baseScale = Math.min(viewW, viewH) * 0.115 * camZoom;
-    const screenX = viewW * 0.5 + rx * baseScale;
-    const screenY = viewH * 0.53 + (ry * sinP - gz * cosP) * baseScale;
-    const depth = ry * cosP + gz * sinP;
-    return { x: screenX, y: screenY, depth: depth };
-  }
-
-  function plasmaColor(t) {
-    const clamped = Math.max(0, Math.min(1, t));
-    const stops = [
-      [245, 158, 11],
-      [249, 115, 22],
-      [225, 29, 116],
-      [109, 40, 217],
-    ];
-    const pos = clamped * (stops.length - 1);
-    const idx = Math.min(stops.length - 2, Math.floor(pos));
-    const frac = pos - idx;
-    const r = Math.round(stops[idx][0] + (stops[idx + 1][0] - stops[idx][0]) * frac);
-    const g = Math.round(stops[idx][1] + (stops[idx + 1][1] - stops[idx][1]) * frac);
-    const b = Math.round(stops[idx][2] + (stops[idx + 1][2] - stops[idx][2]) * frac);
-    return `rgb(${r},${g},${b})`;
-  }
-
-  function nodeLayerAppearance(n, layerId) {
-    if (n.obstacle) {
-      return { color: "#475569", radius: 5.5, relief: 0, label: "OBS", valid: false };
-    }
-    if (layerId === "sensors") {
-      if (n.source) return { color: "#f59e0b", radius: 9.5, relief: 0.25, label: "SOURCE", valid: true };
-      if (n.target) return { color: "#10b981", radius: 9.5, relief: 0.25, label: "TARGET", valid: true };
-      return { color: "#94a3b8", radius: 6, relief: 0, label: "", valid: true };
-    }
-    if (layerId === "degree") {
-      const t = 1 - Math.min(1, n.degree / 8);
-      return {
-        color: plasmaColor(t * 0.8),
-        radius: 8,
-        relief: (n.degree / 8) * 0.95,
-        label: String(n.degree),
-        valid: true,
-      };
-    }
-    if (layerId === "grad_target") {
-      if (n.dTarget >= INF) {
-        return { color: "#64748b", radius: 6, relief: 0, label: "∞", valid: false };
-      }
-      const t = Math.min(1, n.dTarget / 8.5);
-      return {
-        color: plasmaColor(t),
-        radius: n.target ? 9.5 : 7.5,
-        relief: Math.min(1.25, n.dTarget * 0.14),
-        label: n.dTarget.toFixed(1),
-        valid: true,
-      };
-    }
-    if (layerId === "on_path") {
-      if (n.onPath) {
-        return { color: "#f59e0b", radius: 9.5, relief: 0.38, label: "True", valid: true };
-      }
-      return { color: "#475569", radius: 5.5, relief: 0, label: "", valid: false };
-    }
-    if (layerId === "channel") {
-      if (n.inChannel) {
-        return { color: "#10b981", radius: 8.8, relief: 0.35, label: "True", valid: true };
-      }
-      return { color: "#475569", radius: 5.5, relief: 0, label: "", valid: false };
-    }
-    if (layerId === "branch") {
-      if (n.inChannel) {
-        const t = n.branchLeftDist < INF ? Math.min(1, n.branchLeftDist / 8.5) : 1;
-        return {
-          color: plasmaColor(t * 0.85),
-          radius: 8.8,
-          relief: 0.42,
-          label: n.branchLeftDist < INF ? n.branchLeftDist.toFixed(1) : "∞",
-          valid: true,
-        };
-      }
-      return {
-        color: "#38bdf8",
-        radius: 7,
-        relief: -0.18,
-        label: `-${n.branchRightVal}`,
-        valid: true,
-      };
-    }
-    return { color: "#94a3b8", radius: 6.5, relief: 0, label: "", valid: true };
-  }
-
-  let screenNodes = [];
-
-  function render() {
-    ctx.clearRect(0, 0, viewW, viewH);
-
-    const stepObj = STEPS[currentStep];
-    const allLayers = stepObj.layers;
-    const layersToDraw =
-      focusedLayer !== null
-        ? allLayers.filter((l) => l.id === focusedLayer)
-        : allLayers;
-
-    const numL = layersToDraw.length;
-    const totalSpan = viewMode === "stacked" && numL > 1 ? layerGap * (numL - 1) * 0.48 : 0;
-    const layerSpacing = numL > 1 ? totalSpan / (numL - 1) : 0;
-    const baseOffset = -totalSpan * 0.5;
-
-    screenNodes = [];
-
-    // 1. Vertical alignment fibres connecting each node across all stacked layers
-    if (viewMode === "stacked" && numL > 1) {
-      for (let i = 0; i < NUM_NODES; i++) {
-        const n = nodes[i];
-        if (n.obstacle) continue;
-        const isFocus = i === hoveredNode || i === selectedNode;
-        const pBottom = project3D(n.x, n.y, baseOffset);
-        const topApp = nodeLayerAppearance(n, layersToDraw[numL - 1].id);
-        const pTop = project3D(
-          n.x,
-          n.y,
-          baseOffset + (numL - 1) * layerSpacing + topApp.relief * 0.42
-        );
-        ctx.save();
-        ctx.beginPath();
-        ctx.setLineDash(isFocus ? [5, 3] : [2, 5]);
-        ctx.strokeStyle = isFocus ? "#fde047" : "rgba(148, 163, 184, 0.22)";
-        ctx.lineWidth = isFocus ? 2.2 : 1.0;
-        ctx.moveTo(pBottom.x, pBottom.y);
-        ctx.lineTo(pTop.x, pTop.y);
-        ctx.stroke();
-        ctx.restore();
-      }
-    }
-
-    // 2. Render each layer plane from bottom to top
-    layersToDraw.forEach((layer, lIdx) => {
-      const zPlane = baseOffset + lIdx * layerSpacing;
-
-      const corners = [
-        project3D(-0.55, -0.55, zPlane),
-        project3D(GRID - 0.45, -0.55, zPlane),
-        project3D(GRID - 0.45, GRID - 0.45, zPlane),
-        project3D(-0.55, GRID - 0.45, zPlane),
-      ];
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(corners[0].x, corners[0].y);
-      for (let c = 1; c < 4; c++) ctx.lineTo(corners[c].x, corners[c].y);
-      ctx.closePath();
-      ctx.fillStyle = "rgba(24, 19, 36, 0.46)";
-      ctx.strokeStyle = layer.color;
-      ctx.lineWidth = 1.6;
-      ctx.fill();
-      ctx.stroke();
-
-      // Layer label badge on the front-left corner of the plane
-      const tagX = corners[3].x + 10;
-      const tagY = corners[3].y - 10;
-      ctx.font = "bold 12px sans-serif";
-      const textW = ctx.measureText(layer.name).width;
-      ctx.fillStyle = "rgba(17, 14, 23, 0.88)";
-      ctx.strokeStyle = layer.color;
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.roundRect(tagX - 6, tagY - 13, textW + 12, 20, 5);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = layer.color;
-      ctx.fillText(layer.name, tagX, tagY + 1);
-      ctx.restore();
-
-      const reliefScale = viewMode === "surface" ? 1.85 : 0.42;
-
-      const layerPts = nodes.map((n) => {
-        const app = nodeLayerAppearance(n, layer.id);
-        const z = zPlane + app.relief * reliefScale;
-        const p = project3D(n.x, n.y, z);
-        const pBase = project3D(n.x, n.y, zPlane);
-        return { n, app, p, pBase };
-      });
-
-      // Edges
-      for (const e of edges) {
-        const na = layerPts[e.a];
-        const nb = layerPts[e.b];
-        if (na.n.obstacle || nb.n.obstacle) continue;
-
-        ctx.save();
-        ctx.beginPath();
-
-        if (layer.id === "branch") {
-          const sameDomain = na.n.inChannel === nb.n.inChannel;
-          if (!sameDomain) {
-            ctx.setLineDash([4, 4]);
-            ctx.strokeStyle = "rgba(239, 68, 68, 0.6)";
-            ctx.lineWidth = 1.3;
-          } else if (na.n.inChannel) {
-            ctx.strokeStyle = "rgba(245, 158, 11, 0.85)";
-            ctx.lineWidth = 2.4;
-          } else {
-            ctx.strokeStyle = "rgba(56, 189, 248, 0.48)";
-            ctx.lineWidth = 1.4;
-          }
-        } else if (layer.id === "on_path") {
-          const bothPath =
-            na.n.onPath &&
-            nb.n.onPath &&
-            (na.n.parentTarget === nb.n.id || nb.n.parentTarget === na.n.id);
-          ctx.strokeStyle = bothPath ? "#f59e0b" : "rgba(148, 163, 184, 0.2)";
-          ctx.lineWidth = bothPath ? 3.4 : 1.0;
-        } else if (layer.id === "channel") {
-          const bothChan = na.n.inChannel && nb.n.inChannel;
-          ctx.strokeStyle = bothChan ? "rgba(16, 185, 129, 0.85)" : "rgba(148, 163, 184, 0.2)";
-          ctx.lineWidth = bothChan ? 2.5 : 1.0;
-        } else {
-          const isTreeEdge =
-            layer.id === "grad_target" &&
-            (na.n.parentTarget === nb.n.id || nb.n.parentTarget === na.n.id);
-          ctx.strokeStyle = isTreeEdge
-            ? "rgba(244, 114, 182, 0.8)"
-            : "rgba(148, 163, 184, 0.25)";
-          ctx.lineWidth = isTreeEdge ? 2.1 : 1.1;
-        }
-
-        ctx.moveTo(na.p.x, na.p.y);
-        ctx.lineTo(nb.p.x, nb.p.y);
-        ctx.stroke();
-        ctx.restore();
-      }
-
-      // Highlight 1-hop neighborhood of focused node
-      const focusId = hoveredNode !== null ? hoveredNode : selectedNode;
-      if (focusId !== null && !nodes[focusId].obstacle) {
-        const centerPt = layerPts[focusId];
-        for (const nb of activeNeighbors(focusId)) {
-          const nbPt = layerPts[nb.id];
-          if (layer.id === "branch" && centerPt.n.inChannel !== nbPt.n.inChannel) {
-            continue;
-          }
-          ctx.save();
-          ctx.beginPath();
-          ctx.strokeStyle = "#fde047";
-          ctx.lineWidth = 2.6;
-          ctx.moveTo(centerPt.p.x, centerPt.p.y);
-          ctx.lineTo(nbPt.p.x, nbPt.p.y);
-          ctx.stroke();
-          ctx.restore();
-        }
-      }
-
-      // Nodes sorted back-to-front
-      const sorted = layerPts.slice().sort((a, b) => a.p.depth - b.p.depth);
-
-      for (const item of sorted) {
-        const { n, app, p, pBase } = item;
-
-        if (Math.abs(p.y - pBase.y) > 2) {
-          ctx.save();
-          ctx.beginPath();
-          ctx.strokeStyle = app.color;
-          ctx.globalAlpha = 0.6;
-          ctx.lineWidth = 2.2;
-          ctx.moveTo(pBase.x, pBase.y);
-          ctx.lineTo(p.x, p.y);
-          ctx.stroke();
-          ctx.restore();
-        }
-
-        const isFocus = n.id === hoveredNode || n.id === selectedNode;
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, app.radius + (isFocus ? 2.5 : 0), 0, Math.PI * 2);
-        ctx.fillStyle = app.color;
-        ctx.fill();
-        ctx.lineWidth = isFocus ? 2.8 : 1.5;
-        ctx.strokeStyle = isFocus ? "#fde047" : "#ffffff";
-        ctx.stroke();
-
-        if (n.source || n.target) {
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, app.radius + 5, 0, Math.PI * 2);
-          ctx.strokeStyle = n.source ? "#f59e0b" : "#10b981";
-          ctx.lineWidth = 2.2;
-          ctx.stroke();
-        }
-
-        // Value label on top-most visible layer
-        if (lIdx === layersToDraw.length - 1 && app.label) {
-          ctx.font = "bold 10.5px monospace";
-          ctx.fillStyle = "#ffffff";
-          ctx.textAlign = "center";
-          ctx.fillText(app.label, p.x, p.y - app.radius - 6);
-        }
-        ctx.restore();
-
-        if (lIdx === layersToDraw.length - 1) {
-          screenNodes.push({ id: n.id, x: p.x, y: p.y, r: app.radius + 8 });
-        }
-      }
-    });
-  }
-
-  function updateRoundBadge() {
-    const badge = document.getElementById("wt-round-badge");
-    if (badge) badge.textContent = `Round ${roundCount}`;
-  }
-
-  function renderLayersBar() {
-    const bar = document.getElementById("wt-layers-bar");
-    if (!bar) return;
-    const layers = STEPS[currentStep].layers;
-    bar.innerHTML = "";
-
-    const allBtn = document.createElement("button");
-    allBtn.type = "button";
-    allBtn.className = "wt-layer-pill" + (focusedLayer === null ? " active" : "");
-    allBtn.textContent = `All Stacked Layers (${layers.length})`;
-    allBtn.addEventListener("click", () => {
-      focusedLayer = null;
-      renderLayersBar();
-      render();
-    });
-    bar.appendChild(allBtn);
-
-    layers.forEach((layer) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "wt-layer-pill" + (focusedLayer === layer.id ? " active" : "");
-      btn.style.borderColor = layer.color;
-      btn.innerHTML = `<span class="wt-layer-dot" style="background:${layer.color}"></span>${layer.name}`;
-      btn.addEventListener("click", () => {
-        focusedLayer = focusedLayer === layer.id ? null : layer.id;
-        renderLayersBar();
-        render();
-      });
-      bar.appendChild(btn);
-    });
-  }
-
-  function updateInspector() {
-    const idBadge = document.getElementById("wt-insp-id");
-    const body = document.getElementById("wt-insp-body");
-    if (!idBadge || !body) return;
-
-    const id = hoveredNode !== null ? hoveredNode : selectedNode;
-    if (id === null || !nodes[id]) return;
-    const n = nodes[id];
-    const nbrs = activeNeighbors(id);
-
-    const role = n.obstacle
-      ? "OBSTACLE"
-      : n.source
-      ? "SOURCE"
-      : n.target
-      ? "TARGET"
-      : "Device";
-    idBadge.textContent = `Node #${id} (${role})`;
-
-    if (n.obstacle) {
-      body.innerHTML =
-        "<p>This node is disabled (<strong>Obstacle</strong>). It sends no messages and does not appear in neighbors' <code>NeighborhoodField</code>. Click it in <em>Obstacle</em> mode to re-enable it.</p>";
-      return;
-    }
-
-    const nbrIds = nbrs.map((nb) => nb.id).join(", ") || "none";
-    const dT = n.dTarget < INF ? n.dTarget.toFixed(2) : "∞";
-    const dP = n.dPath < INF ? n.dPath.toFixed(2) : "∞";
-    const alignBranch = n.inChannel
-      ? "align_left (Channel)"
-      : "align_right (Outside)";
-
-    body.innerHTML =
-      `<div class="wt-insp-grid">` +
-      `<div class="wt-insp-row"><span class="wt-insp-key">Sensors</span><span class="wt-insp-val">source=${n.source}, target=${n.target}</span></div>` +
-      `<div class="wt-insp-row"><span class="wt-insp-key">1-Hop Neighbors (${nbrs.length})</span><span class="wt-insp-val">[${nbrIds}]</span></div>` +
-      `<div class="wt-insp-row"><span class="wt-insp-key">Layer 1: to_target</span><span class="wt-insp-val">${dT} (parent: ${n.parentTarget ?? "None"})</span></div>` +
-      `<div class="wt-insp-row"><span class="wt-insp-key">Layer 2: on_path</span><span class="wt-insp-val">${n.onPath}</span></div>` +
-      `<div class="wt-insp-row"><span class="wt-insp-key">Layer 3: in_channel</span><span class="wt-insp-val">${n.inChannel} (dist=${dP})</span></div>` +
-      `<div class="wt-insp-row"><span class="wt-insp-key">Layer 4: Branch Scope</span><span class="wt-insp-val">${alignBranch}</span></div>` +
-      `</div>`;
-  }
-
-  function setStep(idx) {
-    currentStep = Math.max(0, Math.min(STEPS.length - 1, idx));
-    focusedLayer = null;
-    const s = STEPS[currentStep];
-
-    document.querySelectorAll(".wt-step-btn").forEach((btn, i) => {
-      btn.classList.toggle("active", i === currentStep);
-    });
-
-    document.getElementById("wt-step-kicker").textContent = s.kicker;
-    document.getElementById("wt-step-title").textContent = s.title;
-    document.getElementById("wt-step-desc").innerHTML = s.desc;
-    document.getElementById("wt-code-display").textContent = s.code;
-
-    const prevBtn = document.getElementById("wt-prev-step");
-    const nextBtn = document.getElementById("wt-next-step");
-    if (prevBtn) prevBtn.disabled = currentStep === 0;
-    if (nextBtn) nextBtn.disabled = currentStep === STEPS.length - 1;
-
-    renderLayersBar();
-    updateInspector();
-    render();
-  }
-
-  function findNodeAt(mx, my) {
-    let best = null;
-    let bestDist = 999;
-    for (const sn of screenNodes) {
-      const d = Math.hypot(mx - sn.x, my - sn.y);
-      if (d <= sn.r && d < bestDist) {
-        best = sn.id;
-        bestDist = d;
-      }
-    }
-    return best;
-  }
-
-  function canvasCoords(evt) {
-    const rect = canvas.getBoundingClientRect();
-    return {
-      x: evt.clientX - rect.left,
-      y: evt.clientY - rect.top,
-    };
-  }
-
-  canvas.addEventListener("mousedown", (evt) => {
-    isDragging = true;
-    dragMoved = false;
-    dragStart = { x: evt.clientX, y: evt.clientY };
-  });
-
-  window.addEventListener("mousemove", (evt) => {
-    if (isDragging) {
-      const dx = evt.clientX - dragStart.x;
-      const dy = evt.clientY - dragStart.y;
-      if (Math.hypot(dx, dy) > 4) dragMoved = true;
-      camYaw += dx * 0.008;
-      camPitch = Math.max(0.18, Math.min(1.38, camPitch + dy * 0.007));
-      dragStart = { x: evt.clientX, y: evt.clientY };
-      render();
-      return;
-    }
-    const rect = canvas.getBoundingClientRect();
-    if (
-      evt.clientX >= rect.left &&
-      evt.clientX <= rect.right &&
-      evt.clientY >= rect.top &&
-      evt.clientY <= rect.bottom
-    ) {
-      const pt = canvasCoords(evt);
-      const hit = findNodeAt(pt.x, pt.y);
-      if (hit !== hoveredNode) {
-        hoveredNode = hit;
-        canvas.style.cursor = hit !== null ? "pointer" : "grab";
-        updateInspector();
-        render();
-      }
-    }
-  });
-
-  window.addEventListener("mouseup", (evt) => {
-    if (!isDragging) return;
-    isDragging = false;
-    if (!dragMoved) {
-      const pt = canvasCoords(evt);
-      const hit = findNodeAt(pt.x, pt.y);
-      if (hit !== null) {
-        selectedNode = hit;
-        const n = nodes[hit];
-        if (clickMode === "source" && !n.target) {
-          nodes.forEach((node) => (node.source = false));
-          n.obstacle = false;
-          n.source = true;
-        } else if (clickMode === "target" && !n.source) {
-          nodes.forEach((node) => (node.target = false));
-          n.obstacle = false;
-          n.target = true;
-        } else if (clickMode === "obstacle" && !n.source && !n.target) {
-          n.obstacle = !n.obstacle;
-        }
-        updateInspector();
-        render();
-      }
-    }
-  });
-
-  canvas.addEventListener(
-    "wheel",
-    (evt) => {
-      evt.preventDefault();
-      const factor = evt.deltaY < 0 ? 1.08 : 0.92;
-      camZoom = Math.max(0.55, Math.min(2.2, camZoom * factor));
-      render();
-    },
-    { passive: false }
-  );
-
-  // Controls
-  document.querySelectorAll(".wt-step-btn").forEach((btn) => {
-    btn.addEventListener("click", () => setStep(Number(btn.dataset.step)));
-  });
-
-  document.getElementById("wt-prev-step").addEventListener("click", () => setStep(currentStep - 1));
-  document.getElementById("wt-next-step").addEventListener("click", () => setStep(currentStep + 1));
-
-  const playBtn = document.getElementById("wt-play");
-  playBtn.addEventListener("click", () => {
-    playing = !playing;
-    playBtn.textContent = playing ? "Pause" : "Play";
-  });
-
-  document.getElementById("wt-step-round").addEventListener("click", () => {
-    playing = false;
-    playBtn.textContent = "Play";
-    stepRound();
-    render();
-  });
-
-  document.getElementById("wt-reset").addEventListener("click", () => {
-    resetFieldState();
-    render();
-  });
-
-  document.getElementById("wt-view-mode").addEventListener("change", (evt) => {
-    viewMode = evt.target.value;
-    render();
-  });
-
-  const gapSlider = document.getElementById("wt-gap-slider");
-  if (gapSlider) {
-    gapSlider.addEventListener("input", (evt) => {
-      layerGap = parseFloat(evt.target.value);
-      render();
-    });
-  }
-
-  const widthSlider = document.getElementById("wt-width-slider");
-  const widthVal = document.getElementById("wt-width-val");
-  widthSlider.addEventListener("input", (evt) => {
-    channelWidth = parseFloat(evt.target.value);
-    widthVal.textContent = channelWidth.toFixed(1);
-    stepRound();
-    render();
-  });
-
-  const resetCamBtn = document.getElementById("wt-reset-cam");
-  if (resetCamBtn) {
-    resetCamBtn.addEventListener("click", () => {
-      camYaw = DEFAULT_YAW;
-      camPitch = DEFAULT_PITCH;
-      camZoom = DEFAULT_ZOOM;
-      render();
-    });
-  }
-
-  document.querySelectorAll(".wt-mode-pill").forEach((pill) => {
-    pill.addEventListener("click", () => {
-      clickMode = pill.dataset.click;
-      document.querySelectorAll(".wt-mode-pill").forEach((p) => p.classList.remove("active"));
-      pill.classList.add("active");
-    });
-  });
-
-  initNetwork();
-  for (let r = 0; r < 10; r++) stepRound();
-  setStep(0);
-
-  if (typeof ResizeObserver !== "undefined") {
-    new ResizeObserver(() => resizeCanvas()).observe(stageEl);
-  } else {
-    window.addEventListener("resize", resizeCanvas);
-  }
-  resizeCanvas();
-
-  setInterval(() => {
-    if (playing) {
-      stepRound();
-      render();
-    }
-  }, 450);
+import { RESOLUTION, createContinuum } from "./continuum.js";
+import { createMap } from "./map.js";
+import { FEWEST, MOST, SIZE, SPAN, createNetwork, fire, initialStates, isStable, seeded, shuffled } from "./model.js";
+import { readPalette, toneIndex } from "./palette.js";
+import { HIDDEN, LIFT, PULSE_MS, createScene } from "./scene.js";
+import { STEPS } from "./steps.js";
+import { VIEWS } from "./views.js";
+
+const ROUND_MS = 700; // how long a round lasts while playing: every device runs once in it
+const EASE_MS = 140; // how fast heights follow a change of value
+const SETTLE_ROUNDS = 100; // a step that opens settled gives up after this many rounds
+const calm = matchMedia("(prefers-reduced-motion: reduce)");
+const element = (id) => document.getElementById(id);
+
+let network = createNetwork();
+const continuum = createContinuum();
+const random = seeded(2026);
+// The source and the target sit inside the arena, so that the channel between them is a whole ellipse;
+// the target is the closer to the camera, which looks down into its gradient.
+const environment = { source: SIZE * SIZE - SIZE - 2, target: SIZE + 1, off: new Set(), width: 0.8 };
+const scene = createScene(element("wt-scene"));
+const map = createMap(element("wt-map"));
+
+const app = {
+  step: 0,
+  pinnedView: null, // a field chosen by clicking a line of the program
+  round: 0,
+  states: initialStates(network),
+  stable: false,
+  playing: true,
+  showCloud: true,
+  hovered: null,
+  selected: 2 * SIZE + 2, // a device in the middle, on the way from the source to the target
+  palette: readPalette(),
+  environmentVersion: 0,
+  computedVersion: -1,
+  dirty: true, // the views need drawing again
+  panelDirty: true, // the panel needs the values of the last runs
+};
+
+// The round in progress: the random order of the devices, the next to run, and the states it started from.
+const rounds = { order: [], next: 0, start: null, owed: 0 };
+
+const display = {
+  deviceZ: new Float32Array(network.devices.length),
+  ranAt: new Float64Array(network.devices.length),
+  cloud: null,
+  cloudKey: null,
+};
+
+/** Where the cloud points are drawn: the grid, shaken a little so that it reads as a cloud. */
+const cloudPoints = (() => {
+  const { grid } = continuum;
+  const shake = (seed) => {
+    const noise = Math.sin(seed * 12.9898) * 43758.5453;
+    return noise - Math.floor(noise) - 0.5;
+  };
+  const spacing = SPAN / (RESOLUTION - 1);
+  const clamp = (value) => Math.max(0, Math.min(SPAN, value));
+  return {
+    x: Float32Array.from(grid.x, (x, index) => clamp(x + 0.7 * spacing * shake(index))),
+    y: Float32Array.from(grid.y, (y, index) => clamp(y + 0.7 * spacing * shake(index + 7919))),
+  };
 })();
+
+const step = () => STEPS[app.step];
+const viewName = () => app.pinnedView ?? step().view;
+const view = () => VIEWS[viewName()];
+const inspected = () => app.hovered ?? app.selected;
+const isOn = (id) => !environment.off.has(id);
+const roleOf = (id) => step().roles.find((role) => environment[role] === id) ?? null;
+
+function linkLength(a, b) {
+  return network.inRange[a].find((neighbor) => neighbor.id === b)?.length ?? NaN;
+}
+
+function changed() {
+  app.dirty = true;
+}
+
+// --- Rounds: every device runs once per round, in random order ----------------------------
+
+function beginRound() {
+  rounds.order = shuffled(network.devices.length, random);
+  rounds.next = 0;
+  rounds.start = app.states;
+}
+
+/** Runs the next device of the round; at the end of the round, checks whether anything changed. */
+function runNext(now) {
+  const id = rounds.order[rounds.next];
+  rounds.next += 1;
+  if (isOn(id)) {
+    app.states = app.states.with(id, fire(network, environment, app.states, id));
+    display.ranAt[id] = now;
+  }
+  if (rounds.next === rounds.order.length) {
+    app.round += 1;
+    app.stable = isStable(rounds.start, app.states, step().fields);
+    beginRound();
+  }
+  app.panelDirty = true;
+  changed();
+}
+
+function finishRound(now) {
+  const round = app.round;
+  while (app.round === round) runNext(now);
+}
+
+/** Runs rounds until the program of the step reaches its fixpoint, or gives up. */
+function settle() {
+  while (!app.stable && app.round < SETTLE_ROUNDS) finishRound(-Infinity);
+}
+
+function restart() {
+  app.states = initialStates(network);
+  app.round = 0;
+  app.stable = false;
+  rounds.owed = 0;
+  beginRound();
+  app.panelDirty = true;
+  changed();
+}
+
+function setPlaying(playing) {
+  app.playing = playing;
+  app.panelDirty = true;
+}
+
+function refreshPlayer() {
+  const play = element("wt-play");
+  play.classList.toggle("is-paused", !app.playing);
+  play.title = app.playing ? "Pause (Space)" : "Play (Space)";
+  play.setAttribute("aria-label", app.playing ? "Pause" : "Play");
+  let status = "changing";
+  if (app.round === 0 && rounds.next === 0) status = "not started";
+  else if (app.stable) status = "stable";
+  element("wt-round").innerHTML =
+    `<span class="wt-status${app.stable || status === "not started" ? " is-stable" : ""}"></span>` +
+    `round <strong>${app.round}</strong> · ${status}`;
+}
+
+// --- The environment ----------------------------------------------------------------------
+
+function environmentChanged() {
+  app.environmentVersion += 1;
+  app.stable = false;
+  app.panelDirty = true;
+  changed();
+}
+
+function nearestOn(point, except) {
+  let best = null;
+  let bestDistance = Infinity;
+  for (const device of network.devices) {
+    const distance = Math.hypot(device.x - point.x, device.y - point.y);
+    if (isOn(device.id) && !except.includes(device.id) && distance < bestDistance) {
+      best = device.id;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
+function setRole(role, id) {
+  const other = role === "source" ? "target" : "source";
+  if (environment[role] === id) return;
+  if (environment[other] === id) environment[other] = environment[role];
+  environment.off.delete(id);
+  environment[role] = id;
+  environmentChanged();
+}
+
+function toggleOff(id) {
+  if (environment.off.has(id)) {
+    environment.off.delete(id);
+  } else {
+    // The source and the target stay on a device that runs: they move to the closest one.
+    const role = ["source", "target"].find((each) => environment[each] === id);
+    const other = role === "source" ? environment.target : environment.source;
+    const refuge = role ? nearestOn(network.devices[id], [id, other]) : null;
+    if (role && refuge === null) return;
+    environment.off.add(id);
+    if (role) environment[role] = refuge;
+    // A device that is switched off stops sharing at once: its neighbors no longer hear it.
+    app.states = app.states.with(id, null);
+  }
+  environmentChanged();
+}
+
+/** Adds devices to the running network, or takes the last ones away; the others keep their state. */
+function setDeviceCount(count) {
+  const before = network;
+  network = createNetwork(count);
+  const resized = (values, Kind) => {
+    const next = new Kind(count);
+    next.set(values.subarray(0, Math.min(count, values.length)));
+    return next;
+  };
+  app.states = Array.from({ length: count }, (_, id) => app.states[id] ?? null);
+  display.deviceZ = resized(display.deviceZ, Float32Array);
+  display.ranAt = resized(display.ranAt, Float64Array);
+  for (const id of environment.off) {
+    if (id >= count) environment.off.delete(id);
+  }
+  for (const role of ["source", "target"]) {
+    const other = role === "source" ? environment.target : environment.source;
+    if (environment[role] >= count) environment[role] = nearestOn(before.devices[environment[role]], [other]);
+  }
+  if (app.selected >= count) app.selected = 2 * SIZE + 2;
+  if (app.hovered !== null && app.hovered >= count) app.hovered = null;
+  // The round in progress started without the new devices: a new one starts with them.
+  beginRound();
+  renderLegend();
+  environmentChanged();
+}
+
+// --- What the views draw ------------------------------------------------------------------
+
+function refreshCloud() {
+  if (app.computedVersion !== app.environmentVersion) {
+    continuum.update(environment, network);
+    app.computedVersion = app.environmentVersion;
+  }
+  const name = viewName();
+  const key = `${name}|${app.palette.dark}|${app.computedVersion}`;
+  if (display.cloudKey === key) return;
+  const shown = VIEWS[name];
+  const reversed = Boolean(shown.scale?.reversed);
+  const { height, tone, curve, water } = shown.cloud(continuum.fields, environment);
+  const target = Float32Array.from(height, (value) => value * LIFT);
+  const z = display.cloud ? display.cloud.z : Float32Array.from(target);
+  target.forEach((value, index) => {
+    if (!Number.isFinite(z[index])) z[index] = value;
+  });
+  display.cloud = {
+    ...cloudPoints,
+    z,
+    target,
+    color: Uint8Array.from(tone, (value) => toneIndex(value, reversed) ?? HIDDEN),
+    curve: curve?.map((point) => ({ x: point.x, y: point.y, z: point.height * LIFT })),
+    curveColor: shown.boolean ? app.palette.on : toneIndex(0, reversed),
+    water,
+  };
+  display.cloudKey = key;
+  changed();
+}
+
+function devicesFor(shown) {
+  const reversed = Boolean(shown.scale?.reversed);
+  return network.devices.map((device) => {
+    const state = app.states[device.id];
+    const off = !isOn(device.id);
+    const looks = state && !off ? shown.device(state, network) : { height: null, tone: null };
+    return {
+      id: device.id,
+      x: device.x,
+      y: device.y,
+      z: display.deviceZ[device.id],
+      lift: (looks.height ?? 0) * LIFT,
+      color: toneIndex(looks.tone, reversed),
+      off,
+      role: roleOf(device.id),
+      ranAt: display.ranAt[device.id],
+    };
+  });
+}
+
+function linksFor(shown) {
+  const { states } = app;
+  if (shown.links === "none") return [];
+  return network.links
+    .filter((link) => isOn(link.a) && isOn(link.b))
+    .map((link) => {
+      const a = states[link.a];
+      const b = states[link.b];
+      if (shown.links !== "branches" || a === null || b === null) return { a: link.a, b: link.b, style: shown.links };
+      if (a.branch !== b.branch) return { a: link.a, b: link.b, style: "cut" };
+      return { a: link.a, b: link.b, style: a.branch };
+    });
+}
+
+function focusFor(shown) {
+  const id = app.hovered;
+  if (id === null) return { focus: null, highlights: [] };
+  const state = isOn(id) ? app.states[id] : null;
+  const talks = state !== null && shown.links !== "none";
+  const neighbors = talks ? (shown.links === "branches" ? state.sameBranch : state.heard) : [];
+  const via = state && shown.via ? shown.via(state) : null;
+  let text = "has not run yet";
+  if (!isOn(id)) text = "switched off";
+  else if (state) text = shown.text(state);
+  return {
+    focus: { id, neighbors, range: Boolean(shown.range) && isOn(id), label: `#${id} · ${text}` },
+    highlights: neighbors.map((neighbor) => ({ a: id, b: neighbor, style: neighbor === via ? "via" : "neighbor" })),
+  };
+}
+
+/** Moves the heights a step toward their values; true while anything still moves. */
+function ease(devices, elapsed) {
+  const pull = calm.matches ? 1 : 1 - Math.exp(-elapsed / EASE_MS);
+  let moving = false;
+  for (const device of devices) {
+    const gap = device.lift - display.deviceZ[device.id];
+    if (Math.abs(gap) > 1e-3) moving = true;
+    display.deviceZ[device.id] += gap * pull;
+    device.z = display.deviceZ[device.id];
+  }
+  const { z, target } = display.cloud;
+  for (let index = 0; index < z.length; index += 1) {
+    const gap = target[index] - z[index];
+    if (Math.abs(gap) > 1e-3) {
+      moving = true;
+      z[index] += gap * pull;
+    }
+  }
+  return moving;
+}
+
+let lastFrame = performance.now();
+
+function frame(now) {
+  const elapsed = Math.min(64, now - lastFrame);
+  lastFrame = now;
+  if (app.playing) {
+    rounds.owed += (elapsed / ROUND_MS) * network.devices.length;
+    for (; rounds.owed >= 1; rounds.owed -= 1) runNext(now);
+  }
+  if (app.panelDirty) {
+    refreshInspection();
+    refreshPlayer();
+    app.panelDirty = false;
+  }
+  refreshCloud();
+  const shown = view();
+  const devices = devicesFor(shown);
+  const pulsing = devices.some((device) => now - device.ranAt < PULSE_MS);
+  if (ease(devices, elapsed) || app.dirty || pulsing) {
+    const { focus, highlights } = focusFor(shown);
+    const drawing = {
+      palette: app.palette,
+      network,
+      devices,
+      links: linksFor(shown),
+      highlights,
+      focus,
+      selected: app.selected,
+      cloud: app.showCloud ? display.cloud : null,
+      camera: scene.camera,
+      density: Math.sqrt(FEWEST / network.devices.length),
+      now,
+      pulses: !calm.matches,
+    };
+    scene.draw(drawing);
+    map.draw(drawing);
+    app.dirty = false;
+  }
+  requestAnimationFrame(frame);
+}
+
+// --- The panel ----------------------------------------------------------------------------
+
+let codeLines = [];
+
+function renderSteps() {
+  const nav = element("wt-steps");
+  nav.replaceChildren(
+    ...STEPS.map((each, index) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "wt-step";
+      button.innerHTML = `<span class="wt-step-number">${index + 1}</span><span class="wt-step-name">${each.name}</span>`;
+      button.addEventListener("click", () => goTo(index));
+      return button;
+    }),
+  );
+}
+
+function renderStory() {
+  const current = step();
+  element("wt-kicker").textContent = `Step ${app.step + 1} of ${STEPS.length}`;
+  element("wt-title").textContent = current.title;
+  element("wt-text").innerHTML = current.text.map((paragraph) => `<p>${paragraph}</p>`).join("");
+  element("wt-try").textContent = current.hint;
+  element("wt-width-row").hidden = !current.width;
+  const playground = element("wt-playground");
+  playground.hidden = !current.playground;
+  playground.href = `../playground/#example=${current.playground ?? ""}`;
+  element("wt-previous").disabled = app.step === 0;
+  element("wt-next").disabled = app.step === STEPS.length - 1;
+  element("wt-steps").querySelectorAll(".wt-step").forEach((button, index) => {
+    if (index === app.step) button.setAttribute("aria-current", "step");
+    else button.removeAttribute("aria-current");
+  });
+  document.querySelectorAll("[data-action=source], [data-action=target]").forEach((button) => {
+    button.hidden = !current.roles.includes(button.dataset.action);
+  });
+}
+
+function showView(name) {
+  app.pinnedView = name === viewName() || name === step().view ? null : name;
+  refreshInspection();
+  renderLegend();
+  changed();
+}
+
+function renderCode() {
+  const container = element("wt-code");
+  codeLines = step().code.map((line) => {
+    const row = document.createElement("div");
+    row.className = "wt-line";
+    const source = document.createElement("div");
+    source.className = "wt-src";
+    source.innerHTML = globalThis.highlightPython(line.code);
+    const output = document.createElement("div");
+    output.className = "wt-out";
+    const indent = document.createElement("span");
+    indent.className = "wt-indent";
+    indent.textContent = line.code.match(/^ */)[0];
+    const value = document.createElement("span");
+    value.className = "wt-value";
+    const detail = document.createElement("span");
+    output.append(indent, "↳", value, detail);
+    row.append(source, output);
+    if (line.view) {
+      row.dataset.view = line.view;
+      row.tabIndex = 0;
+      row.setAttribute("role", "button");
+      row.title = "Show this field";
+      row.addEventListener("click", () => showView(line.view));
+      row.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          showView(line.view);
+        }
+      });
+    }
+    return { line, row, output, value, detail };
+  });
+  container.replaceChildren(...codeLines.map(({ row }) => row));
+}
+
+/** The values of the inspected device, line by line, and its name and actions. */
+function refreshInspection() {
+  const id = inspected();
+  const state = isOn(id) ? app.states[id] : null;
+  const context = state ? { id, state, environment, round: app.round, length: (other) => linkLength(id, other) } : null;
+  const shown = viewName();
+  for (const { line, row, output, value, detail } of codeLines) {
+    const skipped = Boolean(state && line.branch && line.branch !== state.branch);
+    const known = Boolean(context || line.parameter);
+    row.classList.toggle("is-skipped", skipped);
+    row.classList.toggle("is-shown", line.view === shown && !skipped);
+    if (line.view) row.setAttribute("aria-pressed", String(line.view === shown));
+    value.textContent = line.value && known && !skipped ? line.value(context ?? { environment }) : "";
+    detail.textContent = (line.detail && context && !skipped && line.detail(context)) || "";
+    output.hidden = !value.textContent && !detail.textContent;
+  }
+  let status = "has not run yet";
+  if (!isOn(id)) status = "switched off";
+  else if (state && view().links === "none") status = "runs alone";
+  else if (state) status = `hears ${state.heard.length} neighbor${state.heard.length === 1 ? "" : "s"}`;
+  element("wt-device-name").innerHTML = `<strong>#${id}</strong> · ${status}`;
+  for (const button of document.querySelectorAll("[data-action]")) {
+    const action = button.dataset.action;
+    if (action === "off") {
+      button.textContent = isOn(id) ? "switch off" : "switch on";
+    } else {
+      button.disabled = environment[action] === id;
+    }
+  }
+}
+
+function renderLegend() {
+  const shown = view();
+  const { palette } = app;
+  const reversed = Boolean(shown.scale?.reversed);
+  const swatch = (color, label) =>
+    `<span class="wt-key"><span class="wt-key-swatch" style="background:${color}"></span>${label}</span>`;
+  let scale = "";
+  if (shown.boolean) {
+    scale = `<div class="wt-legend-keys">${swatch(palette.css[palette.on], "True")}${swatch(palette.css[palette.off], "False")}</div>`;
+  } else {
+    const stops = Array.from({ length: 9 }, (_, k) => palette.css[toneIndex(k / 8, reversed)]).join(", ");
+    const end = typeof shown.scale.to === "function" ? shown.scale.to(network) : shown.scale.to;
+    scale =
+      `<div class="wt-legend-bar" style="background:linear-gradient(90deg, ${stops})"></div>` +
+      `<div class="wt-legend-ends"><span>${shown.scale.from}</span><span>${end}</span></div>`;
+  }
+  const keys = [
+    `<span class="wt-key"><span class="wt-key-swatch" style="background:currentColor"></span>devices</span>`,
+    app.showCloud ? `<span class="wt-key"><span class="wt-key-cloud"></span>infinite density</span>` : "",
+  ];
+  element("wt-legend").innerHTML =
+    `<div class="wt-legend-label">${shown.label}</div>${scale}<div class="wt-legend-keys">${keys.join("")}</div>`;
+}
+
+function goTo(index) {
+  app.step = Math.max(0, Math.min(STEPS.length - 1, index));
+  app.pinnedView = null;
+  history.replaceState(null, "", `#step=${app.step + 1}`);
+  renderStory();
+  renderCode();
+  renderLegend();
+  // Every step deploys a new program: the devices start over from their first round. A
+  // composition opens settled, as its first rounds mostly show infinities meeting.
+  restart();
+  if (step().warm) settle();
+}
+
+// --- Pointer, keyboard and controls --------------------------------------------------------
+
+function hover(id) {
+  if (app.hovered === id) return;
+  app.hovered = id;
+  app.panelDirty = true;
+  changed();
+}
+
+function select(id) {
+  app.selected = id;
+  app.panelDirty = true;
+  changed();
+}
+
+function moveRole(role, point) {
+  const other = role === "source" ? environment.target : environment.source;
+  const id = nearestOn(point, [other]);
+  if (id !== null && id !== environment[role]) setRole(role, id);
+}
+
+function local(event, target) {
+  const box = target.getBoundingClientRect();
+  return { x: event.clientX - box.left, y: event.clientY - box.top };
+}
+
+/**
+ * Pointer gestures on a view: pressing a device selects it, dragging the source
+ * or the target moves it, and dragging elsewhere calls `onDrag` (the 3D view orbits).
+ */
+function bindPointer(canvas, viewer, { toWorld, onDrag = null }) {
+  let gesture = null;
+  const cursor = (id) => {
+    canvas.classList.toggle("is-over-device", id !== null && roleOf(id) === null);
+    canvas.classList.toggle("is-over-role", id !== null && roleOf(id) !== null);
+    canvas.classList.toggle("is-moving", gesture?.kind === "move");
+    canvas.classList.toggle("is-orbiting", gesture?.kind === "orbit");
+  };
+  canvas.addEventListener("pointerdown", (event) => {
+    canvas.setPointerCapture(event.pointerId);
+    const at = local(event, canvas);
+    const id = viewer.pick(at.x, at.y);
+    let kind = onDrag ? "orbit" : "none";
+    if (id !== null) kind = roleOf(id) ? "move" : "press";
+    gesture = { kind, id, role: id === null ? null : roleOf(id), ...at, moved: false };
+    cursor(id);
+  });
+  canvas.addEventListener("pointermove", (event) => {
+    const at = local(event, canvas);
+    if (gesture === null) {
+      const id = viewer.pick(at.x, at.y);
+      hover(id);
+      cursor(id);
+      return;
+    }
+    const dx = at.x - gesture.x;
+    const dy = at.y - gesture.y;
+    if (!gesture.moved && Math.hypot(dx, dy) < 4) return;
+    gesture.moved = true;
+    if (gesture.kind === "press" && onDrag) gesture.kind = "orbit";
+    if (gesture.kind === "orbit") {
+      onDrag(dx, dy);
+      Object.assign(gesture, at);
+      changed();
+    } else if (gesture.kind === "move") {
+      const point = toWorld(at.x, at.y);
+      if (point) moveRole(gesture.role, point);
+    }
+    cursor(gesture.id);
+  });
+  const end = () => {
+    if (gesture && !gesture.moved && gesture.id !== null) select(gesture.id);
+    gesture = null;
+    cursor(app.hovered);
+  };
+  canvas.addEventListener("pointerup", end);
+  canvas.addEventListener("pointercancel", end);
+  canvas.addEventListener("pointerleave", () => {
+    if (gesture === null) hover(null);
+  });
+}
+
+bindPointer(element("wt-scene"), scene, {
+  toWorld: (x, y) => scene.groundAt(x, y),
+  onDrag: (dx, dy) => scene.orbit(dx, dy),
+});
+bindPointer(element("wt-map"), map, { toWorld: (x, y) => map.worldAt(x, y) });
+
+element("wt-scene").addEventListener(
+  "wheel",
+  (event) => {
+    event.preventDefault();
+    scene.zoom(Math.exp(-event.deltaY * 0.0015));
+    changed();
+  },
+  { passive: false },
+);
+
+element("wt-previous").addEventListener("click", () => goTo(app.step - 1));
+element("wt-next").addEventListener("click", () => goTo(app.step + 1));
+element("wt-play").addEventListener("click", () => setPlaying(!app.playing));
+element("wt-round-step").addEventListener("click", () => {
+  setPlaying(false);
+  finishRound(performance.now());
+});
+element("wt-restart").addEventListener("click", restart);
+element("wt-home").addEventListener("click", () => {
+  scene.reset();
+  changed();
+});
+element("wt-cloud").addEventListener("click", (event) => {
+  app.showCloud = !app.showCloud;
+  event.currentTarget.setAttribute("aria-pressed", String(app.showCloud));
+  renderLegend();
+  changed();
+});
+element("wt-width").addEventListener("input", (event) => {
+  environment.width = Number(event.target.value);
+  element("wt-width-value").textContent = environment.width.toFixed(1);
+  environmentChanged();
+});
+element("wt-devices").addEventListener("input", (event) => {
+  element("wt-devices-value").textContent = event.target.value;
+  setDeviceCount(Number(event.target.value));
+});
+for (const button of document.querySelectorAll("[data-action]")) {
+  button.addEventListener("click", () => {
+    const id = inspected();
+    if (button.dataset.action === "off") toggleOff(id);
+    else setRole(button.dataset.action, id);
+  });
+}
+
+document.addEventListener("keydown", (event) => {
+  if (event.metaKey || event.ctrlKey || event.altKey || event.target.closest("input, select, textarea")) return;
+  const onControl = event.target.closest("button, [role=button], a");
+  if (event.key === "ArrowRight") goTo(app.step + 1);
+  else if (event.key === "ArrowLeft") goTo(app.step - 1);
+  else if (event.key === " " && !onControl) {
+    event.preventDefault();
+    setPlaying(!app.playing);
+  } else if (event.key === ".") {
+    setPlaying(false);
+    finishRound(performance.now());
+  } else if (event.key === "r" || event.key === "R") restart();
+});
+
+window.addEventListener("themechange", () => {
+  app.palette = readPalette();
+  display.cloudKey = null;
+  renderLegend();
+  changed();
+});
+
+const resize = () => {
+  scene.resize();
+  map.resize();
+  changed();
+};
+new ResizeObserver(resize).observe(element("wt-stage"));
+
+Object.assign(element("wt-devices"), { min: FEWEST, max: MOST, value: FEWEST });
+element("wt-devices-value").textContent = FEWEST;
+renderSteps();
+const linked = Number(new URLSearchParams(window.location.hash.slice(1)).get("step"));
+goTo(Number.isInteger(linked) && linked > 0 ? linked - 1 : 0);
+resize();
+requestAnimationFrame(frame);

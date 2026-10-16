@@ -1,0 +1,186 @@
+/*
+ * The steps of the walkthrough: what each one says, the program it runs, and
+ * what every line of the program evaluates to on the inspected device.
+ *
+ * A line can name a view (views.js): clicking it shows that field. Its `value`
+ * and `detail` receive the inspected device (its id, and its state after the last
+ * round), the environment, the round number, and the length of its link to a neighbor;
+ * the value of a `parameter` line only needs the environment. A step is stable
+ * when a round changes none of its `fields`, the parts of the state its program
+ * computes; a `warm` step opens with its program already stable.
+ */
+
+const number = (value) => (Number.isFinite(value) ? value.toFixed(2) : "inf");
+const python = (flag) => (flag ? "True" : "False");
+
+/** Explains a distance_to estimate: the neighbor it came through, plus the link to it. */
+function viaDetail(estimate, length, start, noValue) {
+  if (estimate.via === null) {
+    return Number.isFinite(estimate.distance) ? start : noValue;
+  }
+  const hop = length(estimate.via);
+  return `via #${estimate.via}: ${number(estimate.distance - hop)} + ${number(hop)}`;
+}
+
+/** A line computing a gradient: its value, and the field it shows when clicked. */
+const gradientLine = (name, estimateOf) => ({
+  value: ({ state }) => number(estimateOf(state).distance),
+  view: name,
+});
+
+/** How a gradient line got its value, for the lines where that is the point. */
+const explained = (estimateOf, start, noValue) => ({
+  detail: ({ state, length }) => viaDetail(estimateOf(state), length, start, noValue),
+});
+
+function betweenDetail(between) {
+  if (between.distance === 0) return "the source's own to_target";
+  if (between.via === null) return "no news from the source yet: its own to_target";
+  return `the source's to_target, via #${between.via}`;
+}
+
+export const STEPS = [
+  {
+    name: "Field",
+    title: "A field: one value per device",
+    fields: ["temperature"],
+    text: [
+      "Every device runs the same program and gets its own value: together, the values form a <strong>field</strong>. Here, every device reads its <code>temperature</code> sensor.",
+      "The cloud is the same field at <strong>infinite density</strong>, with a device at every point. A sensor needs no neighbors, so the devices sit right on it.",
+    ],
+    hint: "Hover a device: the program shows what it computed.",
+    view: "temperature",
+    roles: [],
+    code: [
+      { code: "@aggregate" },
+      { code: "def reading() -> float:" },
+      { code: '    return sense("temperature")', view: "temperature", value: ({ state }) => state.temperature.toFixed(1) },
+    ],
+  },
+  {
+    name: "Neighbors",
+    title: "Neighbors: what a device sees",
+    fields: ["heard"],
+    text: [
+      "<code>neighbors(1)</code> shares a value with the devices in range and returns what they shared, a <code>NeighborhoodField</code>. Its size is how many neighbors a device has: fewer along the border.",
+      "At infinite density, everybody would hear infinitely many. The cloud shows what stays finite: the share of the range inside the space.",
+    ],
+    hint: "Hover a device to see its range, or switch it off from the panel.",
+    view: "neighbors",
+    roles: [],
+    playground: "neighbours",
+    code: [
+      { code: "@aggregate" },
+      { code: "def neighbor_count() -> int:" },
+      {
+        code: "    return len(neighbors(1).exclude_self())",
+        view: "neighbors",
+        value: ({ state }) => String(state.heard.length),
+        detail: ({ state, round }) => (state.heard.length === 0 && round <= 1 ? "nothing received yet: first round" : null),
+      },
+    ],
+  },
+  {
+    name: "Gradient",
+    title: "Gradient: hop by hop",
+    fields: ["toTarget"],
+    text: [
+      "Each round, a device remembers its estimate (<code>remember</code>), shares it (<code>neighbors</code>), and takes the smallest neighbor estimate plus the distance to that neighbor. Round after round, the field spreads from the target.",
+      "It settles just above the cloud: the network measures along its links, the cloud is the exact distance.",
+    ],
+    hint: "Restart to watch it spread. Drag the target, or switch devices off: the field repairs itself.",
+    view: "toTarget",
+    roles: ["target"],
+    playground: "self_healing",
+    code: [
+      { code: "@aggregate" },
+      { code: "def to_target() -> float:" },
+      { code: "    distances = neighbors_distances()" },
+      {
+        code: '    return distance_to(sense("target"), distances)',
+        ...gradientLine("toTarget", (state) => state.toTarget),
+        ...explained((state) => state.toTarget, "the target itself", "no estimate has arrived yet"),
+      },
+    ],
+  },
+  {
+    name: "Channel",
+    title: "Compose: a channel",
+    fields: ["toSource", "toTarget", "between"],
+    text: [
+      "Fields add and compare point by point. The gradients from the source and from the target add up to a valley, whose floor runs along the shortest path at <code>between</code>, the length of that path.",
+      "Flood the valley up to <code>between + width</code>: the channel is what goes under water. At infinite density, it is an ellipse with foci in the source and the target.",
+    ],
+    hint: "Change the width, or drag the source and the target. Restart to watch it settle: while the distances are still infinite, inf <= inf holds.",
+    view: "channel",
+    warm: true,
+    roles: ["source", "target"],
+    width: true,
+    code: [
+      { code: "@aggregate" },
+      {
+        code: "def channel(width: float) -> bool:",
+        parameter: true,
+        value: ({ environment }) => `width = ${environment.width.toFixed(1)}`,
+      },
+      {
+        code: '    source, target = sense("source"), sense("target")',
+        value: ({ id, environment }) => `${python(environment.source === id)}, ${python(environment.target === id)}`,
+      },
+      { code: "    distances = neighbors_distances()" },
+      { code: "    to_source = distance_to(source, distances)", ...gradientLine("toSource", (state) => state.toSource) },
+      { code: "    to_target = distance_to(target, distances)", ...gradientLine("toTarget", (state) => state.toTarget) },
+      {
+        code: "    between = distance_between(source, target, distances)",
+        view: "between",
+        value: ({ state }) => number(state.between.value),
+        detail: ({ state }) => betweenDetail(state.between),
+      },
+      {
+        code: "    return to_source + to_target <= between + width",
+        view: "channel",
+        value: ({ state }) => python(state.inChannel),
+        detail: ({ state, environment }) =>
+          `${number(state.toSource.distance)} + ${number(state.toTarget.distance)} <= ` +
+          `${number(state.between.value)} + ${environment.width.toFixed(1)}`,
+      },
+    ],
+  },
+  {
+    name: "Branch",
+    title: "Branch: separate networks",
+    fields: ["toSource", "toTarget", "between", "branch", "split"],
+    text: [
+      "An <code>if</code> splits the network: its branches are aligned apart, so devices in the channel only hear devices in the channel, and the others only the others. Links across the border carry nothing.",
+      "Both branches run the same line, yet outside, the source is out of reach: the distance stays infinite.",
+    ],
+    hint: "Hover a device: the program shows the branch it takes.",
+    view: "split",
+    warm: true,
+    roles: ["source", "target"],
+    width: true,
+    code: [
+      { code: "@aggregate" },
+      {
+        code: "def split(width: float) -> float:",
+        parameter: true,
+        value: ({ environment }) => `width = ${environment.width.toFixed(1)}`,
+      },
+      { code: "    distances = neighbors_distances()" },
+      { code: "    if channel(width):", view: "channel", value: ({ state }) => python(state.inChannel) },
+      {
+        code: '        return distance_to(sense("source"), distances)',
+        branch: "inside",
+        ...gradientLine("split", (state) => state.split),
+        ...explained((state) => state.split, "the source itself", "no estimate has arrived yet"),
+      },
+      { code: "    else:", branch: "outside" },
+      {
+        code: '        return distance_to(sense("source"), distances)',
+        branch: "outside",
+        ...gradientLine("split", (state) => state.split),
+        ...explained((state) => state.split, "the source itself", "the source is in the other branch"),
+      },
+    ],
+  },
+];

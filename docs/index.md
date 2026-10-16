@@ -19,7 +19,7 @@ The documentation is organized as a linear journey from zero to advanced collect
 <div class="grid cards" markdown>
 
 - **1. [Thinking in fields](concepts/aggregate-programs.md)** — Understand computational fields, the *Sense → Compute → Act* round lifecycle, and the local vs. global reading of a program.
-- **2. [Interactive 3D walkthrough](walkthrough/index.md)** — Build a self-healing channel step by step in an interactive 3D view with stacked fields, live rounds, and branching domains.
+- **2. [Interactive 3D walkthrough](walkthrough/index.md)** — From a field of sensor readings to a channel split into separate networks, step by step: watch asynchronous rounds in 3D, next to the same fields at infinite density.
 - **3. [Step-by-step tutorial](tutorial.md)** — Build the gradient from scratch, watch it self-heal when the network changes, and compose spreading + collection into a communication channel.
 - **4. [Browser playground](playground/index.md)** — Edit and run aggregate programs directly in your browser (via Pyodide) with nothing to install.
 - **5. [Core concepts](concepts/state.md) & [Common pitfalls](pitfalls.md)** — Master [`remember`](concepts/state.md), [`NeighborhoodField` & `exchange`](concepts/neighborhood-field.md), [`@aggregate` alignment](concepts/alignment.md), and the mistakes to avoid.

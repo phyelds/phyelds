@@ -3,137 +3,128 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Phyelds — Interactive 3D Field Walkthrough</title>
+  <title>Phyelds 3D Field Explorer</title>
+  <meta name="description" content="From a field of sensor readings to a channel split into two networks, step by step, in 3D, next to the same fields at infinite density." />
   <link rel="icon" href="../assets/logo.png" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;family=Roboto+Mono:wght@400;500&amp;display=swap" />
   <link rel="stylesheet" href="walkthrough.css" />
+  <script>
+    // Follow the colour scheme chosen in the docs (Material keeps it in localStorage), else the
+    // system's. It runs before the first paint, so that a dark page never flashes light.
+    (() => {
+      const system = matchMedia("(prefers-color-scheme: dark)");
+      const key = `${new URL("..", location.href).pathname}.__palette`;
+      const apply = () => {
+        let scheme = null;
+        try {
+          scheme = JSON.parse(localStorage.getItem(key))?.color?.scheme ?? null;
+        } catch {
+          scheme = null;
+        }
+        const theme = (scheme ? scheme === "slate" : system.matches) ? "dark" : "light";
+        if (document.documentElement.dataset.theme !== theme) {
+          document.documentElement.dataset.theme = theme;
+          dispatchEvent(new Event("themechange"));
+        }
+      };
+      apply();
+      system.addEventListener("change", apply);
+      addEventListener("storage", apply);
+    })();
+  </script>
 </head>
 <body>
-  <div class="exp-shell">
-    <!-- Top Header & Stepper Bar -->
-    <header class="exp-topbar">
-      <div class="exp-brand">
-        <a href="../index.html" class="exp-back-link" title="Return to Phyelds Documentation">
-          ← Docs
-        </a>
-        <img src="../assets/logo.png" alt="Phyelds logo" class="exp-logo" />
-        <span class="exp-brand-title">Phyelds 3D Field Explorer</span>
-      </div>
-
-      <nav class="exp-stepper" role="tablist" aria-label="Walkthrough steps">
-        <button class="wt-step-btn active" data-step="0" type="button">
-          <span class="wt-step-num">1</span>
-          <span>Sensors &amp; Fields</span>
-        </button>
-        <button class="wt-step-btn" data-step="1" type="button">
-          <span class="wt-step-num">2</span>
-          <span>Space (neighbors)</span>
-        </button>
-        <button class="wt-step-btn" data-step="2" type="button">
-          <span class="wt-step-num">3</span>
-          <span>Gradient (G)</span>
-        </button>
-        <button class="wt-step-btn" data-step="3" type="button">
-          <span class="wt-step-num">4</span>
-          <span>Collect (C)</span>
-        </button>
-        <button class="wt-step-btn" data-step="4" type="button">
-          <span class="wt-step-num">5</span>
-          <span>Compose (Channel)</span>
-        </button>
-        <button class="wt-step-btn" data-step="5" type="button">
-          <span class="wt-step-num">6</span>
-          <span>Branch (if / else)</span>
-        </button>
-      </nav>
-
-      <div class="exp-playback">
-        <button id="wt-play" class="exp-btn exp-btn--primary" type="button">Pause</button>
-        <button id="wt-step-round" class="exp-btn" type="button">+1 Round</button>
-        <button id="wt-reset" class="exp-btn" type="button">Reset State</button>
-        <span id="wt-round-badge" class="wt-badge">Round 0</span>
-      </div>
+  <div class="wt">
+    <header class="wt-bar">
+      <a class="wt-home" href="../" title="Back to the documentation">
+        <img src="../assets/logo.png" alt="" width="22" height="22" />
+        <span>phyelds</span>
+      </a>
+      <nav class="wt-steps" id="wt-steps" aria-label="Steps"></nav>
     </header>
 
-    <!-- Main Full-Viewport Workspace -->
-    <main class="exp-main">
-      <!-- Left: Full-bleed 3D Interactive Stage -->
-      <section class="exp-stage" id="wt-stage">
-        <canvas id="wt-canvas" aria-label="Interactive 3D computational field visualization"></canvas>
+    <main class="wt-main">
+      <section class="wt-stage" id="wt-stage" aria-label="The network in 3D">
+        <canvas id="wt-scene"></canvas>
 
-        <!-- Top Floating HUD: Layer Stack Selector & View Mode -->
-        <div class="exp-hud-top">
-          <div id="wt-layers-bar" class="exp-hud-group" aria-label="Stacked field layers"></div>
+        <div class="wt-legend" id="wt-legend" aria-live="polite"></div>
 
-          <div class="exp-hud-group">
-            <label class="wt-control-label" for="wt-view-mode">
-              View:
-              <select id="wt-view-mode" class="wt-select">
-                <option value="stacked">Stacked 3D Planes</option>
-                <option value="surface">3D Height Surface</option>
-              </select>
-            </label>
-            <label class="wt-control-label" for="wt-gap-slider">
-              Layer Gap:
-              <input id="wt-gap-slider" type="range" min="1.2" max="5.2" step="0.2" value="3.2" class="wt-slider" />
-            </label>
-            <label class="wt-control-label" for="wt-width-slider">
-              Channel Width (<span id="wt-width-val">1.6</span>):
-              <input id="wt-width-slider" type="range" min="0.8" max="3.2" step="0.2" value="1.6" class="wt-slider" />
-            </label>
-            <button id="wt-reset-cam" class="exp-btn" type="button">Reset 3D View</button>
-          </div>
+        <div class="wt-tools">
+          <label class="wt-chip wt-devices" title="Add devices: the network gets closer to the cloud">
+            <span>devices</span>
+            <input id="wt-devices" type="range" step="1" />
+            <output id="wt-devices-value" for="wt-devices">36</output>
+          </label>
+          <button class="wt-chip" id="wt-cloud" type="button" aria-pressed="true" title="Show the field at infinite density">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><g fill="currentColor"><circle cx="3" cy="9" r="1"/><circle cx="6" cy="6" r="1"/><circle cx="9" cy="8" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="5" cy="11" r="1"/><circle cx="10" cy="11" r="1"/><circle cx="13" cy="9" r="1"/></g></svg>
+            Cloud
+          </button>
+          <button class="wt-icon" id="wt-home" type="button" title="Reset the view" aria-label="Reset the view">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8a5 5 0 1 0 1.6-3.7M3 2.5v2.8h2.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
         </div>
 
-        <!-- Bottom Floating HUD: Node Click Action & Controls Hint -->
-        <div class="exp-hud-bottom">
-          <div class="exp-hud-group">
-            <span class="wt-control-label">Click a node to set:</span>
-            <button class="wt-mode-pill active" data-click="source" type="button">Source</button>
-            <button class="wt-mode-pill" data-click="target" type="button">Target</button>
-            <button class="wt-mode-pill" data-click="obstacle" type="button">Obstacle (on/off)</button>
-          </div>
+        <figure class="wt-map">
+          <canvas id="wt-map" aria-label="The network from above"></canvas>
+          <figcaption>from above</figcaption>
+        </figure>
 
-          <div class="exp-hud-group exp-hint-text">
-            <span><strong>Drag</strong>: rotate 3D</span>
-            <span>·</span>
-            <span><strong>Scroll</strong>: zoom</span>
-            <span>·</span>
-            <span><strong>Hover / Click node</strong>: inspect local state &amp; aligned neighbors</span>
-          </div>
+        <div class="wt-player" role="group" aria-label="Rounds">
+          <button class="wt-icon" id="wt-restart" type="button" title="Restart from round 0 (R)" aria-label="Restart from round 0">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 3v10M13 3.5v9L6.5 8z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/></svg>
+          </button>
+          <button class="wt-icon wt-icon--main" id="wt-play" type="button" title="Pause (Space)" aria-label="Pause">
+            <svg class="wt-pause" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 3.5v9M10.5 3.5v9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <svg class="wt-resume" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6L12.5 8z" fill="currentColor"/></svg>
+          </button>
+          <button class="wt-icon" id="wt-round-step" type="button" title="Run one round (.)" aria-label="Run one round">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3.5v9L9.5 8zM12 3v10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/></svg>
+          </button>
+          <span class="wt-round" id="wt-round" aria-live="polite"></span>
         </div>
+
+        <p class="wt-hint">Drag to orbit · scroll to zoom</p>
       </section>
 
-      <!-- Right Dock: Step Narrative, Python Code, and Local Device Inspector -->
-      <aside class="exp-dock">
-        <div class="wt-card">
-          <div class="wt-card-kicker" id="wt-step-kicker">Step 1 of 6</div>
-          <h1 class="wt-card-title" id="wt-step-title">What is a Computational Field?</h1>
-          <div class="wt-card-body" id="wt-step-desc"></div>
-          <div class="wt-nav-btns">
-            <button id="wt-prev-step" class="exp-btn" type="button">← Previous Step</button>
-            <button id="wt-next-step" class="exp-btn exp-btn--primary" type="button">Next Step →</button>
-          </div>
-        </div>
+      <aside class="wt-panel">
+        <article class="wt-story">
+          <p class="wt-kicker" id="wt-kicker"></p>
+          <h1 class="wt-title" id="wt-title"></h1>
+          <div class="wt-text" id="wt-text"></div>
+          <p class="wt-try" id="wt-try"></p>
+        </article>
 
-        <div class="wt-card">
-          <div class="wt-card-header">
-            <span>Python Aggregate Program (runs on every device)</span>
-            <a href="../playground/index.html#example=channel" class="exp-back-link" style="padding:0.2rem 0.55rem;font-size:0.72rem;">Open in Playground ↗</a>
-          </div>
-          <pre class="wt-code-block"><code id="wt-code-display"></code></pre>
-        </div>
+        <section class="wt-program" aria-label="The program">
+          <header class="wt-program-head">
+            <span>Runs on every device</span>
+            <a id="wt-playground" class="wt-link" href="../playground/">Open in the playground ↗</a>
+          </header>
+          <div class="wt-code highlight" id="wt-code"></div>
+          <label class="wt-width" id="wt-width-row">
+            <span>width</span>
+            <input id="wt-width" type="range" min="0" max="2.5" step="0.1" value="0.8" />
+            <output id="wt-width-value" for="wt-width">0.8</output>
+          </label>
+          <footer class="wt-device" id="wt-device">
+            <span class="wt-device-name" id="wt-device-name"></span>
+            <span class="wt-device-actions">
+              <button class="wt-text-button" data-action="source" type="button">make source</button>
+              <button class="wt-text-button" data-action="target" type="button">make target</button>
+              <button class="wt-text-button" data-action="off" type="button">switch off</button>
+            </span>
+          </footer>
+        </section>
 
-        <div class="wt-card">
-          <div class="wt-card-header">
-            <span>Local Device Inspector</span>
-            <span id="wt-insp-id" class="wt-badge">Node #14</span>
-          </div>
-          <div id="wt-insp-body" class="wt-insp-body"></div>
-        </div>
+        <nav class="wt-pager" aria-label="Previous and next step">
+          <button class="wt-button" id="wt-previous" type="button">← Previous</button>
+          <button class="wt-button wt-button--primary" id="wt-next" type="button">Next →</button>
+        </nav>
       </aside>
     </main>
   </div>
 
-  <script src="walkthrough.js"></script>
+  <script src="../playground/highlight.js"></script>
+  <script type="module" src="walkthrough.js"></script>
 </body>
 </html>
