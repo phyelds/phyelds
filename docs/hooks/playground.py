@@ -39,11 +39,13 @@ def on_post_build(config: Mapping[str, Any], **_: Any) -> None:
 
 
 def _publish_walkthrough(target: Path) -> None:
-    """Publish the full-viewport standalone 3D walkthrough page."""
+    """Serve the standalone walkthrough page in place of its Markdown placeholder.
+
+    Its stylesheet and modules sit next to it in docs/walkthrough, so MkDocs
+    publishes them itself, as it does every file of the docs that is not a page.
+    """
     target.mkdir(parents=True, exist_ok=True)
     shutil.copy(WALKTHROUGH / "app.html", target / "index.html")
-    shutil.copy(WALKTHROUGH / "walkthrough.css", target / "walkthrough.css")
-    shutil.copy(WALKTHROUGH / "walkthrough.js", target / "walkthrough.js")
 
 
 def _bundle_package(package: Path, archive: Path) -> None:
