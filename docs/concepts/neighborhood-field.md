@@ -25,14 +25,26 @@ A `NeighborhoodField` maps device ids to values. It supports:
 | Operation | Result |
 | --- | --- |
 | `field + 1`, `field * other_field`, `-`, `/`, `//`, `%`, `**`, `&`, `|`, `^`, `~` | element-wise field (with another field: only the ids both have) |
-| `field < x`, `<=`, `>` | element-wise field of booleans |
+| `field < x`, `<=`, `>`, `>=` | element-wise field of booleans |
 | `for value in field`, `sum(field)`, `min(field)` | iterate over the values, in id order |
 | `field.exclude_self()` | a `dict` id → value without the device itself |
+| `field.without_self()` | a new `NeighborhoodField` without the device itself |
 | `field.local()` | the device's own value |
 | `field.for_node(id)` | the value for `id`, or `field.default` if `id` is not in the field |
 | `field.map(fn)` | a new field with `fn` applied to each value |
+| `field.coerce_in(lower, upper)` | a new field with values clamped to `[lower, upper]` |
+| `field.replace_matching(replacement, predicate)` | a new field where entries satisfying `predicate` are replaced |
 | `field.select(mask)` | the values whose entry in the boolean field `mask` is true |
-| `field.any()`, `field.all()` | whether any / all values are truthy |
+| `field.any(predicate=None, *, include_self=True)` | whether any value satisfies `predicate` (or is truthy) |
+| `field.all(predicate=None, *, include_self=True)` | whether all values satisfy `predicate` (or are truthy) |
+| `field.none(predicate=None, *, include_self=True)` | whether no value satisfies `predicate` (or is truthy) |
+| `field.count_matching(predicate, *, include_self=True)` | how many values satisfy `predicate` |
+| `field.fold(initial, accumulator, *, include_self=True)` | fold values into a single result |
+| `field.reduce(reducer, *, include_self=True, default=None)` | reduce values with `reducer`, or `default` when empty |
+| `field.min(*, include_self=True, default=None, key=None)` | minimum value (with optional `key` and `default`) |
+| `field.max(*, include_self=True, default=None, key=None)` | maximum value (with optional `key` and `default`) |
+| `field.sum(*, include_self=True, start=0)`, `field.product(*, include_self=True, start=1)` | sum / product of the values |
+| `field.id_of_min(*, include_self=True, key=None)`, `field.id_of_max(*, include_self=True, key=None)` | node id of the minimum / maximum entry |
 | `field.data` | the underlying `dict` id → value |
 
 ```python
