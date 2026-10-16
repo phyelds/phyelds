@@ -1,8 +1,17 @@
 import pytest
 
 from phyelds.calculus import aggregate
-from phyelds.libraries.collect import collect_with, count_nodes, sum_values, collect_or
-from phyelds.libraries.device import sense
+from phyelds.libraries.collect import (
+    broadcast_collect,
+    collect_or,
+    collect_with,
+    count_nodes,
+    find_parents,
+    mean_values,
+    point_to_point,
+    sum_values,
+)
+from phyelds.libraries.device import local_id, sense
 from phyelds.libraries.distances import hops_distance
 from phyelds.libraries.spreading import distance_to
 from phyelds.simulator.runner import schedule_program_for_all
@@ -66,3 +75,41 @@ def test_collect_or_should_create_a_path_between_two_zone():
         assert simulator.environment.nodes[i].data["result"] == True
     for i in range(5, len(simulator.environment.nodes)):
         assert simulator.environment.nodes[i].data["result"] == False
+
+
+def test_find_parents_returns_all_neighbors_with_smaller_potential():
+    # 2x2 grid: 0=(0,0), 1=(0,1), 2=(1,0), 3=(1,1) with radius 1.1
+    # From source 0: potential(0)=0, potential(1)=1, potential(2)=1, potential(3)=2
+    # Node 3 has both 1 and 2 at lower potential (1 < 2)
+    simulator = setup_up_simulator(2, 2)
+    simulator.environment.nodes[0].data["source"] = True
+
+    @aggregate
+    def program():
+        potential = distance_to(sense("source"), hops_distance())
+        return find_parents(potential)
+
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
+    simulator.run(6)
+    assert simulator.environment.nodes[0].data["result"] == set()
+    assert simulator.environment.nodes[1].data["result"] == {0}
+    assert simulator.environment.nodes[2].data["result"] == {0}
+    assert simulator.environment.nodes[3].data["result"] == {1, 2}
+
+
+def test_point_to_point_collect_and_mean_values_accumulate_accurately():
+    simulator = setup_up_simulator(5)
+    simulator.environment.nodes[0].data["source"] = True
+
+    @aggregate
+    def program():
+        potential = distance_to(sense("source"))
+        total = sum_values(potential, local_id() * 10, strategy=point_to_point())
+        avg = mean_values(potential, float(local_id() * 10), strategy=point_to_point())
+        avg_broadcast = mean_values(potential, float(local_id() * 10), strategy=broadcast_collect())
+        return total, avg, avg_broadcast
+
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
+    simulator.run(12)
+    # Values are 0, 10, 20, 30, 40 -> sum = 100, mean = 20.0
+    assert simulator.environment.nodes[0].data["result"] == (100, 20.0, 20.0)
