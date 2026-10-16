@@ -16,13 +16,15 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[2]
 PACKAGE = ROOT / "src" / "phyelds"
 EXAMPLES = ROOT / "docs" / "examples" / "playground"
+WALKTHROUGH = ROOT / "docs" / "walkthrough"
 # The menu follows this tour; examples not listed come after, by name.
 TOUR = ["neighbours", "gradient", "self_healing", "channel", "leaders", "bubbles"]
 
 
 def on_post_build(config: Mapping[str, Any], **_: Any) -> None:
-    """Write phyelds.zip, the examples and manifest.json into ``site/playground``."""
-    playground = Path(config["site_dir"]) / "playground"
+    """Write phyelds.zip, the examples, manifest.json, and standalone walkthrough."""
+    site_dir = Path(config["site_dir"])
+    playground = site_dir / "playground"
     playground.mkdir(parents=True, exist_ok=True)
     _bundle_package(PACKAGE, playground / "phyelds.zip")
     examples = playground / "examples"
@@ -33,6 +35,15 @@ def on_post_build(config: Mapping[str, Any], **_: Any) -> None:
         shutil.copy(source, examples / source.name)
         manifest.append(_describe(source))
     (playground / "manifest.json").write_text(json.dumps({"examples": manifest}, indent=2))
+    _publish_walkthrough(site_dir / "walkthrough")
+
+
+def _publish_walkthrough(target: Path) -> None:
+    """Publish the full-viewport standalone 3D walkthrough page."""
+    target.mkdir(parents=True, exist_ok=True)
+    shutil.copy(WALKTHROUGH / "app.html", target / "index.html")
+    shutil.copy(WALKTHROUGH / "walkthrough.css", target / "walkthrough.css")
+    shutil.copy(WALKTHROUGH / "walkthrough.js", target / "walkthrough.js")
 
 
 def _bundle_package(package: Path, archive: Path) -> None:

@@ -1,7 +1,8 @@
 /*
- * Interactive 3D Walkthrough for Phyelds.
- * Simulates stacked computational fields (Sense -> Neighbors -> Gradient ->
- * Collect -> Channel -> Branching) on a 2D network projected in 3D.
+ * Full-Viewport Interactive 3D Field Walkthrough for Phyelds.
+ * Renders stacked computational fields (Sense -> Neighbors -> Gradient ->
+ * Collect -> Channel -> Branching) with high-DPI 3D projection, zoom, and
+ * configurable vertical layer separation.
  */
 (function () {
   "use strict";
@@ -9,21 +10,21 @@
   const canvas = document.getElementById("wt-canvas");
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
+  const stageEl = document.getElementById("wt-stage") || canvas.parentElement;
 
   const GRID = 6;
   const NUM_NODES = GRID * GRID;
   const COMM_RADIUS = 1.65;
   const INF = 999;
 
-  // Step definitions: narrative, Python code, and active layers
   const STEPS = [
     {
       kicker: "Step 1 of 6 — Local Sensors",
       title: "What is a Computational Field?",
       desc:
         "<p>A <strong>computational field</strong> assigns a value to every device in the network at every moment in time.</p>" +
-        "<p>Here, 36 devices sit on a 2D network. Each device runs the exact same Python function and reads its local sensors (<code>sense('source')</code> and <code>sense('target')</code>). Without communication, each node only knows its own sensor value.</p>" +
-        "<p><strong>Try it:</strong> Click any node on the canvas to move the <span class='wt-dot wt-dot--source'></span><strong>Source</strong>, switch the click mode to move the <span class='wt-dot wt-dot--target'></span><strong>Target</strong>, or toggle <strong>Obstacles</strong>.</p>",
+        "<p>Here, 36 devices sit on a 2D physical network. Every device runs the exact same Python function and reads its local sensors (<code>sense('source')</code> and <code>sense('target')</code>). Without neighbor communication, each device only knows its own local reading.</p>" +
+        "<p><strong>Try it:</strong> Click any node to move the <span class='wt-dot wt-dot--source'></span><strong>Source</strong>, switch the bottom-left mode to move the <span class='wt-dot wt-dot--target'></span><strong>Target</strong>, or toggle <strong>Obstacles</strong>.</p>",
       code:
         "from phyelds.calculus import aggregate\n" +
         "from phyelds.libraries.device import sense\n\n" +
@@ -43,8 +44,8 @@
       title: "Perceiving Immediate Neighbors",
       desc:
         "<p><code>neighbors(value)</code> is the spatial primitive: each device shares <code>value</code> with devices within communication range and receives their values back as a <code>NeighborhoodField</code>.</p>" +
-        "<p>In one round, every node counts how many active neighbors it hears: <code>len(neighbors(1).exclude_self())</code>. Notice how boundary nodes and nodes next to obstacles have lower elevation.</p>" +
-        "<p><strong>Try it:</strong> Hover over any node to highlight its 1-hop <code>NeighborhoodField</code> in 3D, or toggle an <strong>Obstacle</strong> to see neighbors adapt in the next round.</p>",
+        "<p>Above the physical network (Layer 0), <strong>Layer 1</strong> shows how many active neighbors each device hears: <code>len(neighbors(1).exclude_self())</code>. Boundary nodes and nodes adjacent to obstacles have fewer neighbors and lower elevation.</p>" +
+        "<p><strong>Try it:</strong> Hover over any node to highlight its 1-hop <code>NeighborhoodField</code> in yellow, or toggle an <strong>Obstacle</strong> to see its neighbors adapt on the next round.</p>",
       code:
         "from phyelds.calculus import aggregate, neighbors\n\n" +
         "@aggregate\n" +
@@ -54,16 +55,16 @@
         "    return len(field.exclude_self())",
       layers: [
         { id: "sensors", name: "Layer 0: Physical Network", color: "#94a3b8" },
-        { id: "degree", name: "Layer 1: neighbors(1) count", color: "#ea580c" },
+        { id: "degree", name: "Layer 1: neighbors(1) count", color: "#f97316" },
       ],
     },
     {
       kicker: "Step 3 of 6 — Space + Time (Spreading G)",
       title: "The Gradient: Propagating Across the Network",
       desc:
-        "<p>Combining local state across rounds (<code>remember</code>) with neighbor communication (<code>neighbors</code>) unlocks global propagation.</p>" +
-        "<p><code>distance_to(sense('target'))</code> computes a <strong>gradient</strong>: a 3D funnel whose height is the shortest-path distance from every node to the Target. Press <strong>Reset State</strong> and then <strong>+1 Round</strong> repeatedly to watch the wave travel one hop per round!</p>" +
-        "<p><strong>Try it:</strong> Move the <strong>Target</strong> or place a wall of <strong>Obstacles</strong>—the 3D funnel self-heals around obstacles automatically.</p>",
+        "<p>Combining local state across rounds (<code>remember</code>) with neighbor exchange (<code>neighbors</code>) lets information travel across the entire network.</p>" +
+        "<p><code>distance_to(sense('target'))</code> computes a <strong>gradient</strong>: a 3D funnel sloping down toward the Target. Click <strong>Reset State</strong> and then <strong>+1 Round</strong> repeatedly to watch the wave expand one hop per round!</p>" +
+        "<p><strong>Try it:</strong> Switch <strong>View</strong> to <em>3D Height Surface</em> or place a wall of <strong>Obstacles</strong>—the gradient self-heals around obstacles automatically.</p>",
       code:
         "from phyelds.calculus import aggregate\n" +
         "from phyelds.libraries.device import sense\n" +
@@ -75,16 +76,16 @@
         "    return distance_to(sense(\"target\"), neighbors_distances())",
       layers: [
         { id: "sensors", name: "Layer 0: Network & Obstacles", color: "#94a3b8" },
-        { id: "grad_target", name: "Layer 1 (G): distance_to(target)", color: "#b4136f" },
+        { id: "grad_target", name: "Layer 1 (G): distance_to(target)", color: "#ec4899" },
       ],
     },
     {
       kicker: "Step 4 of 6 — Inward Flow (Collection C)",
       title: "Collecting Along a Gradient: Shortest Path",
       desc:
-        "<p>Once Layer 1 forms a gradient funnel toward the Target, we can flow information <strong>downhill</strong> along that funnel using <code>collect_or(to_target, sense('source'))</code>.</p>" +
-        "<p>In 3D you now see <strong>two stacked fields</strong>: Layer 1 (bottom) is the gradient potential <code>to_target</code>, and Layer 2 (top) is the boolean field <code>on_path</code> that lights up every device on the shortest path from Source to Target.</p>" +
-        "<p><strong>Try it:</strong> Rotate the 3D view to see how each node on Layer 2 follows the steepest descent arrows of Layer 1 below it.</p>",
+        "<p>Once Layer 1 forms a gradient potential toward the Target, we can flow data <strong>downhill</strong> along that potential using <code>collect_or(to_target, sense('source'))</code>.</p>" +
+        "<p>In 3D you now see <strong>two stacked functions</strong>: Layer 1 (below) is the distance potential <code>to_target</code>, and Layer 2 (above) is the boolean field <code>on_path</code> that lights up every device along the shortest path from Source to Target.</p>" +
+        "<p><strong>Try it:</strong> Drag the <strong>Layer Gap</strong> slider to separate the planes and see how each node on Layer 2 follows the parent pointers of Layer 1 below it.</p>",
       code:
         "@aggregate\n" +
         "def shortest_path() -> bool:\n" +
@@ -95,7 +96,7 @@
         "    on_path = collect_or(to_target, sense(\"source\"))\n" +
         "    return on_path",
       layers: [
-        { id: "grad_target", name: "Layer 1 (G): to_target potential", color: "#b4136f" },
+        { id: "grad_target", name: "Layer 1 (G): to_target potential", color: "#ec4899" },
         { id: "on_path", name: "Layer 2 (C): collect_or(to_target, source)", color: "#f59e0b" },
       ],
     },
@@ -103,9 +104,9 @@
       kicker: "Step 5 of 6 — Functional Composition (G → C → G)",
       title: "Composing Three Fields into a Channel",
       desc:
-        "<p>In aggregate computing, the output field of one function becomes the input of the next. Feeding <code>on_path</code> (Layer 2) as the source of a second gradient <code>distance_to(on_path, distances) &lt;= width</code> (Layer 3) dilates the path into a fault-tolerant <strong>Channel</strong> corridor.</p>" +
-        "<p>Look at the <strong>three stacked 3D layers</strong>: vertical alignment fibres connect each device across Layer 1 → Layer 2 → Layer 3, showing how three simple functions compose into a self-healing structure.</p>" +
-        "<p><strong>Try it:</strong> Drag the <strong>Width</strong> slider in the toolbar to widen or narrow the channel in real time.</p>",
+        "<p>In aggregate computing, the field returned by one function is passed directly as the input to the next. Feeding <code>on_path</code> (Layer 2) as the source of a second gradient <code>distance_to(on_path, distances) &lt;= width</code> (Layer 3) dilates the path into a fault-tolerant <strong>Channel</strong> corridor.</p>" +
+        "<p>Vertical alignment fibres connect every device across <strong>Layer 1 → Layer 2 → Layer 3</strong>, showing how three simple field functions stack into a self-healing collective behavior.</p>" +
+        "<p><strong>Try it:</strong> Drag the <strong>Channel Width</strong> slider at the top of the 3D stage to widen or narrow the corridor live.</p>",
       code:
         "@aggregate\n" +
         "def channel(width: float = 1.6) -> bool:\n" +
@@ -117,7 +118,7 @@
         "    # Layer 3 (G): dilate path into a corridor of radius `width`\n" +
         "    return distance_to(on_path, distances) <= width",
       layers: [
-        { id: "grad_target", name: "Layer 1 (G): distance_to(target)", color: "#b4136f" },
+        { id: "grad_target", name: "Layer 1 (G): distance_to(target)", color: "#ec4899" },
         { id: "on_path", name: "Layer 2 (C): collect_or (path)", color: "#f59e0b" },
         { id: "channel", name: "Layer 3 (G): distance_to(on_path) <= width", color: "#10b981" },
       ],
@@ -126,8 +127,8 @@
       kicker: "Step 6 of 6 — Branching & Alignment (if / else)",
       title: "Splitting Space into Isolated Domains",
       desc:
-        "<p>What happens when we write <code>if in_channel: ... else: ...</code> inside an <code>@aggregate</code> function? Phyelds rewrites the AST so the <code>True</code> branch (<code>align_left</code>) and the <code>False</code> branch (<code>align_right</code>) run in <strong>completely isolated communication domains</strong>.</p>" +
-        "<p>On Layer 4 (top), devices inside the channel compute an in-corridor gradient from the Source (magenta/gold), while devices outside compute an independent ambient field (blue/cyan). Red dashed markers show where physical links cross the boundary—<strong>no messages cross between the two branches!</strong></p>",
+        "<p>What happens when we write <code>if in_channel: ... else: ...</code> inside an <code>@aggregate</code> function? Phyelds rewrites the AST so the <code>True</code> branch (<code>align_left</code>) and the <code>False</code> branch (<code>align_right</code>) execute in <strong>isolated communication domains</strong>.</p>" +
+        "<p>On <strong>Layer 4 (top)</strong>, channel nodes compute an internal gradient from the Source (warm colors, elevated), while outside nodes compute an independent degree field (sky blue, lower plane). Red dashed links mark physical connections across the border—<strong>no messages cross between the two branches!</strong></p>",
       code:
         "@aggregate\n" +
         "def branched_channel(width: float = 1.6) -> float:\n" +
@@ -137,41 +138,49 @@
         "        return distance_to(sense(\"source\"), neighbors_distances())\n" +
         "    else:\n" +
         "        # align_right: isolated outside domain\n" +
-        "        return -float( len(neighbors(1).exclude_self()) )",
+        "        return -float(len(neighbors(1).exclude_self()))",
       layers: [
-        { id: "grad_target", name: "Layer 1 (G): distance_to(target)", color: "#b4136f" },
+        { id: "grad_target", name: "Layer 1 (G): distance_to(target)", color: "#ec4899" },
         { id: "on_path", name: "Layer 2 (C): collect_or (path)", color: "#f59e0b" },
         { id: "channel", name: "Layer 3 (G): channel mask", color: "#10b981" },
-        { id: "branch", name: "Layer 4 (if/else): align_left vs align_right", color: "#6366f1" },
+        { id: "branch", name: "Layer 4 (if/else): align_left vs align_right", color: "#38bdf8" },
       ],
     },
   ];
 
-  // Simulation state
+  // State
   let currentStep = 0;
   let roundCount = 0;
   let playing = true;
-  let viewMode = "stacked"; // "stacked" | "surface"
-  let focusedLayer = null; // null = show all layers of current step
+  let viewMode = "stacked";
+  let focusedLayer = null;
+  let layerGap = 3.2;
   let channelWidth = 1.6;
-  let clickMode = "source"; // "source" | "target" | "obstacle"
+  let clickMode = "source";
   let hoveredNode = null;
-  let selectedNode = 14;
+  let selectedNode = 8;
 
-  // 3D Camera state
-  let camYaw = -0.58;
-  let camPitch = 0.56;
+  // Camera
+  const DEFAULT_YAW = -0.62;
+  const DEFAULT_PITCH = 0.54;
+  const DEFAULT_ZOOM = 1.0;
+  let camYaw = DEFAULT_YAW;
+  let camPitch = DEFAULT_PITCH;
+  let camZoom = DEFAULT_ZOOM;
   let isDragging = false;
   let dragStart = { x: 0, y: 0 };
   let dragMoved = false;
 
-  // Nodes and links
+  // Viewport logical size
+  let viewW = 860;
+  let viewH = 640;
+
   const nodes = [];
   const edges = [];
 
   function seededJitter(idx) {
     const s = Math.sin(idx * 127.1 + 311.7) * 43758.5453;
-    return (s - Math.floor(s)) - 0.5;
+    return s - Math.floor(s) - 0.5;
   }
 
   function initNetwork() {
@@ -179,8 +188,9 @@
     for (let r = 0; r < GRID; r++) {
       for (let c = 0; c < GRID; c++) {
         const id = r * GRID + c;
-        const jx = (r > 0 && r < GRID - 1 && c > 0 && c < GRID - 1) ? seededJitter(id) * 0.28 : 0;
-        const jy = (r > 0 && r < GRID - 1 && c > 0 && c < GRID - 1) ? seededJitter(id + 99) * 0.28 : 0;
+        const inner = r > 0 && r < GRID - 1 && c > 0 && c < GRID - 1;
+        const jx = inner ? seededJitter(id) * 0.25 : 0;
+        const jy = inner ? seededJitter(id + 99) * 0.25 : 0;
         nodes.push({
           id: id,
           x: c + jx,
@@ -188,7 +198,6 @@
           source: id === 0,
           target: id === NUM_NODES - 1,
           obstacle: id === 14 || id === 21,
-          // Per-layer state
           degree: 0,
           dTarget: INF,
           parentTarget: null,
@@ -208,9 +217,7 @@
     edges.length = 0;
     for (let i = 0; i < NUM_NODES; i++) {
       for (let j = i + 1; j < NUM_NODES; j++) {
-        const dx = nodes[i].x - nodes[j].x;
-        const dy = nodes[i].y - nodes[j].y;
-        const dist = Math.hypot(dx, dy);
+        const dist = Math.hypot(nodes[i].x - nodes[j].x, nodes[i].y - nodes[j].y);
         if (dist <= COMM_RADIUS) {
           edges.push({ a: i, b: j, dist: dist });
         }
@@ -244,11 +251,8 @@
     updateInspector();
   }
 
-  // Execute one synchronous round of the aggregate program across all active nodes
   function stepRound() {
     roundCount += 1;
-
-    // Snapshot previous round state (remember / inbox)
     const prev = nodes.map((n) => ({
       dTarget: n.dTarget,
       parentTarget: n.parentTarget,
@@ -294,8 +298,6 @@
       }
 
       // Layer 2: collect_or(to_target, source)
-      // A node is on the shortest path if it is the source, the target (once reached),
-      // or selected as the best parent by a neighbor that is on the path.
       let childOnPath = false;
       for (const nb of nbrs) {
         if (prev[nb.id].onPath && prev[nb.id].parentTarget === i) {
@@ -320,7 +322,6 @@
 
       // Layer 4: Branching (if in_channel: align_left else: align_right)
       if (n.inChannel) {
-        // align_left: only exchange messages with neighbors ALSO in `inChannel`
         if (n.source) {
           n.branchLeftDist = 0.0;
         } else {
@@ -335,7 +336,6 @@
         }
         n.branchRightVal = 0;
       } else {
-        // align_right: only count neighbors ALSO outside the channel
         n.branchLeftDist = INF;
         let alignedOutside = 0;
         for (const nb of nbrs) {
@@ -349,7 +349,17 @@
     updateInspector();
   }
 
-  // 3D -> 2D projection
+  function resizeCanvas() {
+    const rect = stageEl.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    viewW = Math.max(320, rect.width);
+    viewH = Math.max(320, rect.height);
+    canvas.width = Math.round(viewW * dpr);
+    canvas.height = Math.round(viewH * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    render();
+  }
+
   function project3D(gx, gy, gz) {
     const cx = (GRID - 1) / 2;
     const cy = (GRID - 1) / 2;
@@ -364,22 +374,20 @@
     const rx = x0 * cosY - y0 * sinY;
     const ry = x0 * sinY + y0 * cosY;
 
-    const scale = 68;
-    const screenX = canvas.width * 0.5 + rx * scale;
-    const screenY = canvas.height * 0.58 + (ry * sinP - gz * cosP) * scale;
+    const baseScale = Math.min(viewW, viewH) * 0.115 * camZoom;
+    const screenX = viewW * 0.5 + rx * baseScale;
+    const screenY = viewH * 0.53 + (ry * sinP - gz * cosP) * baseScale;
     const depth = ry * cosP + gz * sinP;
     return { x: screenX, y: screenY, depth: depth };
   }
 
-  // Color helpers (plasma-inspired scale)
   function plasmaColor(t) {
     const clamped = Math.max(0, Math.min(1, t));
-    // Interpolate gold (#f59e0b) -> orange (#ea580c) -> magenta (#b4136f) -> purple (#4c1d95)
     const stops = [
       [245, 158, 11],
-      [234, 88, 12],
-      [180, 19, 111],
-      [76, 29, 149],
+      [249, 115, 22],
+      [225, 29, 116],
+      [109, 40, 217],
     ];
     const pos = clamped * (stops.length - 1);
     const idx = Math.min(stops.length - 2, Math.floor(pos));
@@ -392,76 +400,74 @@
 
   function nodeLayerAppearance(n, layerId) {
     if (n.obstacle) {
-      return { color: "#64748b", radius: 5, relief: 0, label: "X", valid: false };
+      return { color: "#475569", radius: 5.5, relief: 0, label: "OBS", valid: false };
     }
     if (layerId === "sensors") {
-      if (n.source) return { color: "#f59e0b", radius: 8.5, relief: 0.22, label: "SRC", valid: true };
-      if (n.target) return { color: "#10b981", radius: 8.5, relief: 0.22, label: "TGT", valid: true };
-      return { color: "#94a3b8", radius: 5.5, relief: 0, label: "", valid: true };
+      if (n.source) return { color: "#f59e0b", radius: 9.5, relief: 0.25, label: "SOURCE", valid: true };
+      if (n.target) return { color: "#10b981", radius: 9.5, relief: 0.25, label: "TARGET", valid: true };
+      return { color: "#94a3b8", radius: 6, relief: 0, label: "", valid: true };
     }
     if (layerId === "degree") {
       const t = 1 - Math.min(1, n.degree / 8);
       return {
         color: plasmaColor(t * 0.8),
-        radius: 7,
-        relief: (n.degree / 8) * 0.85,
+        radius: 8,
+        relief: (n.degree / 8) * 0.95,
         label: String(n.degree),
         valid: true,
       };
     }
     if (layerId === "grad_target") {
       if (n.dTarget >= INF) {
-        return { color: "#cbd5e1", radius: 5.5, relief: 0, label: "∞", valid: false };
+        return { color: "#64748b", radius: 6, relief: 0, label: "∞", valid: false };
       }
       const t = Math.min(1, n.dTarget / 8.5);
       return {
         color: plasmaColor(t),
-        radius: n.target ? 8.5 : 6.8,
-        relief: Math.min(1.1, n.dTarget * 0.13),
+        radius: n.target ? 9.5 : 7.5,
+        relief: Math.min(1.25, n.dTarget * 0.14),
         label: n.dTarget.toFixed(1),
         valid: true,
       };
     }
     if (layerId === "on_path") {
       if (n.onPath) {
-        return { color: "#f59e0b", radius: 8.5, relief: 0.35, label: "True", valid: true };
+        return { color: "#f59e0b", radius: 9.5, relief: 0.38, label: "True", valid: true };
       }
-      return { color: "#64748b", radius: 5, relief: 0, label: "", valid: false };
+      return { color: "#475569", radius: 5.5, relief: 0, label: "", valid: false };
     }
     if (layerId === "channel") {
       if (n.inChannel) {
-        return { color: "#10b981", radius: 8, relief: 0.32, label: "1", valid: true };
+        return { color: "#10b981", radius: 8.8, relief: 0.35, label: "True", valid: true };
       }
-      return { color: "#64748b", radius: 5, relief: 0, label: "0", valid: false };
+      return { color: "#475569", radius: 5.5, relief: 0, label: "", valid: false };
     }
     if (layerId === "branch") {
       if (n.inChannel) {
         const t = n.branchLeftDist < INF ? Math.min(1, n.branchLeftDist / 8.5) : 1;
         return {
           color: plasmaColor(t * 0.85),
-          radius: 8,
-          relief: 0.35,
+          radius: 8.8,
+          relief: 0.42,
           label: n.branchLeftDist < INF ? n.branchLeftDist.toFixed(1) : "∞",
           valid: true,
-          domain: "left",
         };
       }
       return {
-        color: "#0284c7",
-        radius: 6.5,
-        relief: -0.12,
+        color: "#38bdf8",
+        radius: 7,
+        relief: -0.18,
         label: `-${n.branchRightVal}`,
         valid: true,
-        domain: "right",
       };
     }
-    return { color: "#94a3b8", radius: 6, relief: 0, label: "", valid: true };
+    return { color: "#94a3b8", radius: 6.5, relief: 0, label: "", valid: true };
   }
 
-  let screenNodes = []; // For mouse hit-testing on base/active layer
+  let screenNodes = [];
 
   function render() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, viewW, viewH);
 
     const stepObj = STEPS[currentStep];
     const allLayers = stepObj.layers;
@@ -471,12 +477,13 @@
         : allLayers;
 
     const numL = layersToDraw.length;
-    const layerSpacing = viewMode === "stacked" ? (numL > 1 ? 3.0 / (numL - 1) : 0) : 0;
-    const baseOffset = viewMode === "stacked" && numL > 1 ? -1.35 : -0.45;
+    const totalSpan = viewMode === "stacked" && numL > 1 ? layerGap * (numL - 1) * 0.48 : 0;
+    const layerSpacing = numL > 1 ? totalSpan / (numL - 1) : 0;
+    const baseOffset = -totalSpan * 0.5;
 
     screenNodes = [];
 
-    // 1. Draw vertical alignment fibres between stacked layers for every active node
+    // 1. Vertical alignment fibres connecting each node across all stacked layers
     if (viewMode === "stacked" && numL > 1) {
       for (let i = 0; i < NUM_NODES; i++) {
         const n = nodes[i];
@@ -487,13 +494,13 @@
         const pTop = project3D(
           n.x,
           n.y,
-          baseOffset + (numL - 1) * layerSpacing + topApp.relief * 0.45
+          baseOffset + (numL - 1) * layerSpacing + topApp.relief * 0.42
         );
         ctx.save();
         ctx.beginPath();
-        ctx.setLineDash(isFocus ? [4, 2] : [2, 4]);
-        ctx.strokeStyle = isFocus ? "#f59e0b" : "rgba(148, 163, 184, 0.26)";
-        ctx.lineWidth = isFocus ? 2.0 : 1.0;
+        ctx.setLineDash(isFocus ? [5, 3] : [2, 5]);
+        ctx.strokeStyle = isFocus ? "#fde047" : "rgba(148, 163, 184, 0.22)";
+        ctx.lineWidth = isFocus ? 2.2 : 1.0;
         ctx.moveTo(pBottom.x, pBottom.y);
         ctx.lineTo(pTop.x, pTop.y);
         ctx.stroke();
@@ -501,37 +508,45 @@
       }
     }
 
-    // 2. Draw each layer from bottom to top
+    // 2. Render each layer plane from bottom to top
     layersToDraw.forEach((layer, lIdx) => {
       const zPlane = baseOffset + lIdx * layerSpacing;
 
-      // Translucent 3D plane frame for this layer
       const corners = [
-        project3D(-0.45, -0.45, zPlane),
-        project3D(GRID - 0.55, -0.45, zPlane),
-        project3D(GRID - 0.55, GRID - 0.55, zPlane),
-        project3D(-0.45, GRID - 0.55, zPlane),
+        project3D(-0.55, -0.55, zPlane),
+        project3D(GRID - 0.45, -0.55, zPlane),
+        project3D(GRID - 0.45, GRID - 0.45, zPlane),
+        project3D(-0.55, GRID - 0.45, zPlane),
       ];
       ctx.save();
       ctx.beginPath();
       ctx.moveTo(corners[0].x, corners[0].y);
       for (let c = 1; c < 4; c++) ctx.lineTo(corners[c].x, corners[c].y);
       ctx.closePath();
-      ctx.fillStyle = "rgba(30, 25, 38, 0.34)";
+      ctx.fillStyle = "rgba(24, 19, 36, 0.46)";
       ctx.strokeStyle = layer.color;
-      ctx.lineWidth = 1.4;
+      ctx.lineWidth = 1.6;
       ctx.fill();
       ctx.stroke();
 
-      // Layer title tag on left corner
+      // Layer label badge on the front-left corner of the plane
+      const tagX = corners[3].x + 10;
+      const tagY = corners[3].y - 10;
+      ctx.font = "bold 12px sans-serif";
+      const textW = ctx.measureText(layer.name).width;
+      ctx.fillStyle = "rgba(17, 14, 23, 0.88)";
+      ctx.strokeStyle = layer.color;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.roundRect(tagX - 6, tagY - 13, textW + 12, 20, 5);
+      ctx.fill();
+      ctx.stroke();
       ctx.fillStyle = layer.color;
-      ctx.font = "bold 11px sans-serif";
-      ctx.fillText(layer.name, corners[3].x + 6, corners[3].y - 6);
+      ctx.fillText(layer.name, tagX, tagY + 1);
       ctx.restore();
 
-      const reliefScale = viewMode === "surface" ? 1.85 : 0.45;
+      const reliefScale = viewMode === "surface" ? 1.85 : 0.42;
 
-      // Precompute projected node positions for this layer
       const layerPts = nodes.map((n) => {
         const app = nodeLayerAppearance(n, layer.id);
         const z = zPlane + app.relief * reliefScale;
@@ -540,7 +555,7 @@
         return { n, app, p, pBase };
       });
 
-      // Draw edges on this layer
+      // Edges
       for (const e of edges) {
         const na = layerPts[e.a];
         const nb = layerPts[e.b];
@@ -552,36 +567,35 @@
         if (layer.id === "branch") {
           const sameDomain = na.n.inChannel === nb.n.inChannel;
           if (!sameDomain) {
-            // Severed cross-branch link!
-            ctx.setLineDash([3, 3]);
-            ctx.strokeStyle = "rgba(239, 68, 68, 0.55)";
-            ctx.lineWidth = 1.2;
-          } else if (na.n.inChannel) {
-            ctx.strokeStyle = "rgba(245, 158, 11, 0.78)";
-            ctx.lineWidth = 2.2;
-          } else {
-            ctx.strokeStyle = "rgba(56, 189, 248, 0.45)";
+            ctx.setLineDash([4, 4]);
+            ctx.strokeStyle = "rgba(239, 68, 68, 0.6)";
             ctx.lineWidth = 1.3;
+          } else if (na.n.inChannel) {
+            ctx.strokeStyle = "rgba(245, 158, 11, 0.85)";
+            ctx.lineWidth = 2.4;
+          } else {
+            ctx.strokeStyle = "rgba(56, 189, 248, 0.48)";
+            ctx.lineWidth = 1.4;
           }
         } else if (layer.id === "on_path") {
           const bothPath =
             na.n.onPath &&
             nb.n.onPath &&
             (na.n.parentTarget === nb.n.id || nb.n.parentTarget === na.n.id);
-          ctx.strokeStyle = bothPath ? "#f59e0b" : "rgba(148, 163, 184, 0.22)";
-          ctx.lineWidth = bothPath ? 3.0 : 1.0;
+          ctx.strokeStyle = bothPath ? "#f59e0b" : "rgba(148, 163, 184, 0.2)";
+          ctx.lineWidth = bothPath ? 3.4 : 1.0;
         } else if (layer.id === "channel") {
           const bothChan = na.n.inChannel && nb.n.inChannel;
-          ctx.strokeStyle = bothChan ? "rgba(16, 185, 129, 0.8)" : "rgba(148, 163, 184, 0.22)";
-          ctx.lineWidth = bothChan ? 2.3 : 1.0;
+          ctx.strokeStyle = bothChan ? "rgba(16, 185, 129, 0.85)" : "rgba(148, 163, 184, 0.2)";
+          ctx.lineWidth = bothChan ? 2.5 : 1.0;
         } else {
           const isTreeEdge =
             layer.id === "grad_target" &&
             (na.n.parentTarget === nb.n.id || nb.n.parentTarget === na.n.id);
           ctx.strokeStyle = isTreeEdge
-            ? "rgba(244, 114, 182, 0.75)"
-            : "rgba(148, 163, 184, 0.28)";
-          ctx.lineWidth = isTreeEdge ? 2.0 : 1.1;
+            ? "rgba(244, 114, 182, 0.8)"
+            : "rgba(148, 163, 184, 0.25)";
+          ctx.lineWidth = isTreeEdge ? 2.1 : 1.1;
         }
 
         ctx.moveTo(na.p.x, na.p.y);
@@ -590,19 +604,19 @@
         ctx.restore();
       }
 
-      // Highlight 1-hop neighborhood of hovered/selected node
+      // Highlight 1-hop neighborhood of focused node
       const focusId = hoveredNode !== null ? hoveredNode : selectedNode;
       if (focusId !== null && !nodes[focusId].obstacle) {
         const centerPt = layerPts[focusId];
         for (const nb of activeNeighbors(focusId)) {
           const nbPt = layerPts[nb.id];
           if (layer.id === "branch" && centerPt.n.inChannel !== nbPt.n.inChannel) {
-            continue; // Not aligned across branches!
+            continue;
           }
           ctx.save();
           ctx.beginPath();
           ctx.strokeStyle = "#fde047";
-          ctx.lineWidth = 2.4;
+          ctx.lineWidth = 2.6;
           ctx.moveTo(centerPt.p.x, centerPt.p.y);
           ctx.lineTo(nbPt.p.x, nbPt.p.y);
           ctx.stroke();
@@ -610,19 +624,18 @@
         }
       }
 
-      // Sort nodes back-to-front by depth for clean 3D painter's algorithm
+      // Nodes sorted back-to-front
       const sorted = layerPts.slice().sort((a, b) => a.p.depth - b.p.depth);
 
       for (const item of sorted) {
         const { n, app, p, pBase } = item;
 
-        // Vertical stem in 3D surface mode (or when elevated)
         if (Math.abs(p.y - pBase.y) > 2) {
           ctx.save();
           ctx.beginPath();
           ctx.strokeStyle = app.color;
-          ctx.globalAlpha = 0.55;
-          ctx.lineWidth = 2.0;
+          ctx.globalAlpha = 0.6;
+          ctx.lineWidth = 2.2;
           ctx.moveTo(pBase.x, pBase.y);
           ctx.lineTo(p.x, p.y);
           ctx.stroke();
@@ -635,37 +648,34 @@
         ctx.arc(p.x, p.y, app.radius + (isFocus ? 2.5 : 0), 0, Math.PI * 2);
         ctx.fillStyle = app.color;
         ctx.fill();
-        ctx.lineWidth = isFocus ? 2.6 : 1.4;
+        ctx.lineWidth = isFocus ? 2.8 : 1.5;
         ctx.strokeStyle = isFocus ? "#fde047" : "#ffffff";
         ctx.stroke();
 
-        // Source / Target ring markers
         if (n.source || n.target) {
           ctx.beginPath();
-          ctx.arc(p.x, p.y, app.radius + 4.5, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, app.radius + 5, 0, Math.PI * 2);
           ctx.strokeStyle = n.source ? "#f59e0b" : "#10b981";
-          ctx.lineWidth = 2.0;
+          ctx.lineWidth = 2.2;
           ctx.stroke();
         }
 
-        // Value label on top layer (or focused layer)
+        // Value label on top-most visible layer
         if (lIdx === layersToDraw.length - 1 && app.label) {
-          ctx.font = "bold 9.5px monospace";
+          ctx.font = "bold 10.5px monospace";
           ctx.fillStyle = "#ffffff";
           ctx.textAlign = "center";
-          ctx.fillText(app.label, p.x, p.y - app.radius - 5);
+          ctx.fillText(app.label, p.x, p.y - app.radius - 6);
         }
         ctx.restore();
 
-        // Record hit-test position from the top-most visible layer or base
         if (lIdx === layersToDraw.length - 1) {
-          screenNodes.push({ id: n.id, x: p.x, y: p.y, r: app.radius + 6 });
+          screenNodes.push({ id: n.id, x: p.x, y: p.y, r: app.radius + 8 });
         }
       }
     });
   }
 
-  // UI updates
   function updateRoundBadge() {
     const badge = document.getElementById("wt-round-badge");
     if (badge) badge.textContent = `Round ${roundCount}`;
@@ -714,7 +724,7 @@
     const nbrs = activeNeighbors(id);
 
     const role = n.obstacle
-      ? "OBSTACLE (disabled)"
+      ? "OBSTACLE"
       : n.source
       ? "SOURCE"
       : n.target
@@ -724,25 +734,25 @@
 
     if (n.obstacle) {
       body.innerHTML =
-        "<p>This node is currently disabled (<strong>Obstacle</strong>). It sends no messages and neighbors do not see it in their <code>NeighborhoodField</code>. Click it in <em>Obstacle</em> mode to re-enable it.</p>";
+        "<p>This node is disabled (<strong>Obstacle</strong>). It sends no messages and does not appear in neighbors' <code>NeighborhoodField</code>. Click it in <em>Obstacle</em> mode to re-enable it.</p>";
       return;
     }
 
     const nbrIds = nbrs.map((nb) => nb.id).join(", ") || "none";
-    const dT = n.dTarget < INF ? n.dTarget.toFixed(2) : "inf";
-    const dP = n.dPath < INF ? n.dPath.toFixed(2) : "inf";
+    const dT = n.dTarget < INF ? n.dTarget.toFixed(2) : "∞";
+    const dP = n.dPath < INF ? n.dPath.toFixed(2) : "∞";
     const alignBranch = n.inChannel
-      ? "program@0 / align_left@0 (Channel domain)"
-      : "program@0 / align_right@0 (Outside domain)";
+      ? "align_left (Channel)"
+      : "align_right (Outside)";
 
     body.innerHTML =
       `<div class="wt-insp-grid">` +
-      `<div><span class="wt-insp-key">Sensors:</span> <code>source=${n.source}, target=${n.target}</code></div>` +
-      `<div><span class="wt-insp-key">Aligned neighbors (${nbrs.length}):</span> <code>[${nbrIds}]</code></div>` +
-      `<div><span class="wt-insp-key">Layer 1 (to_target):</span> <code>remember → ${dT}</code> (parent: <code>${n.parentTarget ?? "None"}</code>)</div>` +
-      `<div><span class="wt-insp-key">Layer 2 (on_path):</span> <code>${n.onPath}</code></div>` +
-      `<div><span class="wt-insp-key">Layer 3 (in_channel):</span> <code>${n.inChannel}</code> (dist to path: <code>${dP}</code>)</div>` +
-      `<div><span class="wt-insp-key">Layer 4 Alignment:</span> <code>${alignBranch}</code></div>` +
+      `<div class="wt-insp-row"><span class="wt-insp-key">Sensors</span><span class="wt-insp-val">source=${n.source}, target=${n.target}</span></div>` +
+      `<div class="wt-insp-row"><span class="wt-insp-key">1-Hop Neighbors (${nbrs.length})</span><span class="wt-insp-val">[${nbrIds}]</span></div>` +
+      `<div class="wt-insp-row"><span class="wt-insp-key">Layer 1: to_target</span><span class="wt-insp-val">${dT} (parent: ${n.parentTarget ?? "None"})</span></div>` +
+      `<div class="wt-insp-row"><span class="wt-insp-key">Layer 2: on_path</span><span class="wt-insp-val">${n.onPath}</span></div>` +
+      `<div class="wt-insp-row"><span class="wt-insp-key">Layer 3: in_channel</span><span class="wt-insp-val">${n.inChannel} (dist=${dP})</span></div>` +
+      `<div class="wt-insp-row"><span class="wt-insp-key">Layer 4: Branch Scope</span><span class="wt-insp-val">${alignBranch}</span></div>` +
       `</div>`;
   }
 
@@ -770,7 +780,6 @@
     render();
   }
 
-  // Mouse interaction on 3D canvas
   function findNodeAt(mx, my) {
     let best = null;
     let bestDist = 999;
@@ -786,11 +795,9 @@
 
   function canvasCoords(evt) {
     const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
     return {
-      x: (evt.clientX - rect.left) * scaleX,
-      y: (evt.clientY - rect.top) * scaleY,
+      x: evt.clientX - rect.left,
+      y: evt.clientY - rect.top,
     };
   }
 
@@ -806,7 +813,7 @@
       const dy = evt.clientY - dragStart.y;
       if (Math.hypot(dx, dy) > 4) dragMoved = true;
       camYaw += dx * 0.008;
-      camPitch = Math.max(0.2, Math.min(1.35, camPitch + dy * 0.007));
+      camPitch = Math.max(0.18, Math.min(1.38, camPitch + dy * 0.007));
       dragStart = { x: evt.clientX, y: evt.clientY };
       render();
       return;
@@ -855,9 +862,20 @@
     }
   });
 
-  // Controls wiring
+  canvas.addEventListener(
+    "wheel",
+    (evt) => {
+      evt.preventDefault();
+      const factor = evt.deltaY < 0 ? 1.08 : 0.92;
+      camZoom = Math.max(0.55, Math.min(2.2, camZoom * factor));
+      render();
+    },
+    { passive: false }
+  );
+
+  // Controls
   document.querySelectorAll(".wt-step-btn").forEach((btn) => {
-    btn.addEventListener("click", () => setStep( Number(btn.dataset.step) ));
+    btn.addEventListener("click", () => setStep(Number(btn.dataset.step)));
   });
 
   document.getElementById("wt-prev-step").addEventListener("click", () => setStep(currentStep - 1));
@@ -886,6 +904,14 @@
     render();
   });
 
+  const gapSlider = document.getElementById("wt-gap-slider");
+  if (gapSlider) {
+    gapSlider.addEventListener("input", (evt) => {
+      layerGap = parseFloat(evt.target.value);
+      render();
+    });
+  }
+
   const widthSlider = document.getElementById("wt-width-slider");
   const widthVal = document.getElementById("wt-width-val");
   widthSlider.addEventListener("input", (evt) => {
@@ -895,6 +921,16 @@
     render();
   });
 
+  const resetCamBtn = document.getElementById("wt-reset-cam");
+  if (resetCamBtn) {
+    resetCamBtn.addEventListener("click", () => {
+      camYaw = DEFAULT_YAW;
+      camPitch = DEFAULT_PITCH;
+      camZoom = DEFAULT_ZOOM;
+      render();
+    });
+  }
+
   document.querySelectorAll(".wt-mode-pill").forEach((pill) => {
     pill.addEventListener("click", () => {
       clickMode = pill.dataset.click;
@@ -903,10 +939,16 @@
     });
   });
 
-  // Initialize and start periodic round execution
   initNetwork();
   for (let r = 0; r < 10; r++) stepRound();
   setStep(0);
+
+  if (typeof ResizeObserver !== "undefined") {
+    new ResizeObserver(() => resizeCanvas()).observe(stageEl);
+  } else {
+    window.addEventListener("resize", resizeCanvas);
+  }
+  resizeCanvas();
 
   setInterval(() => {
     if (playing) {

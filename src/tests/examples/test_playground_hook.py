@@ -38,3 +38,11 @@ def test_on_post_build_publishes_the_examples_in_the_order_of_the_tour(tmp_path)
     assert manifest["examples"][1]["summary"].startswith("every device estimates its distance")
     for name in names:
         assert (playground / "examples" / f"{name}.py").exists()
+
+
+def test_on_post_build_publishes_the_standalone_walkthrough_page(tmp_path):
+    hook.on_post_build({"site_dir": str(tmp_path)})
+
+    walkthrough_index = tmp_path / "walkthrough" / "index.html"
+    assert walkthrough_index.exists()
+    assert "Phyelds 3D Field Explorer" in walkthrough_index.read_text()

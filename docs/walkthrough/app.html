@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Phyelds — Interactive 3D Field Walkthrough</title>
+  <link rel="icon" href="../assets/logo.png" />
+  <link rel="stylesheet" href="walkthrough.css" />
+</head>
+<body>
+  <div class="exp-shell">
+    <!-- Top Header & Stepper Bar -->
+    <header class="exp-topbar">
+      <div class="exp-brand">
+        <a href="../index.html" class="exp-back-link" title="Return to Phyelds Documentation">
+          ← Docs
+        </a>
+        <img src="../assets/logo.png" alt="Phyelds logo" class="exp-logo" />
+        <span class="exp-brand-title">Phyelds 3D Field Explorer</span>
+      </div>
+
+      <nav class="exp-stepper" role="tablist" aria-label="Walkthrough steps">
+        <button class="wt-step-btn active" data-step="0" type="button">
+          <span class="wt-step-num">1</span>
+          <span>Sensors &amp; Fields</span>
+        </button>
+        <button class="wt-step-btn" data-step="1" type="button">
+          <span class="wt-step-num">2</span>
+          <span>Space (neighbors)</span>
+        </button>
+        <button class="wt-step-btn" data-step="2" type="button">
+          <span class="wt-step-num">3</span>
+          <span>Gradient (G)</span>
+        </button>
+        <button class="wt-step-btn" data-step="3" type="button">
+          <span class="wt-step-num">4</span>
+          <span>Collect (C)</span>
+        </button>
+        <button class="wt-step-btn" data-step="4" type="button">
+          <span class="wt-step-num">5</span>
+          <span>Compose (Channel)</span>
+        </button>
+        <button class="wt-step-btn" data-step="5" type="button">
+          <span class="wt-step-num">6</span>
+          <span>Branch (if / else)</span>
+        </button>
+      </nav>
+
+      <div class="exp-playback">
+        <button id="wt-play" class="exp-btn exp-btn--primary" type="button">Pause</button>
+        <button id="wt-step-round" class="exp-btn" type="button">+1 Round</button>
+        <button id="wt-reset" class="exp-btn" type="button">Reset State</button>
+        <span id="wt-round-badge" class="wt-badge">Round 0</span>
+      </div>
+    </header>
+
+    <!-- Main Full-Viewport Workspace -->
+    <main class="exp-main">
+      <!-- Left: Full-bleed 3D Interactive Stage -->
+      <section class="exp-stage" id="wt-stage">
+        <canvas id="wt-canvas" aria-label="Interactive 3D computational field visualization"></canvas>
+
+        <!-- Top Floating HUD: Layer Stack Selector & View Mode -->
+        <div class="exp-hud-top">
+          <div id="wt-layers-bar" class="exp-hud-group" aria-label="Stacked field layers"></div>
+
+          <div class="exp-hud-group">
+            <label class="wt-control-label" for="wt-view-mode">
+              View:
+              <select id="wt-view-mode" class="wt-select">
+                <option value="stacked">Stacked 3D Planes</option>
+                <option value="surface">3D Height Surface</option>
+              </select>
+            </label>
+            <label class="wt-control-label" for="wt-gap-slider">
+              Layer Gap:
+              <input id="wt-gap-slider" type="range" min="1.2" max="5.2" step="0.2" value="3.2" class="wt-slider" />
+            </label>
+            <label class="wt-control-label" for="wt-width-slider">
+              Channel Width (<span id="wt-width-val">1.6</span>):
+              <input id="wt-width-slider" type="range" min="0.8" max="3.2" step="0.2" value="1.6" class="wt-slider" />
+            </label>
+            <button id="wt-reset-cam" class="exp-btn" type="button">Reset 3D View</button>
+          </div>
+        </div>
+
+        <!-- Bottom Floating HUD: Node Click Action & Controls Hint -->
+        <div class="exp-hud-bottom">
+          <div class="exp-hud-group">
+            <span class="wt-control-label">Click a node to set:</span>
+            <button class="wt-mode-pill active" data-click="source" type="button">Source</button>
+            <button class="wt-mode-pill" data-click="target" type="button">Target</button>
+            <button class="wt-mode-pill" data-click="obstacle" type="button">Obstacle (on/off)</button>
+          </div>
+
+          <div class="exp-hud-group exp-hint-text">
+            <span><strong>Drag</strong>: rotate 3D</span>
+            <span>·</span>
+            <span><strong>Scroll</strong>: zoom</span>
+            <span>·</span>
+            <span><strong>Hover / Click node</strong>: inspect local state &amp; aligned neighbors</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Dock: Step Narrative, Python Code, and Local Device Inspector -->
+      <aside class="exp-dock">
+        <div class="wt-card">
+          <div class="wt-card-kicker" id="wt-step-kicker">Step 1 of 6</div>
+          <h1 class="wt-card-title" id="wt-step-title">What is a Computational Field?</h1>
+          <div class="wt-card-body" id="wt-step-desc"></div>
+          <div class="wt-nav-btns">
+            <button id="wt-prev-step" class="exp-btn" type="button">← Previous Step</button>
+            <button id="wt-next-step" class="exp-btn exp-btn--primary" type="button">Next Step →</button>
+          </div>
+        </div>
+
+        <div class="wt-card">
+          <div class="wt-card-header">
+            <span>Python Aggregate Program (runs on every device)</span>
+            <a href="../playground/index.html#example=channel" class="exp-back-link" style="padding:0.2rem 0.55rem;font-size:0.72rem;">Open in Playground ↗</a>
+          </div>
+          <pre class="wt-code-block"><code id="wt-code-display"></code></pre>
+        </div>
+
+        <div class="wt-card">
+          <div class="wt-card-header">
+            <span>Local Device Inspector</span>
+            <span id="wt-insp-id" class="wt-badge">Node #14</span>
+          </div>
+          <div id="wt-insp-body" class="wt-insp-body"></div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script src="walkthrough.js"></script>
+</body>
+</html>
