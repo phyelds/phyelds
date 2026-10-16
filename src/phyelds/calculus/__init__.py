@@ -12,6 +12,7 @@ def my_function():
 Then, there is the core syntax of phyelds:
 - remember: used to remember a value across iterations.
 - neighbors: used to get the neighbors of a node.
+- exchange: used to exchange values (or anisotropic fields) across iterations and neighbors.
 - neighbors_distances: used to get the distances to the neighbors.
 """
 import ast
@@ -105,6 +106,63 @@ def neighbors(value: T) -> "NeighborhoodField[T]":
     values[engine.get().node_context.node_id] = value
 
     return NeighborhoodField(values, engine.get().node_context.node_id)
+
+
+def _extract_for_node(value: Any, node_id: int) -> Any:
+    """Extract the value addressed to ``node_id`` from a scalar, ``State``, or field."""
+    if isinstance(value, State):
+        value = value.value
+    if isinstance(value, NeighborhoodField):
+        return value.for_node(node_id)
+    return value
+
+
+@aggregate
+def exchange(
+    init: Union[T, "NeighborhoodField[T]"],
+) -> Tuple[Callable[[Any], Any], "NeighborhoodField[T]"]:
+    """
+    Exchange values with neighbors and across rounds at the current alignment point.
+
+    Args:
+        init: Initial value (or field) used when no previous value is available.
+
+    Returns:
+        A tuple ``(set_field, field)`` containing the send function for the next round
+        and the ``NeighborhoodField`` received in the current round.
+    """
+    current_engine = engine.get()
+    path = current_engine.current_path()
+    node_id = current_engine.node_context.node_id
+    stored = current_engine.read_state(path)
+    if stored is None:
+        raw_init = init.value if isinstance(init, State) else init
+        local_value = _extract_for_node(raw_init, node_id)
+        current_engine.write_state(raw_init, path)
+        current_engine.send(raw_init, path)
+    else:
+        local_value = _extract_for_node(stored, node_id)
+        current_engine.send(stored, path)
+
+    values = {
+        neighbor_id: _extract_for_node(neighbor_value, node_id)
+        for neighbor_id, neighbor_value in current_engine.aligned_values(path).items()
+    }
+    values[node_id] = local_value
+    default_value = (
+        init.default
+        if isinstance(init, NeighborhoodField)
+        else _extract_for_node(init, node_id)
+    )
+    field = NeighborhoodField(values, node_id, default=default_value)
+
+    def set_field(new_value: Any) -> Any:
+        raw_new = new_value.value if isinstance(new_value, State) else new_value
+        current_engine.write_state(raw_new, path)
+        current_engine.send(raw_new, path)
+        return new_value
+
+    return set_field, field
 
 
 def align(name: Any):

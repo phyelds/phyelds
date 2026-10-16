@@ -143,10 +143,11 @@ class Engine(ABC):
         :return:
         """
 
-    def send(self, data: any) -> None:
+    def send(self, data: any, stack: list[str] | None = None) -> None:
         """
         Send data to the engine.
         :param data: The data to send.
+        :param stack: Optional alignment path to send the data at.
         """
 
     def aligned(self) -> list[int]:

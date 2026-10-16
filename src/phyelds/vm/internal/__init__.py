@@ -63,8 +63,9 @@ class MutableEngine(Engine):
         self.engine_state.reads.add(str(stack))
         return self.engine_state.state_trace.get(str(stack))
 
-    def send(self, data: Any) -> None:
-        self.engine_state.to_send[str(self.engine_state.stack)] = data
+    def send(self, data: Any, stack: Optional[List[str]] = None) -> None:
+        target_stack = self.engine_state.stack if stack is None else stack
+        self.engine_state.to_send[str(target_stack)] = data
 
     def aligned(self) -> List[int]:
         aligned: List[int] = []
