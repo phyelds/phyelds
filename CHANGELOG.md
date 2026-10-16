@@ -1,3 +1,14 @@
+## [7.3.0](https://github.com/phyelds/phyelds/compare/7.2.0...7.3.0) (2026-10-16)
+
+### Features
+
+* **calculus:** add exchange operator for anisotropic state and messaging ([5aa200b](https://github.com/phyelds/phyelds/commit/5aa200b92aa7f91f71904f86b14dc79fb081d406))
+* **data:** add default value and per-node lookup to NeighborhoodField ([e47fdd1](https://github.com/phyelds/phyelds/commit/e47fdd1eb98665d2934b4e9efeee6022b1270ba5))
+
+### Documentation
+
+* **calculus:** document the exchange operator and NeighborhoodField.for_node ([be9c925](https://github.com/phyelds/phyelds/commit/be9c925a41c97f4006566ef48986e42c0c042876))
+
 ## [7.2.0](https://github.com/phyelds/phyelds/compare/7.1.8...7.2.0) (2026-10-13)
 
 ### Features
