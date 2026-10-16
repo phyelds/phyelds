@@ -8,7 +8,7 @@ from phyelds.simulator import runner as simulator_runner
 
 DOCS = Path(__file__).resolve().parents[3] / "docs"
 EXAMPLES = DOCS / "examples" / "playground"
-NAMES = ["neighbours", "gradient", "self_healing", "channel"]
+NAMES = ["neighbours", "gradient", "self_healing", "channel", "leaders", "bubbles"]
 # Pyodide is a few times slower than CPython, so the examples must stay small. The
 # size is counted in rounds (one device running the program once), not in seconds,
 # so that the check does not depend on the speed of the machine. 4000 rounds take

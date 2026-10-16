@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 PACKAGE = ROOT / "src" / "phyelds"
 EXAMPLES = ROOT / "docs" / "examples" / "playground"
 # The menu follows this tour; examples not listed come after, by name.
-TOUR = ["neighbours", "gradient", "self_healing", "channel"]
+TOUR = ["neighbours", "gradient", "self_healing", "channel", "leaders", "bubbles"]
 
 
 def on_post_build(config: Mapping[str, Any], **_: Any) -> None:
