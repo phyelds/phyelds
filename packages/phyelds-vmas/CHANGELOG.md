@@ -1,3 +1,17 @@
+## [7.6.1](https://github.com/phyelds/phyelds/compare/7.6.0...7.6.1) (2026-10-16)
+
+### Documentation
+
+* **assets:** improve remember state evolution diagram across rounds ([c309263](https://github.com/phyelds/phyelds/commit/c3092634423530db785f8bcb2099ffad79c868b5))
+* **assets:** replace inline SVGs with matplotlib-rendered conceptual figures ([099f5ae](https://github.com/phyelds/phyelds/commit/099f5ae78277f21aa5bc390378fae7ccbd6d9ca4))
+* **concepts:** add visual diagrams and progressive intro to aggregate programs ([4b9d5a2](https://github.com/phyelds/phyelds/commit/4b9d5a2367f0b5182f616e9f18b34b14230716db))
+* **concepts:** enrich state, neighborhood-field, alignment, and pitfalls with diagrams ([7ab3c48](https://github.com/phyelds/phyelds/commit/7ab3c48d48a68f0ac2f69f6bcc8c4bd0542fd4df))
+* **examples:** add leaders and bubbles playground examples and animations ([815cfc3](https://github.com/phyelds/phyelds/commit/815cfc38376cf5b0492bcdebd068cad6212090ce))
+* **libraries:** restructure standard libraries into thematic guides and linearize nav ([843334f](https://github.com/phyelds/phyelds/commit/843334f13186f1b4be665d2b5ee25a5f32ab944a))
+* **mkdocs:** enable footer navigation, code annotations, and mermaid diagrams ([3caf59f](https://github.com/phyelds/phyelds/commit/3caf59fab597317130eda137070aa5a60bc3e68d))
+* replace mermaid blocks with custom theme-aware SVG diagrams and cards ([5f2237d](https://github.com/phyelds/phyelds/commit/5f2237d8a6c6795c60f1559492dca85e5efdd9f7))
+* **tutorial:** expand tutorial with diagrams, annotations, and channel composition ([a87c660](https://github.com/phyelds/phyelds/commit/a87c66076e6f2ac3705a71c6a26efd9f439024a5))
+
 ## [7.6.0](https://github.com/phyelds/phyelds/compare/7.5.0...7.6.0) (2026-10-16)
 
 ### Features
