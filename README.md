@@ -24,11 +24,13 @@ Lightweight, pythonic aggregate computing & field calculus toolkit for building,
   - [Neighborhood Values (`neighbors`)](#2-neighborhood-values-neighbors)
   - [Combining State + Neighborhood](#3-combining-state--neighborhood)
 - [Your First Field: the Gradient, Step by Step](#your-first-field-the-gradient-step-by-step)
-- [Development](#development)
-- [Contributing](#contributing)
-- [License](#license)
 - [Running a Minimal Simulation](#running-a-minimal-simulation)
 - [Documentation](#documentation)
+- [Heritage & Related Projects](#heritage--related-projects)
+- [Development](#development)
+- [Contributing](#contributing)
+- [Contributors & Acknowledgments](#contributors--acknowledgments)
+- [License](#license)
 
 ---
 
@@ -38,10 +40,10 @@ You write one program describing global behaviour; all devices run it, exchangin
 
 ## Features
 
-* Core primitives: `@aggregate`, `remember`, `neighbors`.
-* `NeighborhoodField` abstraction (arithmetic & iteration) for neighbor values.
-* Pluggable discrete‑event simulator for experiments.
-* Extra libraries (spreading, collection, gossip, leader election) built on the same core.
+* Core primitives: `@aggregate`, `remember`, `neighbors`, `exchange`, and `align`.
+* `NeighborhoodField` abstraction (element-wise arithmetic, iteration, and functional operators) for neighbor values.
+* Pluggable discrete‑event simulator with live rendering, animation export, and [VMAS](https://github.com/proroklab/VectorizedMultiAgentSimulator) integration (`phyelds-vmas`).
+* Rich standard libraries built on the same core: spreading, collection, gossip, leader election, time & reactive state, aggregate processes (`@process` / `spawn`), and spatial/temporal logic (SLCS & Past-CTL).
 
 ## Installation
 
@@ -316,6 +318,31 @@ a little at a time, leaning on each other. This is the well-known *rising value
 problem* of the classic gradient; the [documentation](https://phyelds.github.io/phyelds/)
 covers it among the things to keep in mind when writing aggregate programs.
 
+## Running a Minimal Simulation
+
+A runnable example is provided in `src/minimal_simulation.py`.
+
+Run it:
+
+```bash
+poetry run python src/minimal_simulation.py
+```
+
+It creates 5 nodes in a line, each advertising `1`, and prints how many devices each node sees (neighbors + itself). Interior nodes report 3; endpoints report 2.
+
+## Documentation
+
+The full documentation, with an interactive browser playground, the core abstractions, how to integrate phyelds in other simulators and runtimes, and the pitfalls to avoid, is at [phyelds.github.io/phyelds](https://phyelds.github.io/phyelds/).
+
+## Heritage & Related Projects
+
+**Phyelds** stands on the shoulders of over a decade of research and open-source tools in spatial and aggregate computing, bringing their ideas into a lightweight, Python-native library designed to integrate naturally with Python's scientific, simulation, and machine-learning ecosystem:
+
+* **[Proto](https://proto.bbn.com/)** & **[Protelis](https://protelis.github.io/)** ([GitHub](https://github.com/Protelis/Protelis)) — The pioneering spatial computing and aggregate programming languages that established the computational field abstraction, the `rep` / `nbr` (`remember` / `neighbors`) round-based execution model, and the self-organizing coordination building blocks.
+* **[ScaFi](https://scafi.github.io/)** ([GitHub](https://github.com/scafi/scafi)) — The Scala toolkit for aggregate programming, which inspired Phyelds's internal-DSL approach, standard coordination blocks (`G`/`C`/`S`, `summarize`, `channel`, reactive state and time operators), and spatially/temporally scoped aggregate processes (`@process` / `spawn`).
+* **[FCPP](https://fcpp.github.io/)** ([GitHub](https://github.com/fcpp/fcpp)) — The high-performance C++ field calculus library, from which Phyelds draws the `exchange` primitive (from Exchange Calculus), resilient coordination strategies (path-coherent gradients, multi-path and point-to-point collection, bounded leader election), and spatial/temporal logic operators (SLCS and Past-CTL).
+* **[Collektive](https://github.com/Collektive/collektive)** — The Kotlin Multiplatform aggregate computing DSL, which influenced Phyelds's ergonomic `NeighborhoodField` API and automatic alignment of standard language control flow (`if`/`else` AST rewriting via `@aggregate`).
+
 ## Development
 
 ```bash
@@ -333,29 +360,20 @@ poetry run flake8
 2. Keep PRs focused with tests.
 3. Run linters & tests before submitting.
 
+## Contributors & Acknowledgments
+
+### Main Contributors
+
+* **Gianluca Aguzzi** ([@cric96](https://github.com/cric96)) — [gianluca.aguzzi@unibo.it](mailto:gianluca.aguzzi@unibo.it)
+* **Davide Domini** ([@davidedomini](https://github.com/davidedomini)) — [davide.domini@unibo.it](mailto:davide.domini@unibo.it)
+
+### Acknowledgments
+
+Special thanks to **Mirko Viroli**, **Danilo Pianini**, **Roberto Casadei**, and **Giorgio Audrito** for the insightful discussions, foundational ideas, and continuous feedback that made this project possible.
+
 ## License
 
 Apache License 2.0 – see [LICENSE](./LICENSE).
-
----
-
-## Running a Minimal Simulation
-
-A runnable example is provided in `src/minimal_simulation.py`.
-
-Run it:
-
-```bash
-poetry run python src/minimal_simulation.py
-```
-
-It creates 5 nodes in a line, each advertising `1`, and prints how many devices each node sees (neighbors + itself). Interior nodes report 3; endpoints report 2.
-
-## Documentation
-
-The full documentation, with the core abstractions, how to integrate phyelds in
-other simulators and runtimes, and the pitfalls to avoid, is at
-[phyelds.github.io/phyelds](https://phyelds.github.io/phyelds/).
 
 ---
 
