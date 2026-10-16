@@ -6,15 +6,18 @@
  * shared, in this round or in the previous one. A device that has not run yet,
  * or is switched off, has shared nothing; and two devices only hear each other
  * inside the same branch of an `if` (alignment).
+ *
+ * Neighbors are the devices within range, and the range shrinks as devices are
+ * added: however many devices there are, each one hears only a few.
  */
 
 export const SIZE = 6; // devices on each side of the lattice the walkthrough starts with
 export const SPAN = SIZE - 1; // the arena is the square [0, SPAN] x [0, SPAN]
 export const FEWEST = SIZE * SIZE; // the starting lattice
 export const MOST = 100; // the arena takes this many devices at most
-export const RANGE = 1.65; // communication radius, whatever the number of devices
-export const HOLE = 0.42; // radius of the space a switched-off device leaves empty
 export const TEMPERATURE = { min: 16, max: 27 };
+const LATTICE_RANGE = 1.65; // in the starting lattice, the 8 devices around, diagonals included
+const LATTICE_HOLE = 0.42; // in the starting lattice, the space a switched-off device leaves empty
 
 /** The temperature of the environment at (x, y), in °C: two warm spots on a cool floor. */
 export function temperature(x, y) {
@@ -69,17 +72,29 @@ const PLACES = (() => {
 })();
 
 /**
- * The first `count` devices, who is in range of whom, and how many neighbors a
- * device far from the border has (`typical`, the median, to scale their counts).
+ * The communication radius of `count` devices. It shrinks a little faster than
+ * their spacing, as the devices added in the gaps spread more evenly than a
+ * lattice: an inner device keeps hearing 6 to 10 neighbors, from 36 devices to 100.
+ */
+function rangeOf(count) {
+  return LATTICE_RANGE * (FEWEST / count) ** 0.58;
+}
+
+/**
+ * The first `count` devices, their `range` and the `hole` a switched-off one
+ * leaves, who is in range of whom, and how many neighbors a device far from the
+ * border has (`typical`, the median, to scale their counts).
  */
 export function createNetwork(count = FEWEST) {
+  const range = rangeOf(count);
+  const hole = LATTICE_HOLE * Math.sqrt(FEWEST / count);
   const devices = PLACES.slice(0, count).map((place, id) => ({ id, ...place }));
   const links = [];
   const inRange = devices.map(() => []);
   for (const a of devices) {
     for (const b of devices) {
       const length = Math.hypot(a.x - b.x, a.y - b.y);
-      if (a.id < b.id && length <= RANGE) {
+      if (a.id < b.id && length <= range) {
         links.push({ a: a.id, b: b.id, length });
         inRange[a.id].push({ id: b.id, length });
         inRange[b.id].push({ id: a.id, length });
@@ -87,10 +102,10 @@ export function createNetwork(count = FEWEST) {
     }
   }
   inRange.forEach((list) => list.sort((p, q) => p.id - q.id));
-  const away = (value) => value >= RANGE && value <= SPAN - RANGE;
+  const away = (value) => value >= range && value <= SPAN - range;
   const inner = devices.filter((device) => away(device.x) && away(device.y));
   const counts = (inner.length > 0 ? inner : devices).map((device) => inRange[device.id].length).sort((a, b) => a - b);
-  return { devices, links, inRange, typical: counts[Math.floor(counts.length / 2)] };
+  return { devices, links, inRange, range, hole, typical: counts[Math.floor(counts.length / 2)] };
 }
 
 /** The state of every device before the first round: nobody has run, nobody has shared. */

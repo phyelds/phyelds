@@ -5,7 +5,7 @@
  * The scene only draws: walkthrough.js decides what each device, link and
  * point looks like, and passes it as a frame.
  */
-import { HOLE, RANGE, SPAN } from "./model.js";
+import { SPAN } from "./model.js";
 import { rgba } from "./palette.js";
 
 export const LIFT = 2.1; // world height of a value of 1
@@ -129,7 +129,7 @@ export function createScene(canvas) {
     for (const device of frame.devices) {
       if (!device.off) continue;
       context.beginPath();
-      polygon(circle(device.x, device.y, 0, HOLE));
+      polygon(circle(device.x, device.y, 0, frame.network.hole));
       context.fillStyle = rgba(palette.ink, 0.05);
       context.fill();
       context.setLineDash([3, 3]);
@@ -145,7 +145,7 @@ export function createScene(canvas) {
     if (!focus || !focus.range) return;
     const device = devices[focus.id];
     context.beginPath();
-    polygon(circle(device.x, device.y, device.z, RANGE));
+    polygon(circle(device.x, device.y, device.z, frame.network.range));
     context.fillStyle = rgba(palette.ink, 0.05);
     context.fill();
     context.setLineDash([4, 4]);

@@ -3,7 +3,7 @@
  * devices. A marker on its border shows where the camera of the 3D view stands.
  */
 import { RESOLUTION } from "./continuum.js";
-import { RANGE, SPAN } from "./model.js";
+import { SPAN } from "./model.js";
 import { rgba } from "./palette.js";
 import { HIDDEN } from "./scene.js";
 
@@ -131,7 +131,7 @@ export function createMap(canvas) {
     if (frame.focus && frame.focus.range) {
       const center = points[frame.focus.id];
       context.beginPath();
-      context.arc(center.x, center.y, (RANGE / SPAN) * side, 0, 2 * Math.PI);
+      context.arc(center.x, center.y, (network.range / SPAN) * side, 0, 2 * Math.PI);
       context.setLineDash([3, 3]);
       context.strokeStyle = rgba(palette.ink, 0.55);
       context.stroke();

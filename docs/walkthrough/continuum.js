@@ -6,7 +6,7 @@
  * links, the shortest curve instead of a chain of devices. They are computed
  * on a fine grid, and only the parts that a change of the environment affects.
  */
-import { HOLE, RANGE, SPAN, temperature } from "./model.js";
+import { SPAN, temperature } from "./model.js";
 
 export const RESOLUTION = 61; // grid points on each side
 const SPACING = SPAN / (RESOLUTION - 1);
@@ -47,7 +47,7 @@ function createGrid() {
 }
 
 function insideHole(x, y, holes) {
-  return holes.some((hole) => Math.hypot(x - hole.x, y - hole.y) < HOLE);
+  return holes.some((hole) => Math.hypot(x - hole.x, y - hole.y) < hole.radius);
 }
 
 /** Whether the segment from a to b keeps out of every hole. */
@@ -57,7 +57,7 @@ function clear(ax, ay, bx, by, holes) {
     const dy = by - ay;
     const along = dx * dx + dy * dy;
     const t = along === 0 ? 0 : Math.max(0, Math.min(1, ((hole.x - ax) * dx + (hole.y - ay) * dy) / along));
-    if (Math.hypot(ax + t * dx - hole.x, ay + t * dy - hole.y) < HOLE) {
+    if (Math.hypot(ax + t * dx - hole.x, ay + t * dy - hole.y) < hole.radius) {
       return false;
     }
   }
@@ -202,12 +202,12 @@ function mapGrid(grid, free, valueAt) {
 }
 
 /** Share of the communication disc around each point that lies in the free space. */
-function neighborShare(grid, free, holes) {
+function neighborShare(grid, free, holes, range) {
   return mapGrid(grid, free, (index) => {
     let inside = 0;
     for (const offset of DISC) {
-      const x = grid.x[index] + RANGE * offset.x;
-      const y = grid.y[index] + RANGE * offset.y;
+      const x = grid.x[index] + range * offset.x;
+      const y = grid.y[index] + range * offset.y;
       if (x >= 0 && x <= SPAN && y >= 0 && y <= SPAN && !insideHole(x, y, holes)) inside += 1;
     }
     return inside / DISC.length;
@@ -269,15 +269,15 @@ export function createContinuum() {
 
   function update(environment, network) {
     const position = (id) => network.devices[id];
-    const holes = [...environment.off].sort((a, b) => a - b).map(position);
-    const holesKey = holes.map((hole) => `${hole.x},${hole.y}`).join(";");
+    const holes = [...environment.off].sort((a, b) => a - b).map((id) => ({ ...position(id), radius: network.hole }));
+    const holesKey = holes.map((hole) => `${hole.x},${hole.y},${hole.radius}`).join(";");
     const source = position(environment.source);
     const target = position(environment.target);
 
-    if (changed("holes", holesKey)) {
+    if (changed("space", `${holesKey}|${network.range}`)) {
       fields.free = Uint8Array.from({ length: grid.count }, (_, index) => !insideHole(grid.x[index], grid.y[index], holes));
       fields.temperature = mapGrid(grid, fields.free, (index) => temperature(grid.x[index], grid.y[index]));
-      fields.share = neighborShare(grid, fields.free, holes);
+      fields.share = neighborShare(grid, fields.free, holes, network.range);
     }
     const { free } = fields;
     const distanceFrom = (point) => geodesic(grid, free, seedsFromPoint(grid, free, point, holes), holes);
