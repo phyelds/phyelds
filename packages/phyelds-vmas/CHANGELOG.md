@@ -1,3 +1,15 @@
+## [7.6.0](https://github.com/phyelds/phyelds/compare/7.5.0...7.6.0) (2026-10-16)
+
+### Features
+
+* **libraries:** add multi_path collect strategy and gossip_mean from FCPP ([76d330a](https://github.com/phyelds/phyelds/commit/76d330a8c2c801cf5566d1a83890a11717f160ba))
+* **libraries:** add SLCS spatial logic and Past-CTL temporal logic from FCPP ([7fec617](https://github.com/phyelds/phyelds/commit/7fec6176c183ab3209c2f876ae704cba77341adb))
+
+### Documentation
+
+* **libraries:** document spatial/temporal logic, multi_path collect, and gossip_mean ([1657716](https://github.com/phyelds/phyelds/commit/16577165cea8067c1e4cdf4b07abe37b56351cb2))
+* **readme:** add project heritage, main contributors, and acknowledgments ([e750522](https://github.com/phyelds/phyelds/commit/e75052294ab0e7a9db09dde4935c5768955b0802))
+
 ## [7.5.0](https://github.com/phyelds/phyelds/compare/7.4.0...7.5.0) (2026-10-16)
 
 ### Features
