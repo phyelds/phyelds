@@ -2,81 +2,107 @@
 
 ## What alignment is
 
-When a device calls `neighbors(x)`, it does not receive *every* value its neighbors
-shared: only the values they shared **at the same point of the program**. Matching
-these points across devices is called *alignment*, and it is what makes aggregate
-programs composable: two independent gradients in the same program never mix their
-messages.
+When a device calls `neighbors(x)`, it does not receive *every* value its neighbors shared during their round: it only receives the values they shared **at the exact same point of the program**.
 
-phyelds identifies a point of the program by its **path**: the chain of aggregate
-calls that lead to it, each with its position among its siblings. For example:
+Matching these points across devices is called **alignment**, and it is what makes aggregate functions safely composable: two independent gradients in the same program never mix their messages.
+
+**phyelds** identifies each point in the execution by its **call path**: the stack of `@aggregate` calls leading to it, tagged with each call's sequential index among its siblings:
 
 ```python
 @aggregate
 def program():
-    a = neighbors(1)        # path: program@0 / neighbors@0
-    b = neighbors(2)        # path: program@0 / neighbors@1
-    return gradient(...)    # path: program@0 / gradient@2 / ...
+    a = neighbors(1)            # path: program@0 / neighbors@0
+    b = neighbors(2)            # path: program@0 / neighbors@1
+    return hop_gradient(False)  # path: program@0 / hop_gradient@2 / ...
 ```
 
-The same path also identifies the state of [`remember`](state.md).
+```mermaid
+flowchart TD
+    P["program@0"]
+    N0["neighbors@0\n(shares 1)"]
+    N1["neighbors@1\n(shares 2)"]
+    G2["hop_gradient@2"]
+    R0["remember@0"]
+    GN1["neighbors@1"]
 
-## What `@aggregate` does
+    P --> N0
+    P --> N1
+    P --> G2
+    G2 --> R0
+    G2 --> GN1
+```
 
-`@aggregate` marks a function as part of the aggregate computation. When it runs,
-it:
+The very same path also keys the local state of [`remember`](state.md) and [`exchange`](neighborhood-field.md#exchange).
 
-1. **pushes the function on the path**, so everything it calls is aligned under it;
-2. **rewrites every `if` statement and every conditional expression**
-   (`a if c else b`) so that their two branches are aligned under different names
-   (`align_left` / `align_right`). Devices that take different branches therefore
-   do not see each other's values, and the state of a branch that is not taken is
-   dropped: the branches behave as separate, non-communicating parts of the network.
+---
+
+## What `@aggregate` does: automatic network splitting
+
+`@aggregate` marks a Python function as part of the aggregate computation. When the function runs, `@aggregate` does two things:
+
+1. **Pushes the function onto the alignment path**, so all calls inside it are scoped under its name and call index.
+2. **Rewrites `if` statements and conditional expressions** (`a if cond else b`) at the AST level so that the `True` branch and the `False` branch run under distinct alignment scopes (`align_left` vs `align_right`).
+
+Because the two branches have different alignment paths:
+
+- **Devices that take different branches do not see each other's messages**—the network is automatically partitioned into two isolated sub-networks (domains).
+- **State inside a branch that is not taken is dropped** at the end of the round.
+
+```mermaid
+flowchart TD
+    Cond{"if sense('is_robot'):"}
+    subgraph Left["True branch (align_left)"]
+        R1(("Robot 1")) <--> R2(("Robot 2"))
+    end
+    subgraph Right["False branch (align_right)"]
+        S1(("Sensor 3")) <--> S2(("Sensor 4"))
+    end
+    Cond -- "True" --> Left
+    Cond -- "False" --> Right
+```
 
 ```python
 @aggregate
 def program():
     if sense("is_robot"):
-        return neighbors("robot")      # robots only hear robots
+        return neighbors("robot")      # (1)!
     else:
-        return neighbors("sensor")     # sensors only hear sensors
+        return neighbors("sensor")     # (2)!
 ```
 
-The same holds for a conditional expression. It also keeps the devices in step
-when only one branch communicates: below, the sources never call `neighbors`, yet
-every device stays aligned for the calls that follow.
+1. Path: `program@0 / align_left@0 / neighbors@0`. Only neighbors that also took the `True` branch appear in this `NeighborhoodField`.
+2. Path: `program@0 / align_right@0 / neighbors@0`. Only neighbors that also took the `False` branch appear here.
+
+The same automatic splitting applies to Python conditional expressions (`a if c else b`). This also keeps devices aligned for all calls *after* the conditional expression, even when only one branch communicates:
 
 ```python
 @aggregate
 def program():
     nearest = 0.0 if sense("source") else min(neighbors(estimate()))
-    return nearest, neighbors(sense("id"))  # every device meets here
+    return nearest, neighbors(sense("id"))  # every device meets again here!
 ```
 
-A conditional expression is rewritten only when one of its branches calls
-something, since a branch without calls cannot communicate.
+A conditional expression is rewritten only when at least one of its branches contains a function call, since a branch without calls cannot communicate or hold state.
 
-!!! warning
-    A branch that contains `:=`, `yield` or `await` is not rewritten, and neither is
-    an `if` in a helper function without `@aggregate`: they do not split the network.
-    See [pitfalls](../pitfalls.md).
+!!! warning "When AST rewriting does not apply"
+    - A helper function **without `@aggregate`** does not rewrite its `if` statements and does not push a frame onto the path. Always decorate functions that call aggregate primitives (directly or indirectly) with `@aggregate`.
+    - A conditional expression containing `:=`, `yield`, or `await` cannot be lifted into a lambda and is left untouched.
+    - See [Common pitfalls](../pitfalls.md) for details.
 
-To see how a function is rewritten, use `str_transformed_code`, or set the
-environment variable `PHYELDS_DEBUG_AST=1` to print every transformed function:
+To inspect how `@aggregate` rewrites a function, call `str_transformed_code(fn)` or set the environment variable `PHYELDS_DEBUG_AST=1`:
 
 ```python
 from phyelds.calculus import str_transformed_code
 print(str_transformed_code(program))
 ```
 
-The rewrite needs the source code of the function, so aggregate functions must be
-defined in a file or a notebook cell. If the source is not available (e.g. code
-built with `exec`), phyelds prints a warning and runs the function as is.
+Because AST rewriting inspects the function's source code, `@aggregate` functions must be defined in a `.py` file or a Jupyter notebook cell (if source code is unavailable, such as inside `exec`, phyelds logs a warning and runs the function un-rewritten).
+
+---
 
 ## Explicit alignment with `align`
 
-`align(name)` opens an aligned block by hand: values shared inside it are only seen
-by devices that entered a block with the same name *at the same position*.
+`align(name)` opens an aligned scope manually: values shared inside the `with align(name):` block are only exchanged with neighbors that entered an `align` block with the **same `name` at the same call position**.
 
 ```python
 from phyelds.calculus import aggregate, align, neighbors
@@ -84,10 +110,7 @@ from phyelds.calculus import aggregate, align, neighbors
 @aggregate
 def per_team(team: str):
     with align(team):
-        return sum(neighbors(1))   # size of my team's neighborhood
+        return sum(neighbors(1))   # counts only neighbors belonging to the same team
 ```
 
-Because the position is part of the path, `align` does **not** make a loop safe if
-devices iterate over different sequences; see
-[pitfalls](../pitfalls.md#a-data-dependent-number-of-aggregate-calls) for the
-patterns that work.
+Because the sequential call position is still part of the path, `align` does **not** make a loop safe if different devices iterate a different number of times; for dynamic multi-instance computations, use [`@process` / `spawn`](libraries.md#aggregate-processes-phyeldslibrariesprocesses) or see [Common pitfalls](../pitfalls.md#a-data-dependent-number-of-aggregate-calls).

@@ -1,14 +1,40 @@
-# Pitfalls
+# Common pitfalls
 
-phyelds programs are ordinary Python, so Python will not stop you from writing
-code that breaks the aggregate semantics. These are the mistakes that are easy to
-make, with what goes wrong and what to do instead. Most of them are about
-[alignment](concepts/alignment.md): read that page first.
+**phyelds** programs are ordinary Python, so the Python interpreter will not stop you from writing code that violates the aggregate execution model. This page collects the mistakes that are easy to make, why they happen, and how to fix each one.
+
+| Category | Pitfall | Fix |
+| --- | --- | --- |
+| **Alignment** | [Data-dependent loops](#a-data-dependent-number-of-aggregate-calls) | Share a `dict` in one `neighbors(...)` call, or use [`@process` / `spawn`](concepts/libraries.md#aggregate-processes-phyeldslibrariesprocesses) |
+| **Alignment** | [Helpers without `@aggregate`](#helpers-without-aggregate) | Decorate every function that calls `remember`, `neighbors`, or `exchange` |
+| **Alignment** | [`:=` in conditional expressions](#in-a-conditional-expression-does-not-split-the-network) | Move the assignment outside the ternary expression |
+| **Alignment** | [Functions without source code](#aggregate-functions-without-source-code) | Define `@aggregate` functions in `.py` files or notebook cells |
+| **State & Mutability** | [Mutating shared values](#mutating-shared-values) | Treat received neighbor values as read-only; prefer tuples/frozensets |
+| **State & Mutability** | [Module-level global variables](#module-level-state) | Keep per-device state in `remember(...)`, never in mutable Python globals |
+| **State & Mutability** | [`random()` or side effects per round](#random-values-and-other-per-round-surprises) | Wrap one-shot random choices in `remember(random.random())`; use `store(...)` for outputs |
+| **State & Mutability** | [Storing `None` in `remember`](#storing-none) | Use a sentinel (`float("inf")`, `()`) because `None` resets state |
+| **State & Mutability** | [State inside branches resets](#state-inside-branches-resets) | Move `remember` outside the `if` if the state must survive branch switches |
+| **Fields & Dynamics** | [Sharing a `NeighborhoodField`](#sharing-a-field) | Share a scalar/tuple reduced from the field (`field.min()`, `field.local()`) |
+| **Fields & Dynamics** | [Expecting instant answers](#expecting-instant-answers) | Let fields converge across rounds; use `path_coherent` to avoid the rising-value problem |
+| **Simulator** | [Overwriting `node.data`](#editing-node-data-in-the-simulator) | Mutate keys (`node.data["source"] = True`) instead of replacing the dict |
+
+---
 
 ## A data-dependent number of aggregate calls
 
-Calls are aligned by their position. In a loop, the *i*-th iteration of a device is
-aligned with the *i*-th iteration of its neighbors, whatever they iterate over.
+Calls are aligned by their sequential position (`@0`, `@1`, `@2`, …). Inside a loop, the *i*-th iteration on one device is aligned with the *i*-th iteration on its neighbors, regardless of what elements they are iterating over.
+
+```mermaid
+flowchart LR
+    subgraph D0["Device 0: iterates ['a', 'b']"]
+        D0_0["neighbors@0 (for 'a')"]
+        D0_1["neighbors@1 (for 'b')"]
+    end
+    subgraph D1["Device 1: iterates ['b']"]
+        D1_0["neighbors@0 (for 'b')"]
+        D1_1["(no call @1)"]
+    end
+    D0_0 <== "❌ Misaligned! 'a' paired with 'b'" ==> D1_0
+```
 
 ```python
 # ❌ device 0 iterates over ["a", "b"], the others over ["b"]:
@@ -21,11 +47,10 @@ def program():
     return seen
 ```
 
-Wrapping the body in `with align(key):` does **not** fix it: the position is still
-part of the path. Use one of these instead:
+Wrapping the body in `with align(key):` does **not** fix it: the call index is still part of the path. Instead, either share a single dictionary, iterate over a fixed sequence known to all devices, or spawn dynamic [`@process` bubbles](concepts/libraries.md#aggregate-processes-phyeldslibrariesprocesses):
 
 ```python
-# ✅ one exchange: share a dictionary, then pick from it
+# ✅ Option 1: one exchange — share a dictionary, then pick from it
 @aggregate
 def program():
     mine = {key: value_of(key) for key in my_keys()}
@@ -35,7 +60,7 @@ def program():
         for key in mine
     }
 
-# ✅ the same sequence on every device
+# ✅ Option 2: the exact same sequence on every device
 ALL_KEYS = ["a", "b"]
 
 @aggregate
@@ -48,27 +73,27 @@ def program():
     return seen
 ```
 
-The same holds for comprehensions, `map`, and any other repetition.
+The same rule holds for list/dict comprehensions, `map`, and recursion.
+
+---
 
 ## `:=` in a conditional expression does not split the network
 
-`@aggregate` aligns the branches of a conditional expression by moving them into
-lambdas. A branch with `:=` (or `yield`, `await`) would change meaning there, so
-it is left as it is, and its two branches are aligned with each other: devices on
-different branches exchange values.
+`@aggregate` aligns the branches of a conditional expression (`a if cond else b`) by lifting them into lambdas. A branch with `:=` (or `yield`, `await`) would change variable scope inside a lambda, so it is left untouched and its two branches remain in the same alignment scope:
 
 ```python
 # ❌ the := keeps both branches together: robots and sensors hear each other
 values = (heard := neighbors("robot")) if sense("is_robot") else neighbors("sensor")
 
-# ✅ assign outside the expression
+# ✅ assign outside the conditional expression
 heard = neighbors("robot") if sense("is_robot") else neighbors("sensor")
 ```
 
+---
+
 ## Helpers without `@aggregate`
 
-A plain function called from an aggregate one shares its caller's alignment, and
-its `if` statements are not rewritten.
+A plain Python function called from an `@aggregate` function shares its caller's alignment frame, and its `if` statements are **not** rewritten to split the network:
 
 ```python
 # ❌ the branches of `pick` are not separated
@@ -77,106 +102,105 @@ def pick(flag):
         return neighbors("left")
     return neighbors("right")
 
-# ✅ decorate every function that (directly or not) calls remember or neighbors
+# ✅ decorate every function that (directly or indirectly) calls remember, neighbors, or exchange
 @aggregate
 def pick(flag):
-    ...
+    if flag:
+        return neighbors("left")
+    return neighbors("right")
 ```
+
+---
 
 ## Aggregate functions without source code
 
-`@aggregate` reads the source of the function to rewrite it. In code built with
-`exec`, `python -c`, or the plain interactive interpreter, there is no source:
-phyelds prints `WARNING: AST transformation failed` and runs the function without
-the `if` rewrite (and prints it again at every call). Define aggregate functions in
-a file or in a notebook cell.
+`@aggregate` inspects the source code of the function to rewrite its AST. In code built dynamically with `exec`, `python -c`, or the standard interactive REPL, source code is unavailable: phyelds prints `WARNING: AST transformation failed` and runs the function without `if` branch rewriting. Define `@aggregate` functions in `.py` files or Jupyter notebook cells.
+
+---
 
 ## Mutating shared values
 
-The bundled simulator delivers values by reference: the list a neighbor shared *is*
-that neighbor's state. Mutating it changes another device.
+In the bundled simulator, values are delivered by reference: the list a neighbor shared *is* that neighbor's state object. Mutating it silently alters another device's memory:
 
 ```python
-# ❌ appends to the neighbors' remembered lists
+# ❌ appends directly to the neighbors' remembered lists
 for other in neighbors(items.value).exclude_self().values():
     other.append(item)
 
-# ✅ build new values
+# ✅ build a new immutable value instead
 received = neighbors(items.value).exclude_self().values()
 set_items(tuple({*items.value, *(x for other in received for x in other)}))
 ```
 
-Prefer immutable values (tuples, frozensets, frozen dataclasses) in `remember` and
-`neighbors`. Hosts written for real networks serialise messages and do not have
-this problem, so code that relies on sharing works in the simulator only.
+Prefer immutable types (`tuple`, `frozenset`, frozen `dataclass`) in `remember` and `neighbors`. Real-network runtimes serialize messages anyway, so code that relies on shared references only works by accident in the simulator.
+
+---
 
 ## Module-level state
 
-Every simulated device runs in the same process, so a global variable is shared by
-all of them: a hidden communication channel that does not exist on real devices.
+All simulated devices run inside the same Python process, so a module-level variable is shared by every device—creating a hidden global channel that would not exist on real distributed nodes:
 
 ```python
-# ❌ all devices append to the same list
+# ❌ all devices append to the same global list
 seen = []
 
 @aggregate
 def program():
     seen.append(local_id())
 
-# ✅ per-device state goes in remember
+# ✅ per-device state belongs in remember
 @aggregate
 def program():
     set_seen, seen = remember(())
     set_seen((*seen, local_id()))
 ```
 
-Constants are fine; mutable globals are not.
+Module-level constants (`INFINITY = float("inf")`) are fine; mutable globals are not.
+
+---
 
 ## Random values and other per-round surprises
 
-The program runs from the top at every round, so `random.random()` gives a new
-value each round. If a device needs *one* random value (an id, a priority), keep it:
+Because the program runs from the top at every round, calling `random.random()` directly produces a **new** random number in every round. If a device needs a stable random value (such as a tie-breaking UUID or priority), store it in `remember`:
 
 ```python
-_, priority = remember(random.random())   # drawn once, then remembered
+_, priority = remember(random.random())   # drawn in round 1, remembered afterwards
 ```
 
-The same applies to anything expensive or with side effects: printing, logging and
-I/O run on every device at every round. To expose a value, `store` it as an output.
+The same applies to side effects: `print(...)`, logging, and file I/O execute on every device in every round. To expose a result to the outside world or simulator monitors, write it with `store(name, value)`.
+
+---
 
 ## Storing `None`
 
-`None` means "no state": after `set_value(None)`, the next round `remember` returns
-its initial value again. Use another sentinel (a dedicated object, `float("inf")`, an
-empty tuple) for "no value yet".
+In `remember`, `None` means "no state": after `set_value(None)`, the next round `remember` returns its `initial` value again. Use a dedicated sentinel (`float("inf")`, `()`, or a custom object) to represent "no value yet".
+
+---
 
 ## State inside branches resets
 
-State that is not used in a round is dropped. A `remember` inside an `if` branch
-starts again from its initial value every time the device re-enters the branch.
-This is the intended semantics (a branch is a separate computation); if the value
-must survive, `remember` it outside the `if`.
+State that is not read during a round is dropped at the end of that round. Consequently, a `remember` inside an `if` branch starts back from its `initial` value whenever the device leaves the branch and re-enters it later. This is the intended field-calculus semantics (entering a branch starts a fresh domain computation); if the state must persist across branch switches, call `remember` *before* the `if`.
+
+---
 
 ## Sharing a field
 
-`neighbors(field)` raises `TypeError`: a `NeighborhoodField` only makes sense on the
-device that built it. Share a plain value computed from it (`min(field)`,
-`field.local()`, `field.exclude_self()`).
+Calling `neighbors(field)` raises `TypeError`: a `NeighborhoodField` only makes sense relative to the device that built it. Share a plain value computed from the field instead (`field.min()`, `field.local()`, `field.exclude_self()`).
+
+---
 
 ## Expecting instant answers
 
-A field is not computed in one round: it *converges*, and the time it takes depends
-on the diameter of the network. Read results after enough rounds, and design for
-the transient.
+A computational field is not computed in a single round: information travels one hop per round, so convergence time scales with the network diameter. Always allow enough rounds for the field to settle, and design actuators to tolerate transient values.
 
-Some patterns also converge more slowly in one direction. The classic gradient
-lowers its estimates quickly (good news travels fast) but raises them slowly when a
-source disappears, because devices keep leaning on each other's stale values (the
-*rising value problem*: see the [tutorial](tutorial.md#6-self-healing)). Account for
-it when a gradient drives decisions, or use a gradient that bounds it.
+Some classic algorithms also converge asymmetrically. The Bellman-Ford gradient lowers its distance estimates quickly (*good news travels fast*), but raises them slowly when a source disappears because neighbors keep leaning on each other's slightly smaller stale estimates (the **rising-value problem**; see the [tutorial](tutorial.md#6-self-healing)). When sources can disappear or move rapidly, pass `strategy=path_coherent(max_diameter=...)` to `distance_to` or `broadcast`.
+
+---
 
 ## Editing node data in the simulator
 
-`node.update(new_data=...)` replaces the whole `data` dictionary, including the
-state of the program. To change a sensor, assign the key:
-`node.data["source"] = True`.
+Calling `node.update(new_data=...)` replaces the node's entire `data` dictionary, wiping out the runner's `state` and `messages` keys. To update a single sensor during a simulation, assign the dictionary key directly:
+
+```python
+node.data["source"] = True
+```

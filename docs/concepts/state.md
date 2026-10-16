@@ -1,37 +1,58 @@
 # State with `remember`
 
-A device runs the program from the top at every round, so plain variables are lost
-at the end of the round. `remember` keeps a value from one round to the next (the
-`rep` construct of field calculus).
+A device runs the aggregate program from the top at every round, so ordinary Python local variables are lost when the round ends. `remember` keeps a value on a device from one round to the next (the `rep` construct of field calculus).
 
 ```python
 from phyelds.calculus import aggregate, remember
 
 @aggregate
 def counter():
-    set_count, count = remember(0)   # 0 the first round, then the stored value
-    set_count(count + 1)
-    return count                     # 1, 2, 3, ...
+    set_count, count = remember(0)   # (1)!
+    set_count(count + 1)             # (2)!
+    return count                     # (3)!
 ```
 
-`remember(initial)` returns a pair:
+1. On the very first round, `count` starts at the initial value `0`. On every subsequent round, `remember(0)` ignores `0` and loads the value stored at the end of the previous round.
+2. `set_count(...)` updates the value to keep for the next round (and immediately updates the `count` proxy in the current round).
+3. Returns `1` in round 1, `2` in round 2, `3` in round 3, and so on.
+
+`remember(initial)` returns a pair `(update_fn, current_state)`:
 
 1. an **update function**: call it with the value to keep for the next round;
-2. the **current state**, a `State` object.
+2. the **current state**, wrapped in a `State` proxy object.
+
+---
+
+## How state evolves across rounds
+
+```mermaid
+flowchart LR
+    subgraph R1["Round 1 (first execution)"]
+        I1["remember(0) → 0"] --> U1["set_count(0 + 1) → 1"]
+    end
+    subgraph R2["Round 2"]
+        I2["remember(0) → 1"] --> U2["set_count(1 + 1) → 2"]
+    end
+    subgraph R3["Round 3"]
+        I3["remember(0) → 2"] --> U3["set_count(2 + 1) → 3"]
+    end
+    U1 == "saved in state trace" ==> I2
+    U2 == "saved in state trace" ==> I3
+```
+
+---
 
 ## The `State` object
 
-`State` is a transparent proxy: it behaves like the value it wraps, so arithmetic,
-comparisons, method calls and `isinstance` all work on it. Use `.value` when you
-need the bare value, for example to pass it to code that does not expect a proxy.
+`State` is a transparent proxy: it behaves like the value it wraps, so arithmetic, comparisons, iteration, method calls, and `isinstance` all work directly on it. Use `.value` when you need the unwrapped Python object (for example, to pass it to a third-party C extension that checks exact types).
 
-The update function changes the proxy too: after `set_count(count + 1)`, `count`
-holds the new value. That is why `counter()` above returns 1 in its first round.
+Calling the update function mutates the proxy in place too: after `set_count(count + 1)`, `count` immediately holds the new value. That is why `counter()` above returns `1` in its first round.
+
+---
 
 ## `remember_and_evolve`
 
-When the next value only depends on the current one, `remember_and_evolve` does the
-update for you and returns the new state:
+When the next value only depends on the current one, `remember_and_evolve(initial, evolution)` performs both steps and returns the updated `State`:
 
 ```python
 from phyelds.calculus import aggregate, remember_and_evolve
@@ -41,19 +62,27 @@ def rounds_since_start():
     return remember_and_evolve(0, lambda count: count + 1)
 ```
 
+---
+
 ## How state is identified
 
-Each `remember` is identified by *where* it is called: the chain of aggregate
-calls that leads to it, and its position among them (see
-[alignment](alignment.md)). So two `remember` calls in the same function are
-independent, and the same function called twice gets two independent states.
+Each `remember` call is identified by **where** it is called: the chain of `@aggregate` calls that leads to it, and its position among sibling calls (see [Alignment and `@aggregate`](alignment.md)).
+
+Because of this:
+
+- two `remember` calls in the same function have independent states;
+- calling the same `@aggregate` helper twice in a round gives each call its own independent state.
+
+---
 
 ## How long state lives
 
-- State that the program does **not read in a round is dropped** at the end of that
-  round. If a `remember` lives inside a branch that is not executed, its state is
-  gone: entering the branch again starts from the initial value. This is the
-  intended semantics of branching (see [alignment](alignment.md)).
-- `state.forget()` drops it explicitly.
-- Storing `None` is the same as having no state: in the next round `remember`
-  returns its initial value again. Use another sentinel if you need "no value".
+- **State not read in a round is automatically dropped** at the end of that round. If a `remember` lives inside an `if` branch that is not taken during a round, its state is discarded; re-entering that branch in a later round restarts from `initial`. This matches the branching semantics of field calculus (see [Alignment and `@aggregate`](alignment.md)).
+- **`state.forget()`** drops the state explicitly.
+- **Storing `None` is equivalent to having no state**: in the next round `remember` will return its `initial` value again. Use a dedicated sentinel (such as `float("inf")` or an empty tuple `()`) if you need to represent "no value".
+
+!!! tip "In short: rules for local state"
+    - Store per-device persistent values in `remember(...)`, never in module-level Python globals.
+    - If a random number should be chosen once per device (e.g., a tie-breaking UUID), wrap it in `remember(random.random())`.
+    - Prefer immutable values (`tuple`, `frozenset`, frozen `dataclass`) inside `remember` so neighbors cannot accidentally mutate your state in the simulator.
+    - See [Common pitfalls](../pitfalls.md) for examples.
