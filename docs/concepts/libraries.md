@@ -140,33 +140,37 @@ expire and the election remains self-stabilizing. Supported strategies:
 
 ## Aggregate processes: `phyelds.libraries.processes`
 
-`spawn(process, keys, args=None)` dynamically starts and propagates spatially scoped
-aggregate computations (bubbles), one for each key in `keys` or received from active
-neighbors. Inside `process(key, args)` (or `process(key)`), return either a
-`ProcessOutput(value, status)` or a `(value, status)` tuple:
+Decorate a function with `@process` to define a spatially and temporally scoped
+aggregate computation (a *bubble*), and start instances with `fn.spawn(keys, *args, **kwargs)`
+(or `spawn(fn, keys, *args, **kwargs)`). Inside a `@process` function, return plain
+values directly and control the bubble lifecycle either with guard functions or with
+the `bubble` context manager:
 
-| Status | Meaning |
+| Construct | Meaning |
 | --- | --- |
-| `OUTPUT` (or `True`) | inside the bubble: keeps state, propagates `key` to neighbors, and emits `key: value` in the result `dict` |
-| `BUBBLE` | inside the bubble: keeps state and propagates `key`, without emitting `key` in the local result `dict` |
-| `EXTERNAL` (or `False`) | outside the bubble: discards internal messages and state for `key` and does not propagate it |
-| `TERMINATED` | triggers a refractory termination wave that cleanly shuts down the entire bubble for `key` |
+| `in_bubble(condition)` / `leave()` | keeps the device in the bubble when `condition` is true; otherwise exits immediately (`EXTERNAL`), discarding state and messages |
+| `terminate_if(condition)` / `terminate()` | triggers a refractory termination wave that cleanly shuts down the entire bubble (`TERMINATED`) |
+| `emit_if(condition)` | when `False`, the device acts as an internal relay (`BUBBLE`) without emitting its value in the returned `dict` |
+| `with bubble(inside=..., terminate=..., emit=...):` | context manager combining `terminate_if`, `in_bubble`, and `emit_if` |
 
 ```python
 from phyelds.calculus import aggregate
+from phyelds.libraries.collect import count_nodes
 from phyelds.libraries.device import local_id, sense
-from phyelds.libraries.processes import EXTERNAL, OUTPUT, TERMINATED, ProcessOutput, spawn
-from phyelds.libraries.spreading import distance_to
+from phyelds.libraries.processes import in_bubble, process, terminate_if
+from phyelds.libraries.spreading import broadcast, distance_to
 
-@aggregate
-def alert_bubble(origin_id: int, max_hops: float) -> ProcessOutput[float]:
-    dist = float(distance_to(local_id() == origin_id))
-    if local_id() == origin_id and sense("clear"):
-        return ProcessOutput(dist, TERMINATED)
-    return ProcessOutput(dist, OUTPUT if dist <= max_hops else EXTERNAL)
+@process
+def alert_bubble(origin_id: int, max_hops: float = 3.0) -> int:
+    is_origin = local_id() == origin_id
+    dist = float(distance_to(is_origin))
+    terminate_if(is_origin and sense("clear"))
+    in_bubble(dist <= max_hops)
+    # Only devices inside the bubble execute the lines below
+    return int(broadcast(is_origin, count_nodes(dist)))
 
 @aggregate
 def program():
     new_alerts = {local_id()} if sense("smoke") else set()
-    return spawn(alert_bubble, new_alerts, args=3.0)
+    return alert_bubble.spawn(new_alerts, max_hops=3.0)
 ```

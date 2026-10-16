@@ -216,10 +216,10 @@ _TRANSFORMATION_CACHE = {}
 
 
 def _is_aggregate_decorator(node: ast.expr) -> bool:
-    """True for ``@aggregate`` and qualified forms such as ``@phyelds.calculus.aggregate``."""
+    """True for ``@aggregate`` / ``@process`` and their qualified forms."""
     if isinstance(node, ast.Name):
-        return node.id == "aggregate"
-    return isinstance(node, ast.Attribute) and node.attr == "aggregate"
+        return node.id in ("aggregate", "process")
+    return isinstance(node, ast.Attribute) and node.attr in ("aggregate", "process")
 
 
 def _drop_applied_decorators(func_def: ast.AST) -> None:

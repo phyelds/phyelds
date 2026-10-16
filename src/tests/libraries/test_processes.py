@@ -1,4 +1,5 @@
 from phyelds.calculus import aggregate, neighbors
+from phyelds.libraries.collect import count_nodes
 from phyelds.libraries.device import local_id, sense
 from phyelds.libraries.processes import (
     BUBBLE,
@@ -7,9 +8,14 @@ from phyelds.libraries.processes import (
     TERMINATED,
     ProcessOutput,
     ProcessStatus,
+    bubble,
+    emit_if,
+    in_bubble,
+    process,
     spawn,
+    terminate_if,
 )
-from phyelds.libraries.spreading import distance_to
+from phyelds.libraries.spreading import broadcast, distance_to
 from phyelds.simulator.runner import schedule_program_for_all
 from tests.libraries.simulator_utils import setup_up_simulator
 
@@ -128,3 +134,78 @@ def test_spawn_terminated_status_extinguishes_entire_bubble_without_reinfection(
     simulator.continue_run(10)
     for i in range(5):
         assert simulator.environment.nodes[i].data["result"] == {}
+
+
+def test_process_decorator_with_guard_functions_and_early_exit():
+    simulator = setup_up_simulator(5)
+    simulator.environment.nodes[0].data["smoke"] = True
+    for i in range(1, 5):
+        simulator.environment.nodes[i].data["smoke"] = False
+    executed_inside_body: list[int] = []
+
+    @process
+    def smoke_alert(origin: int, radius: float = 2.0) -> int:
+        is_origin = local_id() == origin
+        dist = float(distance_to(is_origin))
+        terminate_if(is_origin and not sense("smoke"))
+        in_bubble(dist <= radius)
+        executed_inside_body.append(local_id())
+        emit_if(local_id() != 1)
+        total = int(count_nodes(dist))
+        return int(broadcast(is_origin, total))
+
+    @aggregate
+    def program():
+        triggers = {local_id()} if sense("smoke") else set()
+        return smoke_alert.spawn(triggers, radius=2.0)
+
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
+    simulator.run(10)
+
+    # Nodes 0, 1, 2 are in the bubble (total=3); node 1 is BUBBLE (silent), 0 and 2 emit 3.
+    # Nodes 3 and 4 exited at in_bubble() without running the body after it.
+    assert simulator.environment.nodes[0].data["result"] == {0: 3}
+    assert simulator.environment.nodes[1].data["result"] == {}
+    assert simulator.environment.nodes[2].data["result"] == {0: 3}
+    assert simulator.environment.nodes[3].data["result"] == {}
+    assert 3 not in executed_inside_body
+    assert 4 not in executed_inside_body
+
+    # Clear smoke on origin 0: bubble terminates across all nodes
+    simulator.environment.nodes[0].data["smoke"] = False
+    simulator.continue_run(8)
+    for i in range(5):
+        assert simulator.environment.nodes[i].data["result"] == {}
+
+
+def test_process_with_bubble_context_manager_and_plain_tuple_return():
+    simulator = setup_up_simulator(4)
+    simulator.environment.nodes[0].data["active"] = True
+    for i in range(1, 4):
+        simulator.environment.nodes[i].data["active"] = False
+
+    @process
+    def tracker(target_id: int, max_hops: float = 2.0) -> tuple[int, int]:
+        is_target = local_id() == target_id
+        dist = float(distance_to(is_target))
+        with bubble(
+            inside=dist <= max_hops,
+            terminate=is_target and not sense("active"),
+            emit=dist <= 1.0,
+        ):
+            size = int(count_nodes(dist))
+            return target_id, int(broadcast(is_target, size))
+
+    @aggregate
+    def program():
+        keys = {local_id()} if sense("active") else set()
+        return tracker.spawn(keys, max_hops=2.0)
+
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
+    simulator.run(10)
+
+    assert simulator.environment.nodes[0].data["result"] == {0: (0, 3)}
+    assert simulator.environment.nodes[1].data["result"] == {0: (0, 3)}
+    assert simulator.environment.nodes[2].data["result"] == {}
+    assert simulator.environment.nodes[3].data["result"] == {}
+
