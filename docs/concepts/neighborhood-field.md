@@ -29,6 +29,7 @@ A `NeighborhoodField` maps device ids to values. It supports:
 | `for value in field`, `sum(field)`, `min(field)` | iterate over the values, in id order |
 | `field.exclude_self()` | a `dict` id → value without the device itself |
 | `field.local()` | the device's own value |
+| `field.for_node(id)` | the value for `id`, or `field.default` if `id` is not in the field |
 | `field.map(fn)` | a new field with `fn` applied to each value |
 | `field.select(mask)` | the values whose entry in the boolean field `mask` is true |
 | `field.any()`, `field.all()` | whether any / all values are truthy |
@@ -60,3 +61,30 @@ The platform decides: in the simulator it is the neighborhood function of the
 environment (a radius, the k nearest, everyone). On top of that, a device only
 sees the neighbors that reached the *same* `neighbors` call in their last round:
 that is [alignment](alignment.md).
+
+## `exchange`
+
+`exchange(initial)` combines state evolution and communication in one operator (the
+`exchange` construct of exchange calculus). It returns a pair `(set_field, field)`:
+
+- `field` is the `NeighborhoodField` of values received from aligned neighbors in
+  their last round and from the device itself in its previous round (or `initial`
+  in the first round);
+- `set_field(next_value)` sets the value to keep for the device and send to its
+  neighbors for the next round, and returns `next_value` without mutating `field`.
+
+Unlike `neighbors`, `set_field` also accepts a `NeighborhoodField`: each neighbor
+`j` then receives `next_value.for_node(j)` (falling back to `next_value.default`
+for neighbors not listed in `next_value.data`), so a device can send distinct
+values to different neighbors.
+
+```python
+from phyelds.calculus import aggregate, exchange, neighbors
+from phyelds.libraries.device import local_id
+
+@aggregate
+def anisotropic_counter():
+    ids = neighbors(local_id())
+    set_field, field = exchange(0)
+    return set_field(field + ids)
+```

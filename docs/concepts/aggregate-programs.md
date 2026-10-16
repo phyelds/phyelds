@@ -43,6 +43,7 @@ You design with the global reading in mind and write the local one. The
 | [`@aggregate`](alignment.md) | function call | marks code that takes part in the aggregate computation |
 | [`remember`](state.md) | `rep` | state that survives across rounds |
 | [`neighbors`](neighborhood-field.md) | `nbr` | share a value and get the neighbors' ones |
+| [`exchange`](neighborhood-field.md#exchange) | `exchange` | evolve state and send per-neighbor values across rounds |
 | [`if` / `align`](alignment.md) | branching | split the network into parts that do not interfere |
 | `sense`, `store`, `local_id` | sensors / actuators | talk to the device (`phyelds.libraries.device`) |
 
