@@ -521,26 +521,76 @@ def draw_round_lifecycle() -> None:
 
 def draw_state_evolution() -> None:
     """Generate ``state-evolution.png`` showing how remember(0) evolves across 3 rounds."""
-    fig, ax = plt.subplots(figsize=(10.5, 2.3), dpi=200)
+    fig, ax = plt.subplots(figsize=(11.0, 3.8), dpi=200)
     fig.patch.set_facecolor(BG_CREAM)
-    _setup_ax(ax, (0.0, 10.5), (0.0, 2.3))
+    _setup_ax(ax, (0.0, 11.0), (0.0, 3.8))
 
     rounds = [
-        (0.20, "Round 1 (initial)", "remember(0)  ->  0", "set_count(0 + 1)  ->  1"),
-        (3.80, "Round 2", "remember(0)  ->  1", "set_count(1 + 1)  ->  2"),
-        (7.40, "Round 3", "remember(0)  ->  2", "set_count(2 + 1)  ->  3"),
+        (0.18, "Round 1 (first round)", True, "0", "1"),
+        (3.85, "Round 2", False, "1", "2"),
+        (7.52, "Round 3", False, "2", "3"),
     ]
-    for x, title, line1, line2 in rounds:
-        _draw_card(ax, x, 0.18, 2.90, 1.94, title, ORANGE)
-        ax.text(x + 1.45, 1.18, line1, ha="center", va="center",
-                fontsize=9.2, family="monospace", color=TEXT_DARK)
-        ax.text(x + 1.45, 0.65, line2, ha="center", va="center",
-                fontsize=9.2, fontweight="bold", family="monospace", color=MAGENTA)
 
-    for x_end, x_next in [(3.15, 3.75), (6.75, 7.35)]:
-        _arrow(ax, (x_end, 1.05), (x_next, 1.05), MAGENTA, shrink_a=2, shrink_b=2, lw=2.2)
-        ax.text((x_end + x_next) / 2, 1.38, "saved", ha="center", va="center",
-                fontsize=8.2, fontweight="bold", color=MAGENTA)
+    for x, title, is_first, loaded_val, next_val in rounds:
+        _draw_card(ax, x, 0.20, 3.30, 3.40, title, ORANGE if is_first else MAGENTA)
+        cx = x + 1.65
+
+        # Step A: remember(0) box
+        ax.add_patch(mpatches.FancyBboxPatch(
+            (x + 0.20, 2.12), 2.90, 0.85,
+            boxstyle="round,pad=0.04,rounding_size=0.14",
+            facecolor=BG_CREAM, edgecolor=ORANGE if is_first else MAGENTA, linewidth=1.5, zorder=2,
+        ))
+        ax.text(cx, 2.74, "set_count, count = remember(0)", ha="center", va="center",
+                fontsize=8.2, fontweight="bold", family="monospace", color=TEXT_DARK)
+        if is_first:
+            ax.text(cx, 2.45, "no prior state -> uses initial 0", ha="center", va="center",
+                    fontsize=8.0, fontweight="bold", color=ORANGE)
+        else:
+            ax.text(cx, 2.45, f"initial 0 ignored -> loads {loaded_val}", ha="center", va="center",
+                    fontsize=8.0, fontweight="bold", color=MAGENTA)
+
+        # Loaded value badge
+        ax.add_patch(Circle((cx, 1.98), 0.22, facecolor=ORANGE if is_first else MAGENTA,
+                            edgecolor="#ffffff", lw=1.6, zorder=4))
+        ax.text(cx, 1.98, loaded_val, ha="center", va="center",
+                fontsize=9.5, fontweight="bold", color="#ffffff", zorder=5)
+
+        # Arrow down to set_count
+        _arrow(ax, (cx, 1.74), (cx, 1.32), TEXT_DARK, shrink_a=0, shrink_b=0, lw=1.6)
+
+        # Step B: set_count(count + 1) box
+        ax.add_patch(mpatches.FancyBboxPatch(
+            (x + 0.20, 0.42), 2.90, 0.82,
+            boxstyle="round,pad=0.04,rounding_size=0.14",
+            facecolor=MAGENTA_LIGHT, edgecolor=MAGENTA, linewidth=1.5, zorder=2,
+        ))
+        ax.text(x + 1.40, 0.98, f"set_count({loaded_val} + 1)", ha="center", va="center",
+                fontsize=8.8, fontweight="bold", family="monospace", color=MAGENTA)
+        ax.text(x + 1.40, 0.66, f"stores new state = {next_val}", ha="center", va="center",
+                fontsize=8.0, fontweight="bold", color=PURPLE)
+
+        # Output state badge at right of step B
+        ax.add_patch(Circle((x + 2.78, 0.82), 0.22, facecolor=PURPLE,
+                            edgecolor="#ffffff", lw=1.6, zorder=4))
+        ax.text(x + 2.78, 0.82, next_val, ha="center", va="center",
+                fontsize=9.5, fontweight="bold", color="#ffffff", zorder=5)
+
+    # Curved state-trace arrows feeding the stored state from Round k into Round k+1's remember(0)
+    traces = [
+        ((0.18 + 3.00, 0.82), (3.85 + 0.20, 2.52), "state = 1"),
+        ((3.85 + 3.00, 0.82), (7.52 + 0.20, 2.52), "state = 2"),
+    ]
+    for p_start, p_end, label in traces:
+        _arrow(ax, p_start, p_end, PURPLE, rad=-0.18, shrink_a=4, shrink_b=4, lw=2.3, zorder=6)
+        mx = (p_start[0] + p_end[0]) / 2
+        my = (p_start[1] + p_end[1]) / 2 + 0.12
+        ax.text(
+            mx, my, label, ha="center", va="center",
+            fontsize=8.5, fontweight="bold", family="monospace", color=PURPLE,
+            bbox={"boxstyle": "round,pad=0.22", "facecolor": BG_CREAM, "edgecolor": PURPLE, "lw": 1.3},
+            zorder=7,
+        )
 
     fig.tight_layout(pad=0.15)
     fig.savefig(ASSETS / "state-evolution.png", dpi=200, facecolor=BG_CREAM)
