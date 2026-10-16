@@ -76,6 +76,20 @@ class NeighborhoodField(Generic[T], Iterator[T]):
         to_return.pop(self.node_id, None)
         return to_return
 
+    def without_self(self) -> "NeighborhoodField[T]":
+        """Return a new field containing only peer entries (excluding the local node)."""
+        return NeighborhoodField(self.exclude_self(), self.node_id, default=self.default)
+
+    def _values(self, include_self: bool) -> List[T]:
+        if include_self:
+            return list(self.data.values())
+        return [value for node_id, value in self.data.items() if node_id != self.node_id]
+
+    def _items(self, include_self: bool) -> List[tuple[int, T]]:
+        if include_self:
+            return list(self.data.items())
+        return [(node_id, value) for node_id, value in self.data.items() if node_id != self.node_id]
+
     def local(self) -> Optional[T]:
         """
         Get the local value of the current node.
@@ -110,19 +124,273 @@ class NeighborhoodField(Generic[T], Iterator[T]):
             if neighborhood.data[k]
         ]
 
-    def any(self) -> bool:
+    def any(
+        self,
+        predicate: Optional[Callable[[T], bool]] = None,
+        *,
+        include_self: bool = True,
+    ) -> bool:
         """
-        Check if any value in the neighborhood is truthy.
-        :return: True if at least one value in the neighborhood is truthy, False otherwise.
-        """
-        return any(self.data.values())
+        Check if any value in the neighborhood satisfies ``predicate`` (or is truthy).
 
-    def all(self) -> bool:
+        Args:
+            predicate: Optional condition to test each element against.
+            include_self: Whether to include the local node's value.
+
+        Returns:
+            True if at least one value matches, False otherwise.
         """
-        Check if all values in the neighborhood are truthy.
-        :return: True if all values in the neighborhood are truthy, False otherwise.
+        values = self._values(include_self)
+        if predicate is None:
+            return any(values)
+        return any(predicate(value) for value in values)
+
+    def all(
+        self,
+        predicate: Optional[Callable[[T], bool]] = None,
+        *,
+        include_self: bool = True,
+    ) -> bool:
         """
-        return all(self.data.values())
+        Check if all values in the neighborhood satisfy ``predicate`` (or are truthy).
+
+        Args:
+            predicate: Optional condition to test each element against.
+            include_self: Whether to include the local node's value.
+
+        Returns:
+            True if every value matches, False otherwise.
+        """
+        values = self._values(include_self)
+        if predicate is None:
+            return all(values)
+        return all(predicate(value) for value in values)
+
+    def none(
+        self,
+        predicate: Optional[Callable[[T], bool]] = None,
+        *,
+        include_self: bool = True,
+    ) -> bool:
+        """
+        Check that no value in the neighborhood satisfies ``predicate`` (or is truthy).
+
+        Args:
+            predicate: Optional condition to test each element against.
+            include_self: Whether to include the local node's value.
+
+        Returns:
+            True if no value matches, False otherwise.
+        """
+        return not self.any(predicate, include_self=include_self)
+
+    def count_matching(
+        self,
+        predicate: Callable[[T], bool],
+        *,
+        include_self: bool = True,
+    ) -> int:
+        """
+        Count how many values in the neighborhood satisfy ``predicate``.
+
+        Args:
+            predicate: Condition to test each element against.
+            include_self: Whether to include the local node's value.
+
+        Returns:
+            The number of matching elements.
+        """
+        return sum(1 for value in self._values(include_self) if predicate(value))
+
+    def fold(
+        self,
+        initial: U,
+        accumulator: Callable[[U, T], U],
+        *,
+        include_self: bool = True,
+    ) -> U:
+        """
+        Fold the neighborhood values into a single result starting from ``initial``.
+
+        Args:
+            initial: Starting value for the accumulation.
+            accumulator: Binary function ``(accumulated, element) -> accumulated``.
+            include_self: Whether to include the local node's value.
+
+        Returns:
+            The accumulated result.
+        """
+        result = initial
+        for value in self._values(include_self):
+            result = accumulator(result, value)
+        return result
+
+    def reduce(
+        self,
+        reducer: Callable[[T, T], T],
+        *,
+        include_self: bool = True,
+        default: Any = None,
+    ) -> Any:
+        """
+        Reduce the neighborhood values with ``reducer``, returning ``default`` if empty.
+
+        Args:
+            reducer: Binary function combining two elements of type ``T``.
+            include_self: Whether to include the local node's value.
+            default: Fallback value returned when there are no elements to reduce.
+
+        Returns:
+            The reduced value, or ``default`` when empty.
+        """
+        values = self._values(include_self)
+        if not values:
+            return default
+        result = values[0]
+        for value in values[1:]:
+            result = reducer(result, value)
+        return result
+
+    def min(
+        self,
+        *,
+        include_self: bool = True,
+        default: Any = None,
+        key: Optional[Callable[[T], Any]] = None,
+    ) -> Any:
+        """
+        Return the minimum value in the neighborhood, or ``default`` if empty.
+
+        Args:
+            include_self: Whether to include the local node's value.
+            default: Fallback returned when no elements are present.
+            key: Optional ordering key function.
+
+        Returns:
+            The minimal value, or ``default`` if empty.
+        """
+        values = self._values(include_self)
+        if not values:
+            return default
+        if key is None:
+            return min(values)  # type: ignore[type-var]
+        return min(values, key=key)
+
+    def max(
+        self,
+        *,
+        include_self: bool = True,
+        default: Any = None,
+        key: Optional[Callable[[T], Any]] = None,
+    ) -> Any:
+        """
+        Return the maximum value in the neighborhood, or ``default`` if empty.
+
+        Args:
+            include_self: Whether to include the local node's value.
+            default: Fallback returned when no elements are present.
+            key: Optional ordering key function.
+
+        Returns:
+            The maximal value, or ``default`` if empty.
+        """
+        values = self._values(include_self)
+        if not values:
+            return default
+        if key is None:
+            return max(values)  # type: ignore[type-var]
+        return max(values, key=key)
+
+    def sum(self, *, include_self: bool = True, start: Any = 0) -> Any:
+        """Return the sum of the values in the neighborhood."""
+        return self.fold(start, lambda acc, val: acc + val, include_self=include_self)
+
+    def product(self, *, include_self: bool = True, start: Any = 1) -> Any:
+        """Return the product of the values in the neighborhood."""
+        return self.fold(start, lambda acc, val: acc * val, include_self=include_self)
+
+    def id_of_min(
+        self,
+        *,
+        include_self: bool = True,
+        key: Optional[Callable[[int, T], Any]] = None,
+    ) -> Optional[int]:
+        """
+        Return the node ID with the minimal value in the neighborhood, or ``None`` if empty.
+
+        Args:
+            include_self: Whether to include the local node.
+            key: Optional function ``(node_id, value) -> comparable``.
+
+        Returns:
+            The ID of the winning entry, or ``None`` if empty.
+        """
+        items = self._items(include_self)
+        if not items:
+            return None
+        selector: Callable[[tuple[int, T]], Any] = (
+            (lambda item: item[1]) if key is None else (lambda item: key(item[0], item[1]))
+        )
+        return min(items, key=selector)[0]
+
+    def id_of_max(
+        self,
+        *,
+        include_self: bool = True,
+        key: Optional[Callable[[int, T], Any]] = None,
+    ) -> Optional[int]:
+        """
+        Return the node ID with the maximal value in the neighborhood, or ``None`` if empty.
+
+        Args:
+            include_self: Whether to include the local node.
+            key: Optional function ``(node_id, value) -> comparable``.
+
+        Returns:
+            The ID of the winning entry, or ``None`` if empty.
+        """
+        items = self._items(include_self)
+        if not items:
+            return None
+        selector: Callable[[tuple[int, T]], Any] = (
+            (lambda item: item[1]) if key is None else (lambda item: key(item[0], item[1]))
+        )
+        return max(items, key=selector)[0]
+
+    def coerce_in(self, lower: Any, upper: Any) -> "NeighborhoodField[T]":
+        """
+        Clamp every value in the field to the closed interval ``[lower, upper]``.
+
+        Args:
+            lower: Minimum allowed value.
+            upper: Maximum allowed value.
+
+        Returns:
+            A new ``NeighborhoodField`` with clamped values.
+
+        Raises:
+            ValueError: If ``lower > upper``.
+        """
+        if lower > upper:
+            raise ValueError(f"lower bound ({lower}) must not exceed upper bound ({upper})")
+        return self.map(lambda value: min(upper, max(lower, value)))
+
+    def replace_matching(
+        self,
+        replacement: T,
+        predicate: Callable[[T], bool],
+    ) -> "NeighborhoodField[T]":
+        """
+        Return a new field where values satisfying ``predicate`` are replaced with ``replacement``.
+
+        Args:
+            replacement: Value assigned to matching entries.
+            predicate: Condition used to select values to replace.
+
+        Returns:
+            A new ``NeighborhoodField`` with matching values replaced.
+        """
+        return self.map(lambda value: replacement if predicate(value) else value)
 
     def map(self, func: Callable[[T], U]) -> "NeighborhoodField[U]":
         """
@@ -208,6 +476,9 @@ class NeighborhoodField(Generic[T], Iterator[T]):
 
     def __gt__(self, other: Any) -> "NeighborhoodField[bool]":
         return cast(NeighborhoodField[bool], self._apply_binary_op(other, lambda a, b: a > b))
+
+    def __ge__(self, other: Any) -> "NeighborhoodField[bool]":
+        return cast(NeighborhoodField[bool], self._apply_binary_op(other, lambda a, b: a >= b))
 
     def __str__(self) -> str:
         """String representation of the neighborhood."""

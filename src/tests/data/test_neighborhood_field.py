@@ -104,3 +104,84 @@ def test_neighborhood_field_operations_propagate_default():
     assert (first + second).for_node(99) == 105
     assert (~NeighborhoodField({1: 0}, 1, default=1)).for_node(99) == -2
 
+
+def test_without_self_returns_neighborhood_field_excluding_local_node():
+    field = NeighborhoodField({1: 10, 2: 20, 3: 30}, 2, default=99)
+    peers = field.without_self()
+    assert isinstance(peers, NeighborhoodField)
+    assert peers.data == {1: 10, 3: 30}
+    assert peers.node_id == 2
+    assert peers.for_node(99) == 99
+
+
+def test_ge_operator_compares_values_and_propagates_default():
+    field = NeighborhoodField({1: 2, 2: 3}, 1, default=5)
+    result = field >= 3
+    assert result.data == {1: False, 2: True}
+    assert result.for_node(99) is True
+
+
+def test_fold_and_reduce_collapse_values_with_and_without_self():
+    field = NeighborhoodField({1: 10, 2: 20, 3: 30}, 1)
+    assert field.fold(0, lambda acc, x: acc + x) == 60
+    assert field.fold(0, lambda acc, x: acc + x, include_self=False) == 50
+    assert field.reduce(lambda a, b: a + b) == 60
+    assert field.reduce(lambda a, b: a + b, include_self=False) == 50
+    isolated = NeighborhoodField({1: 10}, 1)
+    assert isolated.reduce(lambda a, b: a + b, include_self=False, default=-1) == -1
+
+
+def test_min_and_max_support_include_self_default_and_key():
+    field = NeighborhoodField({1: 5, 2: 20, 3: 10}, 1)
+    assert field.min() == 5
+    assert field.min(include_self=False) == 10
+    assert field.max() == 20
+    assert field.max(include_self=False, key=lambda x: -x) == 10
+    isolated = NeighborhoodField({1: 5}, 1)
+    assert isolated.min(include_self=False, default=float("inf")) == float("inf")
+    assert isolated.max(include_self=False, default=float("-inf")) == float("-inf")
+
+
+def test_sum_and_product_collapse_numeric_fields():
+    field = NeighborhoodField({1: 2, 2: 3, 3: 4}, 1)
+    assert field.sum() == 9
+    assert field.sum(include_self=False) == 7
+    assert field.product() == 24
+    assert field.product(include_self=False) == 12
+
+
+def test_predicates_any_all_none_and_count_matching():
+    field = NeighborhoodField({1: 1, 2: 4, 3: 6}, 1)
+    assert field.count_matching(lambda x: x % 2 == 0) == 2
+    assert field.count_matching(lambda x: x > 0, include_self=False) == 2
+    assert field.any(lambda x: x == 1) is True
+    assert field.any(lambda x: x == 1, include_self=False) is False
+    assert field.all(lambda x: x % 2 == 0) is False
+    assert field.all(lambda x: x % 2 == 0, include_self=False) is True
+    assert field.none(lambda x: x < 0) is True
+    assert field.none(lambda x: x == 1, include_self=False) is True
+    assert NeighborhoodField({1: False, 2: False}, 1).none() is True
+
+
+def test_id_of_min_and_id_of_max_return_winning_node_id():
+    field = NeighborhoodField({1: 50, 2: 10, 3: 30}, 1)
+    assert field.id_of_min() == 2
+    assert field.id_of_max() == 1
+    assert field.id_of_max(include_self=False) == 3
+    assert field.id_of_min(key=lambda node_id, val: -val) == 1
+    isolated = NeighborhoodField({1: 50}, 1)
+    assert isolated.id_of_min(include_self=False) is None
+    assert isolated.id_of_max(include_self=False) is None
+
+
+def test_coerce_in_and_replace_matching_transform_field():
+    field = NeighborhoodField({1: -5, 2: 5, 3: 15}, 1, default=20)
+    clamped = field.coerce_in(0, 10)
+    assert clamped.data == {1: 0, 2: 5, 3: 10}
+    assert clamped.for_node(99) == 10
+    with pytest.raises(ValueError):
+        field.coerce_in(10, 0)
+    replaced = field.replace_matching(0, lambda v: v < 0)
+    assert replaced.data == {1: 0, 2: 5, 3: 15}
+
+
