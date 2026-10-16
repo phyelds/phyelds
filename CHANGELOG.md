@@ -1,3 +1,24 @@
+## [7.4.0](https://github.com/phyelds/phyelds/compare/7.3.0...7.4.0) (2026-10-16)
+
+### Features
+
+* **data:** add collapse and transformation methods to NeighborhoodField ([c710812](https://github.com/phyelds/phyelds/commit/c7108126fd90f56ab1950f41c55efadafcbc8909))
+* **libraries:** add delta_time, shared_clock, timer, and time_replicated ([398182b](https://github.com/phyelds/phyelds/commit/398182b0cdcb781f8297efe3ccc860a4d0216fbd))
+* **libraries:** add PathValue, non_looping_paths, and path_coherence utilities ([9b6fe81](https://github.com/phyelds/phyelds/commit/9b6fe81b2b576c5d8ca43f72557b171ccc1fe7f3))
+* **libraries:** add pluggable gossip strategies, key selector, and any_node ([09f5224](https://github.com/phyelds/phyelds/commit/09f52244959b89a6f87ab95d592102419f518499))
+* **libraries:** add pluggable leader election with loop-free candidacy and finite area check ([2c1302f](https://github.com/phyelds/phyelds/commit/2c1302fc8d875e15e7ba7340510e22970dc03236))
+* **libraries:** add pluggable spreading strategies and path_coherent gradient ([c9a0394](https://github.com/phyelds/phyelds/commit/c9a0394dff4b7816a261a47923e5b1af1045d72f))
+* **libraries:** add point_to_point collect strategy, mean_values, and find_parents ([07525b4](https://github.com/phyelds/phyelds/commit/07525b4d755733135e0cb49ded842fc134b69089))
+* **libraries:** support n-dimensional and custom positions in neighbors_distances ([ea821ae](https://github.com/phyelds/phyelds/commit/ea821aeaa83159e39a6f06c48292d292ed0a0694))
+
+### Bug Fixes
+
+* **libraries:** track replica spawn_time in time_replicated to prevent multi-hop timer drift ([5ba9bcc](https://github.com/phyelds/phyelds/commit/5ba9bcc35e6d6a2e546d3e1a0146d749b51f70f2))
+
+### Documentation
+
+* **libraries:** document pluggable strategies and NeighborhoodField collapse methods ([479867f](https://github.com/phyelds/phyelds/commit/479867fdcf6e276c7acc7cd7b5439d4852cce6f8))
+
 ## [7.3.0](https://github.com/phyelds/phyelds/compare/7.2.0...7.3.0) (2026-10-16)
 
 ### Features
