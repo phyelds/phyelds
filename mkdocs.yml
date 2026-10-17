@@ -77,7 +77,9 @@ plugins:
         python:
           paths: [src]
           options:
-            docstring_style: sphinx
+            docstring_style: auto
+            filters: ["!^_"]
+            merge_init_into_class: true
             show_source: false
             show_root_heading: true
             members_order: source
