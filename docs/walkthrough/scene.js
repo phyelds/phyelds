@@ -3,7 +3,8 @@
  * its value, and around them the cloud, the same field at infinite density.
  *
  * The scene only draws: walkthrough.js decides what each device, link and
- * point looks like, and passes it as a frame.
+ * point looks like, and passes it as a frame. The playground draws several
+ * fields of the same devices at once, as layers stacked on top of each other.
  */
 import { SPAN } from "./model.js";
 import { rgba } from "./palette.js";
@@ -11,6 +12,8 @@ import { rgba } from "./palette.js";
 export const LIFT = 2.1; // world height of a value of 1
 export const HIDDEN = 255; // colour index of a cloud point without a value
 export const PULSE_MS = 320; // how long the ring of a device that just ran lasts
+export const GAP = 1.4; // world height between two stacked layers
+export const RELIEF = 1.0; // world height of a value of 1 in a stack: less than GAP, so layers never touch
 const DISTANCE = 15; // from the camera to the pivot
 const FOV = 0.5; // vertical field of view, in radians
 const PIVOT = { x: SPAN / 2, y: SPAN / 2, z: 0.75 };
@@ -39,12 +42,19 @@ const LINK_STYLES = {
   via: (palette) => ({ color: rgba(palette.ink, 0.95), width: 2.8 }),
 };
 
+/** How high a value of 1 rises in a stack of `count` layers: a layer alone rises as in the walkthrough. */
+export function reliefOf(count) {
+  return count === 1 ? LIFT : RELIEF;
+}
+
 export function createScene(canvas) {
   const context = canvas.getContext("2d");
   const camera = { ...HOME };
   let size = { width: 1, height: 1 };
   let lens = null;
-  let projected = [];
+  let pivot = PIVOT; // what the camera looks at, and how far it backs away to fit a stack of layers
+  let reach = 1;
+  let projected = []; // every device drawn, as {id, x, y, z}, the topmost first
   let buckets = { colors: null, lists: [] };
 
   function resize() {
@@ -59,15 +69,15 @@ export function createScene(canvas) {
   function aim() {
     const { yaw, pitch, zoom } = camera;
     const eye = {
-      x: PIVOT.x + DISTANCE * Math.cos(pitch) * Math.cos(yaw),
-      y: PIVOT.y + DISTANCE * Math.cos(pitch) * Math.sin(yaw),
-      z: PIVOT.z + DISTANCE * Math.sin(pitch),
+      x: pivot.x + DISTANCE * Math.cos(pitch) * Math.cos(yaw),
+      y: pivot.y + DISTANCE * Math.cos(pitch) * Math.sin(yaw),
+      z: pivot.z + DISTANCE * Math.sin(pitch),
     };
-    const forward = unit(sub(PIVOT, eye));
+    const forward = unit(sub(pivot, eye));
     const right = unit(cross(forward, { x: 0, y: 0, z: 1 }));
     const up = cross(right, forward);
     const fit = Math.min(size.width, size.height * 1.3);
-    const focal = (zoom * 0.5 * fit) / Math.tan(FOV / 2) / 1.45;
+    const focal = (zoom * 0.5 * fit) / Math.tan(FOV / 2) / 1.45 / reach;
     lens = { eye, forward, right, up, focal, cx: size.width / 2, cy: size.height * 0.5 };
   }
 
@@ -79,8 +89,8 @@ export function createScene(canvas) {
     return { x: cx + dot(v, right) * scale, y: cy - dot(v, up) * scale, depth, scale: (scale * DISTANCE) / focal };
   }
 
-  /** The point of the ground under the pixel (px, py), or null above the horizon. */
-  function groundAt(px, py) {
+  /** The point of the plane at height z under the pixel (px, py), or null if the plane is not there. */
+  function groundAt(px, py, z = 0) {
     aim();
     const { eye, forward, right, up, focal, cx, cy } = lens;
     const sx = (px - cx) / focal;
@@ -90,8 +100,8 @@ export function createScene(canvas) {
       y: forward.y + right.y * sx + up.y * sy,
       z: forward.z + right.z * sx + up.z * sy,
     };
-    if (direction.z >= 0) return null;
-    const t = -eye.z / direction.z;
+    const t = (z - eye.z) / direction.z;
+    if (!(t > 0 && t < Infinity)) return null;
     return { x: eye.x + t * direction.x, y: eye.y + t * direction.y };
   }
 
@@ -109,19 +119,22 @@ export function createScene(canvas) {
     });
   }
 
-  function drawGround(palette) {
+  /** The arena as a plane at height z, its edge as opaque as `edge`; returns its corners on screen. */
+  function drawGround(palette, z = 0, edge = 0.14) {
+    const corners = [
+      project(-PAD, -PAD, z),
+      project(SPAN + PAD, -PAD, z),
+      project(SPAN + PAD, SPAN + PAD, z),
+      project(-PAD, SPAN + PAD, z),
+    ];
     context.beginPath();
-    polygon([
-      project(-PAD, -PAD, 0),
-      project(SPAN + PAD, -PAD, 0),
-      project(SPAN + PAD, SPAN + PAD, 0),
-      project(-PAD, SPAN + PAD, 0),
-    ]);
+    polygon(corners);
     context.fillStyle = rgba(palette.ink, palette.dark ? 0.035 : 0.03);
     context.fill();
-    context.strokeStyle = rgba(palette.ink, 0.14);
+    context.strokeStyle = rgba(palette.ink, edge);
     context.lineWidth = 1;
     context.stroke();
+    return corners;
   }
 
   function drawHoles(frame) {
@@ -349,6 +362,8 @@ export function createScene(canvas) {
   }
 
   function draw(frame) {
+    pivot = PIVOT;
+    reach = 1;
     aim();
     context.clearRect(0, 0, size.width, size.height);
     const points = frame.devices.map((device) => project(device.x, device.y, device.z));
@@ -370,21 +385,85 @@ export function createScene(canvas) {
       const point = points[frame.focus.id];
       tag(frame.focus.label, point.x, point.y - (frame.devices[frame.focus.id].role ? 32 : 10), frame.palette, true);
     }
-    projected = points;
+    projected = points.map((point, id) => ({ id, x: point.x, y: point.y, z: frame.devices[id].z }));
+  }
+
+  /** The name of a layer, left of the corner of its plane that is leftmost on screen; on the plane if it does not fit. */
+  function label(text, corners, palette, focused) {
+    const left = corners.reduce((best, corner) => (corner.x < best.x ? corner : best));
+    context.font = `${focused ? 600 : 500} 11.5px ${palette.mono}`;
+    context.fillStyle = rgba(palette.ink, focused ? 0.95 : 0.55);
+    const fits = left.x - 10 - context.measureText(text).width >= 4;
+    context.textAlign = fits ? "right" : "left";
+    context.fillText(text, fits ? left.x - 10 : left.x + 12, fits ? left.y + 4 : left.y - 6);
+  }
+
+  /**
+   * Several fields of the same devices, each in a layer of its own, stacked from the
+   * ground up: every layer of `frame.layers` has its `label`, `devices` (heights
+   * included), `links` and `highlights`, and one of them is `focused`. Pillars join
+   * the places of a device in every layer; the source and the target are tagged on top.
+   */
+  function drawLayers(frame) {
+    const { layers, palette } = frame;
+    const top = (layers.length - 1) * GAP + reliefOf(layers.length);
+    pivot = { ...PIVOT, z: top / 2 };
+    reach = Math.max(1, (SPAN + top) / (SPAN + LIFT));
+    aim();
+    context.clearRect(0, 0, size.width, size.height);
+    const highest = layers[layers.length - 1];
+    const tops = highest.devices.map((device) => project(device.x, device.y, device.z));
+    drawStems({ ...frame, devices: highest.devices }, tops);
+    // Farthest from the eye first: at a low pitch, the camera sits inside a tall stack, and a
+    // layer above the eye hides the ones above it, seen from below.
+    const away = (k) => Math.abs(k * GAP - lens.eye.z);
+    const order = layers.map((_, k) => k).sort((a, b) => away(b) - away(a));
+    const drawn = [];
+    let focused = null;
+    for (const k of order) {
+      const layer = layers[k];
+      const points = layer.devices.map((device) => project(device.x, device.y, device.z));
+      label(layer.label, drawGround(palette, k * GAP, layer.focused ? 0.4 : 0.14), palette, layer.focused);
+      drawLinks(frame, layer.links, points);
+      drawLinks(frame, layer.highlights, points);
+      // The rings of the neighbors and of the devices that just ran belong to the focused layer only.
+      const looks = layer.focused
+        ? frame
+        : { ...frame, pulses: false, focus: frame.focus && { ...frame.focus, neighbors: [] } };
+      const byDepth = layer.devices.map((device) => device.id).sort((a, b) => points[b].depth - points[a].depth);
+      for (const id of byDepth) drawDevice(looks, layer.devices[id], points[id]);
+      drawn.push(...points.map((point, id) => ({ id, x: point.x, y: point.y, z: layer.devices[id].z })));
+      if (layer.focused) focused = { layer, points };
+    }
+    for (const device of highest.devices) {
+      if (device.role) tag(device.role, tops[device.id].x, tops[device.id].y - 10, palette);
+    }
+    if (frame.focus && frame.focus.label && focused) {
+      const point = focused.points[frame.focus.id];
+      const tagged = focused.layer === highest && focused.layer.devices[frame.focus.id].role;
+      tag(frame.focus.label, point.x, point.y - (tagged ? 32 : 10), palette, true);
+    }
+    // The topmost first: where two layers draw a device at the same pixel, the pointer picks the one on top.
+    projected = drawn.reverse();
+  }
+
+  /** The device drawn under the pixel (px, py), and the height it is drawn at, or null. */
+  function pickInstance(px, py) {
+    let best = null;
+    let bestDistance = 14;
+    for (const point of projected) {
+      const distance = Math.hypot(point.x - px, point.y - py);
+      if (distance < bestDistance) {
+        best = point;
+        bestDistance = distance;
+      }
+    }
+    return best && { id: best.id, z: best.z };
   }
 
   /** The device drawn under the pixel (px, py), if any. */
   function pick(px, py) {
-    let best = null;
-    let bestDistance = 14;
-    projected.forEach((point, id) => {
-      const distance = Math.hypot(point.x - px, point.y - py);
-      if (distance < bestDistance) {
-        best = id;
-        bestDistance = distance;
-      }
-    });
-    return best;
+    return pickInstance(px, py)?.id ?? null;
   }
 
   function orbit(dx, dy) {
@@ -400,5 +479,5 @@ export function createScene(canvas) {
     Object.assign(camera, HOME);
   }
 
-  return { camera, resize, draw, pick, groundAt, orbit, zoom, reset };
+  return { camera, resize, draw, drawLayers, pick, pickInstance, groundAt, orbit, zoom, reset };
 }

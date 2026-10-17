@@ -717,7 +717,8 @@ button {
 }
 
 .highlight .nb,
-.highlight .bp {
+.highlight .bp,
+.highlight .kc {
   color: var(--wt-hl-constant);
 }
 
