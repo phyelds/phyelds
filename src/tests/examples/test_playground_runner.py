@@ -459,3 +459,92 @@ def test_playground_starts_every_device_over_on_restart(tmp_path):
     snapshot = playground.advance(1.0)
 
     assert _results(snapshot) == [1.0, 1.0, 1.0]
+
+
+LATE_HELPER = """
+from phyelds.calculus import aggregate
+from phyelds.libraries.device import sense
+
+@aggregate
+def helper():
+    return 1
+
+@aggregate
+def program():
+    return helper() if sense("time") > 2 else 0
+"""
+
+FAILING = """
+from phyelds.calculus import aggregate
+from phyelds.libraries.device import local_id
+
+@aggregate
+def program():
+    return 1 / local_id()
+"""
+
+
+def test_playground_reports_a_syntax_error_at_its_line_and_keeps_the_running_program(tmp_path, capsys):
+    playground = _deployed(tmp_path, TIMES_TEN)
+    playground.advance(1.0)
+
+    loaded = playground.load("def broken(:\n", [], restart=True)
+    snapshot = playground.advance(1.0)
+
+    assert not loaded.ok
+    error = capsys.readouterr().err
+    assert 'main.py", line 1' in error
+    assert "SyntaxError" in error
+    assert _results(snapshot) == [0.0, 10.0, 20.0]
+
+
+def test_playground_keeps_the_code_of_the_running_program_when_a_load_fails(tmp_path):
+    playground = _deployed(tmp_path, LATE_HELPER)
+    playground.advance(1.0)
+
+    broken = LATE_HELPER.replace("return 1", "return 99") + "undefined_name\n"
+    loaded = playground.load(broken, [], restart=False)
+    snapshot = playground.advance(3.0)
+
+    assert not loaded.ok
+    assert _results(snapshot) == [1.0, 1.0, 1.0]
+
+
+@pytest.mark.parametrize("code, selections, message", [
+    ("LIMIT = 1\n", [], "Define an @aggregate function"),
+    ("from phyelds.calculus import aggregate\n\n@aggregate\ndef program(width):\n    return width\n", [], "width"),
+    (TIMES_TEN, [_span(TIMES_TEN, "def helper")], "Select an expression"),
+])
+def test_playground_explains_why_it_cannot_load_some_code(tmp_path, capsys, code, selections, message):
+    playground = runner.Playground(tmp_path / "run")
+    playground.update(LINE, 1.5, {})
+
+    loaded = playground.load(code, selections, restart=True)
+
+    assert not loaded.ok
+    assert message in capsys.readouterr().err
+
+
+def test_playground_pauses_on_an_error_in_a_round_and_reports_its_line_once(tmp_path, capsys):
+    playground = _deployed(tmp_path, FAILING)
+
+    paused = playground.advance(1.0)
+    still = playground.advance(1.0)
+
+    error = capsys.readouterr().err
+    assert paused.paused
+    assert still.time == paused.time
+    assert error.count("ZeroDivisionError") == 1
+    assert 'main.py", line 7, in program' in error
+
+
+def test_playground_resumes_when_the_error_is_fixed(tmp_path):
+    playground = _deployed(tmp_path, FAILING)
+    playground.advance(1.0)
+
+    loaded = playground.load(FAILING.replace("1 / local_id()", "local_id()"), [], restart=False)
+    snapshot = playground.advance(1.0)
+
+    assert loaded.ok
+    assert not snapshot.paused
+    assert _results(snapshot) == [0.0, 1.0, 2.0]

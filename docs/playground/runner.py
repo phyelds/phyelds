@@ -7,6 +7,7 @@ tested with pytest like the rest of the documentation examples.
 import ast
 import contextlib
 import heapq
+import inspect
 import io
 import itertools
 import linecache
@@ -113,6 +114,8 @@ class Playground:
         self._radius = 0.0
         self._sensors: dict[str, set[int]] = {}
         self._program: Callable[[], Any] | None = None
+        self._source = ""  # the code of the running program, watches included
+        self._error: Exception | None = None  # what stopped the network, until the next load
         self._recorder = _Recorder()
         self._watches = 0
         self._rows: dict[int, list[Value]] = {}
@@ -127,14 +130,23 @@ class Playground:
             restart: start every device over, rather than swap the program of the running ones.
 
         Returns:
-            The program loaded and its watches.
+            The program loaded and its watches. If the code has an error, which is
+            printed to stderr, nothing is loaded and the running program goes on.
         """
-        source, watches = instrument(code, selections)
-        self._main.write_text(source)
-        linecache.clearcache()
-        namespace = runpy.run_path(str(self._main), init_globals={WATCH: self._recorder}, run_name="playground")
-        program = namespace[_program_name(ast.parse(code))]
-        self._program, self._watches = program, len(watches)
+        try:
+            # Compiled first as it is, so that its own errors are not blamed on the watches.
+            compile(code, str(self._main), "exec")
+            source, watches = instrument(code, selections)
+            self._write(source)
+            namespace = runpy.run_path(str(self._main), init_globals={WATCH: self._recorder}, run_name="playground")
+            program = _program(namespace, ast.parse(code))
+        # The errors of the code are reported to its author, like Python would.
+        except Exception as error:  # pylint: disable=broad-exception-caught
+            _print_traceback(error, self._main)
+            # @aggregate reads a function from main.py the first time it runs: it must find the running code.
+            self._write(self._source)
+            return Loaded(False)
+        self._program, self._source, self._watches, self._error = program, source, len(watches), None
         if restart:
             self._restart()
         else:
@@ -175,11 +187,17 @@ class Playground:
         environment.set_neighborhood_function(radius_neighborhood(radius))
 
     def advance(self, rounds: float) -> Snapshot:
-        """Run the devices for ``rounds`` rounds, if a program is loaded, and return the network."""
-        if self._program is not None:
+        """Run the devices for ``rounds`` rounds, unless no program runs or an error paused them."""
+        if self._program is not None and self._error is None:
             self._clock += rounds
             self._simulator.run(self._clock)
         return self._snapshot()
+
+    def _write(self, source: str) -> None:
+        """Put ``source`` in main.py, where @aggregate reads the functions that it rewrites."""
+        self._main.write_text(source)
+        # linecache notices a new main.py by its size and time, which may both stay the same.
+        linecache.clearcache()
 
     def _restart(self) -> None:
         """Every device from its first round, in the order of the previous restart."""
@@ -202,7 +220,16 @@ class Playground:
     def _run(self) -> Any:
         """The program on the device that the simulator runs, recording its result and its watches."""
         self._recorder.values = {}
-        result = self._program()
+        try:
+            result = self._program()
+        # An error pauses the network, and is reported once; the round of the device ends normally,
+        # so that the simulator keeps it on schedule.
+        except Exception as error:  # pylint: disable=broad-exception-caught
+            if self._error is None:
+                self._error = error
+                _print_traceback(error, self._main)
+            self._simulator.stop()
+            result = None
         node_id = engine.get().node_context.node_id
         self._rows[node_id] = [_value(result), *(self._recorder.values.get(k, NO_VALUE) for k in range(self._watches))]
         return result
@@ -219,7 +246,7 @@ class Playground:
             layers.append(Layer([value.number for value in values], [value.text for value in values], boolean))
         nodes = self._simulator.environment.nodes
         ran = [nodes[node_id].data.get("time", math.nan) for node_id in range(count)]
-        return Snapshot(self._clock, False, ran, layers)
+        return Snapshot(self._clock, self._error is not None, ran, layers)
 
 
 class _Recorder:
@@ -262,6 +289,16 @@ def _value(value: Any) -> Value:
     # The program may print values whose __repr__ fails: that must not stop its round.
     except Exception:  # pylint: disable=broad-exception-caught
         return Value(math.nan, "?")
+
+
+def _program(namespace: Mapping[str, Any], tree: ast.Module) -> Callable[[], Any]:
+    """The program in the ``namespace`` of the module whose syntax is ``tree``."""
+    program = namespace[_program_name(tree)]
+    try:
+        inspect.signature(program).bind()
+    except TypeError as error:
+        raise ValueError(f"{program.__name__} runs on every device without arguments: {error}") from error
+    return program
 
 
 def _program_name(tree: ast.Module) -> str:
