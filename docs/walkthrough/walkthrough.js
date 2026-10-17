@@ -7,6 +7,7 @@ import { RESOLUTION, createContinuum } from "./continuum.js";
 import { createMap } from "./map.js";
 import { FEWEST, MOST, SIZE, SPAN, createNetwork, fire, initialStates, isStable, seeded, shuffled } from "./model.js";
 import { readPalette, toneIndex } from "./palette.js";
+import { bindPointer } from "./pointer.js";
 import { HIDDEN, LIFT, PULSE_MS, createScene } from "./scene.js";
 import { STEPS } from "./steps.js";
 import { VIEWS } from "./views.js";
@@ -535,72 +536,24 @@ function moveRole(role, point) {
   if (id !== null && id !== environment[role]) setRole(role, id);
 }
 
-function local(event, target) {
-  const box = target.getBoundingClientRect();
-  return { x: event.clientX - box.left, y: event.clientY - box.top };
-}
+/** Dragging the source or the target moves it to the device nearest the point under the pointer. */
+const dragRole = (toWorld) => (role, x, y) => {
+  const point = toWorld(x, y);
+  if (point) moveRole(role, point);
+};
 
-/**
- * Pointer gestures on a view: pressing a device selects it, dragging the source
- * or the target moves it, and dragging elsewhere calls `onDrag` (the 3D view orbits).
- */
-function bindPointer(canvas, viewer, { toWorld, onDrag = null }) {
-  let gesture = null;
-  const cursor = (id) => {
-    canvas.classList.toggle("is-over-device", id !== null && roleOf(id) === null);
-    canvas.classList.toggle("is-over-role", id !== null && roleOf(id) !== null);
-    canvas.classList.toggle("is-moving", gesture?.kind === "move");
-    canvas.classList.toggle("is-orbiting", gesture?.kind === "orbit");
-  };
-  canvas.addEventListener("pointerdown", (event) => {
-    canvas.setPointerCapture(event.pointerId);
-    const at = local(event, canvas);
-    const id = viewer.pick(at.x, at.y);
-    let kind = onDrag ? "orbit" : "none";
-    if (id !== null) kind = roleOf(id) ? "move" : "press";
-    gesture = { kind, id, role: id === null ? null : roleOf(id), ...at, moved: false };
-    cursor(id);
-  });
-  canvas.addEventListener("pointermove", (event) => {
-    const at = local(event, canvas);
-    if (gesture === null) {
-      const id = viewer.pick(at.x, at.y);
-      hover(id);
-      cursor(id);
-      return;
-    }
-    const dx = at.x - gesture.x;
-    const dy = at.y - gesture.y;
-    if (!gesture.moved && Math.hypot(dx, dy) < 4) return;
-    gesture.moved = true;
-    if (gesture.kind === "press" && onDrag) gesture.kind = "orbit";
-    if (gesture.kind === "orbit") {
-      onDrag(dx, dy);
-      Object.assign(gesture, at);
-      changed();
-    } else if (gesture.kind === "move") {
-      const point = toWorld(at.x, at.y);
-      if (point) moveRole(gesture.role, point);
-    }
-    cursor(gesture.id);
-  });
-  const end = () => {
-    if (gesture && !gesture.moved && gesture.id !== null) select(gesture.id);
-    gesture = null;
-    cursor(app.hovered);
-  };
-  canvas.addEventListener("pointerup", end);
-  canvas.addEventListener("pointercancel", end);
-  canvas.addEventListener("pointerleave", () => {
-    if (gesture === null) hover(null);
-  });
-}
-
-bindPointer(element("wt-scene"), scene, {
-  toWorld: (x, y) => scene.groundAt(x, y),
-  onDrag: (dx, dy) => scene.orbit(dx, dy),
+bindPointer(element("wt-scene"), {
+  pick: scene.pick,
+  grab: roleOf,
+  drag: dragRole(scene.groundAt),
+  orbit: (dx, dy) => {
+    scene.orbit(dx, dy);
+    changed();
+  },
+  hover,
+  select,
 });
-bindPointer(element("wt-map"), map, { toWorld: (x, y) => map.worldAt(x, y) });
+bindPointer(element("wt-map"), { pick: map.pick, grab: roleOf, drag: dragRole(map.worldAt), hover, select });
 
 element("wt-scene").addEventListener(
   "wheel",
