@@ -96,7 +96,9 @@ let examples = [];
 
 const scene = createScene(element("wt-scene"));
 const map = createMap(element("wt-map"));
-const editor = createEditor(element("pg-code"), { onRun: run, onWatch: watch, onEdit });
+const editor = createEditor(element("pg-code"), { onRun: run, onWatch: watch, onEdit, onComplete: complete });
+const completions = new Map(); // what the editor asked Python to complete, by id, waiting for the answer
+let questions = 0;
 
 const changed = () => {
   app.dirty = true;
@@ -130,6 +132,8 @@ function post(message) {
 /** Ends the worker: Python cannot be interrupted from outside. A new one starts at the next run. */
 function stop(text) {
   python.worker?.terminate();
+  for (const answer of completions.values()) answer([]);
+  completions.clear();
   Object.assign(python, { worker: null, program: null, code: null, loads: [], stepping: false });
   setPlaying(false);
   status(text);
@@ -153,6 +157,14 @@ function sendWorld() {
 function load(code, selections, restart, reason, previous = selections.map(() => null)) {
   python.loads.push({ code, restart, reason, previous });
   post({ type: "load", code, selections, restart });
+}
+
+/** The names that complete `code` at `offset`, as Python finds them. */
+function complete(code, offset) {
+  questions += 1;
+  const id = questions;
+  post({ type: "complete", id, code, offset });
+  return new Promise((answer) => completions.set(id, answer));
 }
 
 /** Where the watches are in the code Python runs. */
@@ -298,6 +310,10 @@ function onMessage(message) {
       break;
     case "snapshot":
       onSnapshot(message);
+      break;
+    case "completions":
+      completions.get(message.id)?.(message.suggestions);
+      completions.delete(message.id);
       break;
     case "failed":
       stop("Python could not start: check your connection and run again.");

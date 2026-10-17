@@ -160,6 +160,42 @@
   will-change: transform;
 }
 
+/* The names that complete the code, under the caret. */
+.pg-complete {
+  position: absolute;
+  z-index: 2;
+  min-width: 12rem;
+  max-width: 24rem;
+  max-height: 14rem;
+  margin: 0;
+  padding: 0.25rem 0;
+  overflow-y: auto;
+  border: 1px solid var(--wt-line);
+  border-radius: 8px;
+  background: var(--wt-raised);
+  box-shadow: var(--wt-shadow);
+  font: 12.5px/1.6 var(--wt-font-mono);
+  list-style: none;
+}
+
+.pg-complete li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.05rem 0.65rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pg-complete li[aria-selected="true"] {
+  background: color-mix(in srgb, var(--wt-accent) 16%, transparent);
+}
+
+.pg-complete small {
+  color: var(--wt-muted);
+  font-size: 11px;
+}
+
 .pg-status {
   margin: 0;
   color: var(--wt-muted);

@@ -6,9 +6,11 @@
  * Messages in:  {type: "update", positions, radius, sensors}
  *               {type: "load", code, selections, restart}
  *               {type: "advance", rounds}
+ *               {type: "complete", id, code, offset}
  * Messages out: {type: "status", text} | {type: "stdout" | "stderr", text}
  *               {type: "loaded", ok, program, watches}
- *               {type: "snapshot", time, paused, ran, layers} | {type: "failed"}
+ *               {type: "snapshot", time, paused, stable, ran, layers}
+ *               {type: "completions", id, suggestions} | {type: "failed"}
  */
 const PYODIDE_VERSION = "0.28.3";
 importScripts(`https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/pyodide.js`);
@@ -19,6 +21,7 @@ const RUN_DIR = "/home/pyodide/run";
 const QUIET = { messageCallback: () => {} };
 
 let python = null;
+let jedi = null; // downloaded the first time the editor asks for completions
 let queue = Promise.resolve();
 
 function post(type, payload = {}) {
@@ -46,7 +49,8 @@ from pathlib import Path
 from playground_runner import Playground
 Playground(Path("${RUN_DIR}"))
 `);
-  return { pyodide, playground, asdict: pyodide.pyimport("dataclasses").asdict };
+  const { complete } = pyodide.pyimport("playground_runner");
+  return { pyodide, playground, complete, asdict: pyodide.pyimport("dataclasses").asdict };
 }
 
 /** A dataclass of the runner as a plain object, and the Python objects released. */
@@ -75,6 +79,13 @@ async function handle(message) {
     selections.destroy();
   } else if (message.type === "advance") {
     post("snapshot", plain(ready, playground.advance(message.rounds)));
+  } else if (message.type === "complete") {
+    jedi ??= pyodide.loadPackage(["jedi"], QUIET);
+    await jedi;
+    const found = ready.complete(message.code, message.offset);
+    const suggestions = Array.from(found, (suggestion) => plain(ready, suggestion));
+    found.destroy();
+    post("completions", { id: message.id, suggestions });
   }
 }
 
