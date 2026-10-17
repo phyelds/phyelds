@@ -1,23 +1,25 @@
 /*
- * Runs the playground programs in Pyodide, off the main thread, so that a long
- * simulation never freezes the page and Stop can terminate the worker.
+ * Runs the program of the playground in Pyodide, off the main thread, so that a
+ * long round never freezes the page and Stop can terminate the worker. Python is
+ * downloaded with the first message; the messages are handled in order.
  *
- * Messages in:  {type: "run", code}
+ * Messages in:  {type: "update", positions, radius, sensors}
+ *               {type: "load", code, selections, restart}
+ *               {type: "advance", rounds}
  * Messages out: {type: "status", text} | {type: "stdout" | "stderr", text}
- *               {type: "image", name, mime, data} | {type: "done", ok}
+ *               {type: "loaded", ok, program, watches}
+ *               {type: "snapshot", time, paused, ran, layers} | {type: "failed"}
  */
 const PYODIDE_VERSION = "0.28.3";
 importScripts(`https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/pyodide.js`);
 
-// pandas is left out on purpose: only the CSV exporter needs it, and it weighs 5 MB.
-const PACKAGES = ["matplotlib", "pydantic", "wrapt", "pillow"];
 const RUN_DIR = "/home/pyodide/run";
-const MIME_TYPES = { ".gif": "image/gif", ".png": "image/png" };
 
 // Pyodide reports every package it loads on stdout: keep the console for the program.
 const QUIET = { messageCallback: () => {} };
 
-let pyodideReady = null;
+let python = null;
+let queue = Promise.resolve();
 
 function post(type, payload = {}) {
   self.postMessage({ type, ...payload });
@@ -28,9 +30,8 @@ async function setUp() {
   const pyodide = await loadPyodide();
   pyodide.setStdout({ batched: (text) => post("stdout", { text: `${text}\n` }) });
   pyodide.setStderr({ batched: (text) => post("stderr", { text: `${text}\n` }) });
-
-  post("status", { text: "Downloading matplotlib and pydantic…" });
-  await pyodide.loadPackage(PACKAGES, QUIET);
+  // Besides the standard library, the simulator and the libraries of phyelds need only wrapt.
+  await pyodide.loadPackage(["wrapt"], QUIET);
 
   post("status", { text: "Installing phyelds…" });
   const sitePackages = pyodide.runPython("import site; site.getsitepackages()[0]");
@@ -40,46 +41,49 @@ async function setUp() {
   ]);
   pyodide.unpackArchive(archive, "zip", { extractDir: sitePackages });
   pyodide.FS.writeFile(`${sitePackages}/playground_runner.py`, runner);
-  // The default backend of Pyodide draws on the page, which a worker does not have.
-  pyodide.runPython('import matplotlib; matplotlib.use("Agg")');
-  return pyodide;
-}
-
-async function run(code) {
-  pyodideReady ??= setUp();
-  const pyodide = await pyodideReady;
-  await pyodide.loadPackagesFromImports(code, QUIET);
-  if (code.includes("exporter")) {
-    await pyodide.loadPackage("pandas", QUIET);
-  }
-
-  post("status", { text: "Running…" });
-  pyodide.globals.set("user_code", code);
-  const result = pyodide.runPython(`
+  const playground = pyodide.runPython(`
 from pathlib import Path
-from playground_runner import run_user_code
-
-_result = run_user_code(user_code, Path("${RUN_DIR}"))
-(_result.ok, [(output.name, output.data) for output in _result.outputs])
+from playground_runner import Playground
+Playground(Path("${RUN_DIR}"))
 `);
-  const [ok, outputs] = result.toJs();
-  result.destroy();
-  for (const [name, data] of outputs) {
-    const mime = MIME_TYPES[name.slice(name.lastIndexOf("."))];
-    self.postMessage({ type: "image", name, mime, data }, [data.buffer]);
-  }
-  return ok;
+  return { pyodide, playground, asdict: pyodide.pyimport("dataclasses").asdict };
 }
 
-self.onmessage = async (event) => {
-  if (event.data.type !== "run") {
-    return;
+/** A dataclass of the runner as a plain object, and the Python objects released. */
+function plain({ asdict }, result) {
+  const dict = asdict(result);
+  const value = dict.toJs({ dict_converter: Object.fromEntries });
+  dict.destroy();
+  result.destroy();
+  return value;
+}
+
+async function handle(message) {
+  python ??= setUp();
+  const ready = await python;
+  const { pyodide, playground } = ready;
+  if (message.type === "update") {
+    const positions = pyodide.toPy(message.positions);
+    const sensors = pyodide.toPy(message.sensors);
+    playground.update(positions, message.radius, sensors);
+    positions.destroy();
+    sensors.destroy();
+  } else if (message.type === "load") {
+    await pyodide.loadPackagesFromImports(message.code, QUIET);
+    const selections = pyodide.toPy(message.selections);
+    post("loaded", plain(ready, playground.load(message.code, selections, message.restart)));
+    selections.destroy();
+  } else if (message.type === "advance") {
+    post("snapshot", plain(ready, playground.advance(message.rounds)));
   }
-  try {
-    post("done", { ok: await run(event.data.code) });
-  } catch (error) {
-    // Errors of the program are printed by the runner; this is Pyodide itself failing.
-    post("stderr", { text: `${error.message ?? error}\n` });
-    post("done", { ok: false });
-  }
+}
+
+self.onmessage = (event) => {
+  queue = queue
+    .then(() => handle(event.data))
+    .catch((error) => {
+      // The errors of the program are printed by the runner: this is Pyodide itself failing.
+      post("stderr", { text: `${error.message ?? error}\n` });
+      post("failed");
+    });
 };

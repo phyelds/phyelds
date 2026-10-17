@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Phyelds Playground</title>
+  <meta name="description" content="Write an aggregate program and watch it run on a network, in 3D, in your browser." />
+  <link rel="icon" href="../assets/logo.png" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..800&amp;family=JetBrains+Mono:wght@400..700&amp;display=swap" />
+  <link rel="stylesheet" href="../walkthrough/walkthrough.css" />
+  <link rel="stylesheet" href="playground.css" />
+  <script src="../walkthrough/theme.js"></script>
+</head>
+<body>
+  <div class="wt pg">
+    <header class="wt-bar">
+      <a class="wt-home" href="../" title="Back to the documentation">
+        <img src="../assets/logo.png" alt="" width="22" height="22" />
+        <span>phyelds</span>
+      </a>
+      <span class="pg-title">Playground</span>
+      <div class="pg-bar-end">
+        <label class="pg-examples">
+          <span>Example</span>
+          <select id="pg-example"></select>
+        </label>
+        <button class="wt-button" id="pg-share" type="button">Share</button>
+      </div>
+    </header>
+
+    <main class="wt-main">
+      <section class="wt-panel" aria-label="The program">
+        <div class="pg-actions">
+          <button class="wt-button wt-button--primary" id="pg-run" type="button" title="Run the program from round 0 (Ctrl+Enter)">Run</button>
+          <button class="wt-button" id="pg-stop" type="button" title="Stop Python, for a program that never returns">Stop</button>
+          <p class="pg-summary" id="pg-summary"></p>
+        </div>
+        <div class="pg-editor highlight">
+          <textarea id="pg-code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Program"></textarea>
+        </div>
+        <p class="pg-status" id="pg-status" role="status">Loading the examples…</p>
+        <pre class="pg-console" id="pg-console" hidden></pre>
+      </section>
+
+      <section class="wt-stage" id="wt-stage" aria-label="The network in 3D">
+        <canvas id="wt-scene"></canvas>
+
+        <div class="wt-legend pg-layers" id="pg-layers" aria-live="polite"></div>
+
+        <div class="wt-tools">
+          <button class="wt-icon" id="wt-home" type="button" title="Reset the view" aria-label="Reset the view">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8a5 5 0 1 0 1.6-3.7M3 2.5v2.8h2.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+
+        <div class="pg-device" id="pg-device">
+          <span class="wt-device-name" id="pg-device-name"></span>
+          <span class="pg-sensors" id="pg-sensors"></span>
+        </div>
+
+        <figure class="wt-map">
+          <canvas id="wt-map" aria-label="The network from above"></canvas>
+          <figcaption>from above</figcaption>
+        </figure>
+
+        <div class="wt-player" role="group" aria-label="Rounds">
+          <button class="wt-icon" id="wt-restart" type="button" title="Restart from round 0 (R)" aria-label="Restart from round 0">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 3v10M13 3.5v9L6.5 8z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/></svg>
+          </button>
+          <button class="wt-icon wt-icon--main" id="wt-play" type="button" title="Pause (Space)" aria-label="Pause">
+            <svg class="wt-pause" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 3.5v9M10.5 3.5v9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <svg class="wt-resume" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6L12.5 8z" fill="currentColor"/></svg>
+          </button>
+          <button class="wt-icon" id="wt-round-step" type="button" title="Run one round (.)" aria-label="Run one round">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3.5v9L9.5 8zM12 3v10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/></svg>
+          </button>
+          <span class="wt-round" id="wt-round" aria-live="polite"></span>
+        </div>
+
+        <p class="wt-hint">Drag to orbit · scroll to zoom</p>
+      </section>
+    </main>
+  </div>
+
+  <script src="highlight.js"></script>
+  <script type="module" src="playground.js"></script>
+</body>
+</html>

@@ -3,8 +3,9 @@ MkDocs hook: publish what the playground loads in the browser.
 
 After every build, ``site/playground/`` gets ``phyelds.zip`` (the package of
 this commit, which Pyodide unpacks into site-packages), the examples and a
-``manifest.json`` that lists them for the menu. The standalone walkthrough
-replaces its Markdown placeholder, and stays out of the previous and next links.
+``manifest.json`` that lists them for the menu. The full-screen pages, the
+walkthrough and the playground, replace their Markdown placeholders, and stay
+out of the previous and next links.
 """
 import ast
 import json
@@ -15,21 +16,23 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
+DOCS = ROOT / "docs"
 PACKAGE = ROOT / "src" / "phyelds"
-EXAMPLES = ROOT / "docs" / "examples" / "playground"
-WALKTHROUGH = ROOT / "docs" / "walkthrough"
-WALKTHROUGH_PAGE = "walkthrough/index.md"
+EXAMPLES = DOCS / "examples" / "playground"
+# Pages that open full screen: docs/<name>/app.html, published in place of docs/<name>/index.md.
+FULL_SCREEN = ("walkthrough", "playground")
 # The menu follows this tour; examples not listed come after, by name.
 TOUR = ["neighbours", "gradient", "self_healing", "channel", "leaders", "bubbles"]
 
 
 def on_nav(nav: Any, **_: Any) -> Any:
-    """Link every page to its neighbors in the nav, skipping the walkthrough.
+    """Link every page to its neighbors in the nav, skipping the full-screen pages.
 
-    The walkthrough opens full screen, without the footer of the other pages:
-    a reader who reached it with "next" would find no "previous" to come back.
+    They open without the footer of the other pages: a reader who reached one
+    with "next" would find no "previous" to come back.
     """
-    pages = [page for page in nav.pages if page.file.src_uri != WALKTHROUGH_PAGE]
+    placeholders = {f"{name}/index.md" for name in FULL_SCREEN}
+    pages = [page for page in nav.pages if page.file.src_uri not in placeholders]
     bookended = [None, *pages, None]
     for before, page, after in zip(bookended, bookended[1:], bookended[2:]):
         page.previous_page, page.next_page = before, after
@@ -37,7 +40,7 @@ def on_nav(nav: Any, **_: Any) -> Any:
 
 
 def on_post_build(config: Mapping[str, Any], **_: Any) -> None:
-    """Write phyelds.zip, the examples, manifest.json, and standalone walkthrough."""
+    """Write phyelds.zip, the examples and manifest.json, and the full-screen pages."""
     site_dir = Path(config["site_dir"])
     playground = site_dir / "playground"
     playground.mkdir(parents=True, exist_ok=True)
@@ -50,17 +53,18 @@ def on_post_build(config: Mapping[str, Any], **_: Any) -> None:
         shutil.copy(source, examples / source.name)
         manifest.append(_describe(source))
     (playground / "manifest.json").write_text(json.dumps({"examples": manifest}, indent=2))
-    _publish_walkthrough(site_dir / "walkthrough")
+    for name in FULL_SCREEN:
+        _publish_full_screen(DOCS / name / "app.html", site_dir / name)
 
 
-def _publish_walkthrough(target: Path) -> None:
-    """Serve the standalone walkthrough page in place of its Markdown placeholder.
+def _publish_full_screen(page: Path, target: Path) -> None:
+    """Serve ``page`` in place of the Markdown placeholder published in ``target``.
 
-    Its stylesheet and modules sit next to it in docs/walkthrough, so MkDocs
-    publishes them itself, as it does every file of the docs that is not a page.
+    Its stylesheets and modules sit next to it, so MkDocs publishes them itself,
+    as it does every file of the docs that is not a page.
     """
     target.mkdir(parents=True, exist_ok=True)
-    shutil.copy(WALKTHROUGH / "app.html", target / "index.html")
+    shutil.copy(page, target / "index.html")
 
 
 def _bundle_package(package: Path, archive: Path) -> None:

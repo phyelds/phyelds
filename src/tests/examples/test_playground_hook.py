@@ -5,6 +5,8 @@ import zipfile
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 DOCS = Path(__file__).resolve().parents[3] / "docs"
 
 
@@ -27,14 +29,14 @@ def _linked_navigation(*sources: str) -> SimpleNamespace:
     return SimpleNamespace(pages=pages)
 
 
-def test_on_nav_leaves_the_walkthrough_out_of_previous_and_next():
-    nav = _linked_navigation("playground/index.md", "walkthrough/index.md", "concepts/state.md")
-    playground, _, state = nav.pages
+def test_on_nav_leaves_the_full_screen_pages_out_of_previous_and_next():
+    nav = _linked_navigation("tutorial.md", "playground/index.md", "walkthrough/index.md", "concepts/state.md")
+    tutorial, _, _, state = nav.pages
 
     hook.on_nav(nav, config={}, files=None)
 
-    assert playground.next_page is state
-    assert state.previous_page is playground
+    assert tutorial.next_page is state
+    assert state.previous_page is tutorial
 
 
 def test_on_post_build_publishes_phyelds_as_an_importable_archive(tmp_path):
@@ -60,9 +62,12 @@ def test_on_post_build_publishes_the_examples_in_the_order_of_the_tour(tmp_path)
         assert (playground / "examples" / f"{name}.py").exists()
 
 
-def test_on_post_build_publishes_the_standalone_walkthrough_page(tmp_path):
+@pytest.mark.parametrize("page, title", [
+    ("walkthrough", "Phyelds 3D Field Explorer"),
+    ("playground", "Phyelds Playground"),
+])
+def test_on_post_build_publishes_a_full_screen_page_in_place_of_its_placeholder(tmp_path, page, title):
     hook.on_post_build({"site_dir": str(tmp_path)})
 
-    walkthrough_index = tmp_path / "walkthrough" / "index.html"
-    assert walkthrough_index.exists()
-    assert "Phyelds 3D Field Explorer" in walkthrough_index.read_text()
+    index = tmp_path / page / "index.html"
+    assert f"<title>{title}</title>" in index.read_text()

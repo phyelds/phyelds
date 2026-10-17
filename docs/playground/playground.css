@@ -1,0 +1,278 @@
+/*
+ * The playground: the look of the walkthrough (walkthrough.css), with the editor on
+ * the left, the network on the right, and the layers of the stack listed over it.
+ */
+:root {
+  --pg-panel-width: clamp(380px, 40vw, 620px);
+  --pg-error: #b71c1c;
+}
+
+:root[data-theme="dark"] {
+  --pg-error: #ff8a80;
+}
+
+.pg-title {
+  color: var(--wt-muted);
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.pg-bar-end {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+
+.pg-examples {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--wt-muted);
+  font-size: 13px;
+}
+
+.pg-examples select {
+  max-width: 11rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--wt-line);
+  border-radius: 8px;
+  background: var(--wt-raised);
+  color: var(--wt-ink);
+  font: inherit;
+}
+
+.pg .wt-bar .wt-button {
+  padding: 0.3rem 0.9rem;
+}
+
+/* The panel: the program, what the playground says, and what the program prints. */
+.pg .wt-panel {
+  gap: 0.75rem;
+  padding: 1rem 1.25rem 1.1rem;
+}
+
+.pg-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pg-summary {
+  flex-basis: 100%;
+  margin: 0.2rem 0 0;
+  color: var(--wt-muted);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.pg-summary:empty {
+  display: none;
+}
+
+/*
+ * The editor: a transparent textarea over the highlighted code. Both share font,
+ * size and padding, so that the text lines up to the pixel.
+ */
+.pg-editor {
+  position: relative;
+  flex: 1;
+  min-height: 14rem;
+  overflow: hidden;
+  border: 1px solid var(--wt-line);
+  border-radius: 12px;
+  background: var(--wt-code-bg);
+}
+
+.pg-editor:focus-within {
+  outline: 2px solid var(--wt-accent);
+  outline-offset: 1px;
+}
+
+.pg-editor textarea,
+.pg-layer-text {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.9rem 1rem;
+  border: 0;
+  font-family: var(--wt-font-mono);
+  font-size: 13px;
+  font-variant-ligatures: none;
+  line-height: 1.65;
+  letter-spacing: normal;
+  tab-size: 4;
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+.pg-editor textarea {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--wt-ink);
+  outline: none;
+  resize: none;
+}
+
+.pg-editor textarea::selection {
+  background: color-mix(in srgb, var(--wt-accent) 28%, transparent);
+  color: transparent;
+}
+
+.pg-highlight {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.pg-layer-text {
+  color: var(--wt-ink);
+  will-change: transform;
+}
+
+.pg-status {
+  margin: 0;
+  color: var(--wt-muted);
+  font-size: 13px;
+}
+
+.pg-console {
+  max-height: 30%;
+  margin: 0;
+  overflow: auto;
+  padding: 0.7rem 0.9rem;
+  border-radius: 10px;
+  background: var(--wt-code-bg);
+  font-family: var(--wt-font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.pg-stderr {
+  color: var(--pg-error);
+}
+
+/* The layers, from the top of the stack down, each with the value of the inspected device. */
+.pg-layers {
+  width: 16rem;
+  pointer-events: auto;
+}
+
+.pg-layer + .pg-layer {
+  margin-top: 0.5rem;
+}
+
+.pg-layer-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.pg-layer-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--wt-muted);
+  font-family: var(--wt-font-mono);
+  font-size: 12px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pg-layer.is-focused .pg-layer-name {
+  color: var(--wt-ink);
+  font-weight: 600;
+}
+
+.pg-layer-value {
+  padding: 0 0.4em;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--wt-ink) 8%, transparent);
+  color: var(--wt-ink);
+  font-family: var(--wt-font-mono);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.pg-layer-value:empty {
+  display: none;
+}
+
+.pg-layer .wt-legend-bar {
+  margin-top: 0.35rem;
+}
+
+/* The device inspected, and its sensors, which the reader switches on and off. */
+.pg-device {
+  position: absolute;
+  top: 3.6rem;
+  right: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
+  font-size: 12px;
+}
+
+.pg-sensors {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.3rem;
+}
+
+@media (width > 1000px) {
+  .pg .wt-main {
+    grid-template-columns: var(--pg-panel-width) minmax(0, 1fr);
+  }
+
+  .pg .wt-panel {
+    overflow: hidden;
+    border-right: 1px solid var(--wt-line);
+    border-left: 0;
+  }
+}
+
+@media (max-width: 1000px) {
+  .pg .wt-panel {
+    border-top: 0;
+    border-bottom: 1px solid var(--wt-line);
+  }
+
+  .pg-editor {
+    flex: none;
+    height: 24rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .pg-title,
+  .pg-examples > span {
+    display: none;
+  }
+
+  /* The map takes the top right: the device goes above the rounds. */
+  .pg-device {
+    top: auto;
+    right: auto;
+    bottom: 4.5rem;
+    left: 1rem;
+    align-items: flex-start;
+  }
+
+  .pg-sensors {
+    justify-content: flex-start;
+  }
+}
