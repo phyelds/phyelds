@@ -52,7 +52,7 @@ All collective behaviors in **phyelds** come from combining just four mechanisms
 
 | Construct | Field calculus | What it does |
 | --- | --- | --- |
-| [`@aggregate`](alignment.md) | function call ($f$) | Marks a function as part of the aggregate computation and aligns its branches |
+| [`@aggregate`](alignment.md) | function application | Marks a function as part of the aggregate computation and aligns its branches |
 | [`remember`](state.md) | `rep` | Keeps local state that survives from one round to the next |
 | [`neighbors`](neighborhood-field.md) | `nbr` | Shares a value with neighbors and returns their values as a `NeighborhoodField` |
 | [`exchange`](neighborhood-field.md#exchange) | `exchange` | Evolves state and sends (possibly distinct, per-neighbor) values in one step |

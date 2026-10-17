@@ -64,9 +64,9 @@ Every aggregate program interacts with its host device through four basic functi
 
 ## Neighborhood distances: `phyelds.libraries.distances`
 
-Spreading and leader-election functions accept a `NeighborhoodField` of distances to neighbors. When omitted, they default to `hops_distance()` (1 per hop); for physical distances in 2D, 3D, or $N$-D space, pass `neighbors_distances()`:
+Spreading and leader-election functions accept a `NeighborhoodField` of distances to neighbors. When omitted, they default to `hops_distance()` (1 per hop); for physical distances in 2D, 3D, or *N*-D space, pass `neighbors_distances()`:
 
 | Function | Returns |
 | --- | --- |
-| `neighbors_distances(position=None)` | A `NeighborhoodField` with the Euclidean distance to each neighbor (supports 2D, 3D, and $N$-D coordinates; defaults to `local_position()`) |
+| `neighbors_distances(position=None)` | A `NeighborhoodField` with the Euclidean distance to each neighbor (supports 2D, 3D, and *N*-D coordinates; defaults to `local_position()`) |
 | `hops_distance()` | A `NeighborhoodField` with `1` for every neighbor and `0` for the device itself |
