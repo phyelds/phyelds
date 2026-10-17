@@ -72,7 +72,8 @@ const app = {
   speed: 1, // rounds per ROUND_MS
   focus: 0, // the layer in front, which the map shows: 0 is the result, k the k-th watch
   palette: extendPalette(readPalette()),
-  look: { map: "plasma", height: 1 }, // how the result is drawn: its colour map, and how high it rises
+  look: { map: "plasma", height: 1, visible: true }, // how the result is drawn: colours, height, whether at all
+  solo: false, // only the layer in front is shown
   dirty: true, // the views need drawing again
   panelDirty: true, // the layers, the inspected device and the rounds need writing again
 };
@@ -212,11 +213,48 @@ function renderMarks() {
   editor.setMarks(watches.flatMap((each, k) => (each.mark ? [{ ...each.mark, focused: k + 1 === focusedLayer() }] : [])));
 }
 
-function focusLayer(k) {
+/**
+ * Brings layer `k` to the front and selects its expression in the editor if `select`. A
+ * hidden layer brought to the front shows again, unless layers are shown one at a time.
+ */
+function focusLayer(k, select = true) {
   app.focus = k;
+  if (!app.solo) lookOf(k).visible = true;
   const mark = watches[k - 1]?.mark;
-  if (mark) editor.select(mark.start, mark.end);
+  if (mark && select) editor.select(mark.start, mark.end);
   renderMarks();
+  app.panelDirty = true;
+  changed();
+}
+
+/** Moves the front one layer up (+1) or down (-1) the stack: through every layer one at a time, else the shown ones. */
+function moveFocus(direction) {
+  const candidates = allLayers().filter((k) => app.solo || lookOf(k).visible);
+  const next = candidates[candidates.indexOf(focusedLayer()) + direction];
+  if (next !== undefined) focusLayer(next, false);
+}
+
+/** Hides layer `k`, or shows it again; one layer stays shown, and the front moves off a hidden one. */
+function toggleShown(k) {
+  const look = lookOf(k);
+  if (!look.visible) {
+    look.visible = true;
+  } else {
+    const others = allLayers().filter((other) => other !== k && lookOf(other).visible);
+    if (others.length === 0) return;
+    look.visible = false;
+    if (focusedLayer() === k) app.focus = others.filter((other) => other < k).pop() ?? others[0];
+  }
+  renderMarks();
+  app.panelDirty = true;
+  changed();
+}
+
+function setSolo(solo) {
+  app.solo = solo;
+  // Back to the stack, the layer the reader was looking at stays in view.
+  if (!solo) lookOf(focusedLayer()).visible = true;
+  element("pg-solo").setAttribute("aria-pressed", String(solo));
   app.panelDirty = true;
   changed();
 }
@@ -318,12 +356,14 @@ function stepOnce() {
 const RELIEF = 1.0; // world height of a value of 1 at height 1×, in a stack of layers
 const MARGIN = 0.4; // world height between the highest value of a layer and the plane above it
 const HIGHEST = 3; // how many times its usual height a layer rises at most
-const defaultLook = () => ({ map: "plasma", height: 1 });
+const defaultLook = () => ({ map: "plasma", height: 1, visible: true });
+const allLayers = () => Array.from({ length: layerCount() }, (_, k) => k);
 
 const layerCount = () => 1 + watches.length;
 const focusedLayer = () => Math.min(app.focus, layerCount() - 1);
 const labelOf = (k) => (k === 0 ? `${python.program ?? "result"}()` : watches[k - 1].label);
 const lookOf = (k) => (k === 0 ? app.look : watches[k - 1]?.look);
+const isShown = (k) => (app.solo ? k === focusedLayer() : lookOf(k).visible);
 
 /**
  * How a layer looks: per device a colour and a relief in [0, 1], or null without a
@@ -358,7 +398,7 @@ function refreshLooks() {
  * reader set it, and the next plane comes after its highest value.
  */
 function stackOf() {
-  const shown = Array.from({ length: layerCount() }, (_, k) => k);
+  const shown = allLayers().filter(isShown);
   const unit = shown.length === 1 ? LIFT : RELIEF;
   let base = 0;
   return shown.map((k) => {
@@ -496,13 +536,17 @@ function lookControls(k) {
 }
 
 let layerRows = null; // the rows of the list of the layers, and the layers they were built for
+const EYE =
+  '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8z" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="8" r="1.9" fill="currentColor"/></svg>';
+const EYE_SHUT =
+  '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8z" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2.5 13.5l11-11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
 
 /** The layers, from the top of the stack down, with the values of the inspected device. */
 function renderLayers() {
   const count = layerCount();
   const focused = focusedLayer();
-  const labels = Array.from({ length: count }, (_, k) => labelOf(k));
-  const key = [focused, Boolean(layers[focused]?.boolean), ...labels].join("\n");
+  const labels = allLayers().map((k) => `${isShown(k)}:${labelOf(k)}`);
+  const key = [focused, app.solo, Boolean(layers[focused]?.boolean), ...labels].join("\n");
   // Rebuilt only when the layers change, not at every step: a click must find its button.
   if (layerRows?.key !== key) layerRows = { key, rows: buildLayerRows(count, focused) };
   const id = inspected();
@@ -518,9 +562,18 @@ function buildLayerRows(count, focused) {
   list.replaceChildren();
   for (let k = count - 1; k >= 0; k -= 1) {
     const row = document.createElement("div");
-    row.className = `pg-layer${k === focused ? " is-focused" : ""}`;
+    row.className = `pg-layer${k === focused ? " is-focused" : ""}${isShown(k) ? "" : " is-hidden"}`;
     const head = document.createElement("div");
     head.className = "pg-layer-head";
+    const eye = document.createElement("button");
+    eye.type = "button";
+    eye.className = "pg-layer-eye";
+    eye.innerHTML = lookOf(k).visible ? EYE : EYE_SHUT;
+    eye.title = lookOf(k).visible ? "Hide this layer" : "Show this layer";
+    eye.setAttribute("aria-label", `${lookOf(k).visible ? "Hide" : "Show"} ${labelOf(k)}`);
+    eye.setAttribute("aria-pressed", String(!lookOf(k).visible));
+    eye.addEventListener("click", () => toggleShown(k));
+    head.append(eye);
     const name = document.createElement("button");
     name.type = "button";
     name.className = "pg-layer-name";
@@ -763,6 +816,7 @@ element("wt-scene").addEventListener(
 
 element("pg-run").addEventListener("click", run);
 element("pg-watch").addEventListener("click", watch);
+element("pg-solo").addEventListener("click", () => setSolo(!app.solo));
 element("pg-stop").addEventListener("click", () => stop("Stopped. Python starts again at the next run."));
 element("pg-share").addEventListener("click", share);
 element("wt-play").addEventListener("click", () => setPlaying(!app.playing));
@@ -791,6 +845,11 @@ document.addEventListener("keydown", (event) => {
     stepOnce();
   } else if (event.key === "r" || event.key === "R") {
     restart();
+  } else if (event.key === "s" || event.key === "S") {
+    setSolo(!app.solo);
+  } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+    event.preventDefault();
+    moveFocus(event.key === "ArrowUp" ? 1 : -1);
   }
 });
 

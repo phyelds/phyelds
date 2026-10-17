@@ -47,7 +47,13 @@
       <section class="wt-stage" id="wt-stage" aria-label="The network in 3D">
         <canvas id="wt-scene"></canvas>
 
-        <div class="wt-legend pg-layers" id="pg-layers"></div>
+        <div class="wt-legend pg-layers">
+          <div class="pg-layers-head">
+            <span>layers</span>
+            <button class="pg-solo" id="pg-solo" type="button" aria-pressed="false" title="Show only the layer in front (S): ↑ and ↓ move through the stack">one at a time</button>
+          </div>
+          <div id="pg-layers"></div>
+        </div>
 
         <div class="pg-side">
           <div class="wt-tools">

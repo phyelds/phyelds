@@ -189,8 +189,69 @@
   pointer-events: auto;
 }
 
+.pg-layers-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 0.45rem;
+  color: var(--wt-muted);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pg-solo {
+  padding: 0.05rem 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: none;
+  color: var(--wt-muted);
+  font-size: 11px;
+  letter-spacing: normal;
+  text-transform: none;
+  cursor: pointer;
+}
+
+.pg-solo:hover {
+  color: var(--wt-ink);
+}
+
+.pg-solo[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--wt-accent) 45%, transparent);
+  color: var(--wt-ink);
+}
+
 .pg-layer + .pg-layer {
   margin-top: 0.5rem;
+}
+
+.pg-layer.is-hidden .pg-layer-name,
+.pg-layer.is-hidden .pg-layer-value {
+  opacity: 0.45;
+}
+
+.pg-layer-eye {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--wt-muted);
+  cursor: pointer;
+}
+
+.pg-layer-eye svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.pg-layer-eye:hover {
+  color: var(--wt-ink);
 }
 
 .pg-layer-head {
