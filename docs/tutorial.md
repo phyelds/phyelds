@@ -105,7 +105,7 @@ Nothing in the program refers to *when* the source appeared or *where* it is loc
 
 ![The gradient re-converging after the source moves](assets/gradient-self-healing.gif){ width="480" }
 
-[Run it in the playground](playground/index.md#example=self_healing){ .md-button }
+[Move the source yourself in the playground](playground/index.md#example=self_healing){ .md-button }
 
 Look closely at the animation: the region around the *new* source settles rapidly, whereas the region around the *old* source takes longer to clear. When the old source turns off, its former neighbors still see each other's low estimates and mutually increment them little by little. This is the classic **rising-value problem** (see [Common pitfalls](pitfalls.md#expecting-instant-answers)).
 

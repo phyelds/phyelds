@@ -129,7 +129,7 @@ on its own full-screen page.
 
     ---
 
-    Edit and run the examples in your browser, with nothing to install.
+    Write a program and watch it run on a network in 3D, in your browser: watch any expression on every device.
 
 -   :material-cube-outline:{ .lg .middle } __[Interactive 3D walkthrough](walkthrough/index.md)__
 
