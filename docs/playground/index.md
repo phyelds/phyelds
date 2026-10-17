@@ -15,8 +15,10 @@ and your code is not sent anywhere.
   device appears as a layer stacked above the result. Watching does not start the
   devices over, and each layer can be removed again.
 - Every `sense("name")` of the program becomes a switch on the selected device.
-- Drag a device, in 3D or on the map, to move it; the slider adds devices or
-  takes the last ones away. The devices that stay keep their state.
+- Drag a device, in 3D or on the map, to move it. The sliders choose how many
+  devices there are, from two to a hundred, and how far they hear; the devices
+  that stay keep their state. The rounds run at the speed you pick, and the bar
+  under the network says when a whole round changed nothing: the program is stable.
 - **Run** (Ctrl+Enter) applies the code and starts every device over;
   **Stop** ends a program that never returns.
 - **Share** copies a link that opens the playground with your program.

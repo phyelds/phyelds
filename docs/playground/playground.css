@@ -265,11 +265,25 @@
   bottom: 4.6rem;
 }
 
-/* The device inspected, and its sensors, which the reader switches on and off. */
-.pg-device {
+/* The right of the stage: the tools, then the device inspected and its sensors, which the reader switches. */
+.pg-side {
   position: absolute;
-  top: 3.6rem;
+  top: 1rem;
   right: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.6rem;
+  max-width: calc(100% - 19rem);
+}
+
+.pg-side .wt-tools {
+  position: static;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.pg-device {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -282,6 +296,17 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.3rem;
+}
+
+.pg-speed {
+  margin-right: 0.35rem;
+  padding: 0.15rem 0.3rem;
+  border: 1px solid var(--wt-line);
+  border-radius: 999px;
+  background: var(--wt-raised);
+  color: var(--wt-ink);
+  font: 500 12px var(--wt-font-mono);
+  cursor: pointer;
 }
 
 @media (width > 1000px) {
@@ -314,16 +339,31 @@
     display: none;
   }
 
-  /* The map takes the top right: the device goes above the rounds. */
+  /* The tools and the device take the top, the layers go above the rounds, and the map, which the 3D view repeats, goes. */
+  .pg-side {
+    top: 0.75rem;
+    right: 0.75rem;
+    left: 0.75rem;
+    align-items: flex-start;
+    max-width: none;
+  }
+
+  .pg-side .wt-tools,
+  .pg-sensors {
+    justify-content: flex-start;
+  }
+
   .pg-device {
-    top: auto;
-    right: auto;
-    bottom: 4.5rem;
-    left: 1rem;
     align-items: flex-start;
   }
 
-  .pg-sensors {
-    justify-content: flex-start;
+  .pg .wt-legend {
+    top: auto;
+    bottom: 4.25rem;
+    left: 0.75rem;
+  }
+
+  .pg .wt-map {
+    display: none;
   }
 }

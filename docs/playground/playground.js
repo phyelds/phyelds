@@ -10,7 +10,7 @@
  * #code=<base64url> for a shared program.
  */
 import { createMap } from "../walkthrough/map.js";
-import { FEWEST, MOST, PLACES, SIZE, SPAN, createNetwork } from "../walkthrough/model.js";
+import { FEWEST, MOST, PLACES, SPAN, createNetwork } from "../walkthrough/model.js";
 import { readPalette, toneIndex } from "../walkthrough/palette.js";
 import { bindPointer } from "../walkthrough/pointer.js";
 import { GAP, PULSE_MS, createScene, reliefOf } from "../walkthrough/scene.js";
@@ -20,8 +20,12 @@ import { createEditor, shifted } from "./editor.js";
 const ROUND_MS = 700; // how long a round lasts while playing: every device runs once in it
 const MAX_STEP = 0.5; // rounds asked of Python at once at most, so that the devices are seen to run in turn
 const EASE_MS = 140; // how fast heights follow a change of value
-// Where the first two sensors of a program start: on the source and the target of the walkthrough.
-const ANCHORS = [SIZE * SIZE - SIZE - 2, SIZE + 1];
+const FEWEST_DEVICES = 2;
+// Where the first two sensors of a program start: by the source and the target of the walkthrough.
+const ANCHORS = [
+  { x: SPAN - 1, y: SPAN - 1 },
+  { x: 1, y: 1 },
+];
 const SENSE = /\bsense\(\s*["']([A-Za-z_]\w*)["']\s*\)/g;
 // What the simulator keeps in the data of a device besides its sensors: nothing to switch.
 const RESERVED = new Set(["position", "time", "state", "messages", "result", "outputs"]);
@@ -31,18 +35,41 @@ const calm = matchMedia("(prefers-reduced-motion: reduce)");
 const element = (id) => document.getElementById(id);
 const base = new URL(".", import.meta.url);
 
+/**
+ * The places of the walkthrough in an order whose every beginning is spread over the arena:
+ * the one nearest the centre first, then each time the farthest from those before it. A
+ * network of any size is then the first places, and adding devices never moves the others.
+ */
+function spread(places) {
+  const left = places.map(({ x, y }) => ({ x, y }));
+  // How far each place left is from those taken; at first, closer to the centre is better.
+  let gaps = left.map(({ x, y }) => -Math.hypot(x - SPAN / 2, y - SPAN / 2));
+  const taken = [];
+  while (left.length > 0) {
+    const best = gaps.indexOf(Math.max(...gaps));
+    const [place] = left.splice(best, 1);
+    gaps.splice(best, 1);
+    gaps = gaps.map((gap, index) => Math.min(taken.length === 0 ? Infinity : gap, Math.hypot(left[index].x - place.x, left[index].y - place.y)));
+    taken.push(place);
+  }
+  return taken;
+}
+
 const world = {
-  places: PLACES.map(({ x, y }) => ({ x, y })), // where each device is, as the reader moved it
+  places: spread(PLACES), // where each device is, as the reader moved it
   count: FEWEST,
+  radius: null, // how far devices hear, if the reader chose it; else it follows their number
   sensors: new Map(), // each sensor, and the devices on which it is on
   dirty: false, // Python has not been told yet
 };
-let network = createNetwork(world.count, world.places);
+const connect = () => createNetwork(world.count, world.places, world.radius ?? undefined);
+let network = connect();
 
 const app = {
   playing: true,
   hovered: null,
-  selected: 2 * SIZE + 2, // a device in the middle
+  selected: 0, // the device nearest the centre
+  speed: 1, // rounds per ROUND_MS
   focus: 0, // the layer in front, which the map shows: 0 is the result, k the k-th watch
   palette: readPalette(),
   dirty: true, // the views need drawing again
@@ -128,11 +155,21 @@ const kept = () => watches.filter((each) => each.mark);
 const marked = () => kept().map(({ mark }) => [mark.start, mark.end]);
 const labels = (list) => list.map(({ label }) => label);
 
+/** The device nearest `point`, among the first `count`. */
+function nearest(point, count = world.count) {
+  const distance = (id) => Math.hypot(world.places[id].x - point.x, world.places[id].y - point.y);
+  let best = 0;
+  for (let id = 1; id < count; id += 1) {
+    if (distance(id) < distance(best)) best = id;
+  }
+  return best;
+}
+
 /** Runs the code of the editor from round 0, with its sensors switched on where they start. */
 function run() {
   const { code } = editor;
   sensorsOf(code).forEach((name, index) => {
-    if (!world.sensors.has(name)) world.sensors.set(name, new Set(ANCHORS.slice(index, index + 1)));
+    if (!world.sensors.has(name)) world.sensors.set(name, new Set(index < ANCHORS.length ? [nearest(ANCHORS[index])] : []));
   });
   clearConsole();
   sendWorld();
@@ -258,7 +295,7 @@ function onSnapshot(message) {
 /** Asks Python for the rounds due since the last step, while playing. */
 function askStep(now) {
   if (!python.program || python.stepping || snapshot?.paused) return;
-  const rounds = Math.min(MAX_STEP, (now - python.asked) / ROUND_MS);
+  const rounds = Math.min(MAX_STEP, ((now - python.asked) * app.speed) / ROUND_MS);
   if (rounds < 0.01) return;
   python.stepping = true;
   python.asked = now;
@@ -350,7 +387,8 @@ function draw(now) {
     layers: stack,
     focus: focusOf(hovered, focused),
     selected: app.selected,
-    density: Math.sqrt(FEWEST / network.devices.length),
+    // Few devices are drawn larger, up to a point: two would fill the arena.
+    density: Math.min(1.5, Math.sqrt(FEWEST / network.devices.length)),
     now,
     pulses: !calm.matches,
   };
@@ -465,18 +503,33 @@ function toggleSensor(name, id) {
 
 /** The network changed: Python hears of it at the next frame, once however many changes come. */
 function worldChanged() {
-  network = createNetwork(world.count, world.places);
+  network = connect();
+  element("pg-radius").value = network.range;
+  element("pg-radius-value").textContent = network.range.toFixed(2);
   world.dirty = true;
   app.panelDirty = true;
   changed();
 }
 
-/** Adds devices to the running network, or takes the last ones away; the others keep their state. */
+/**
+ * Adds devices to the running network, or takes the last ones away; the others keep their
+ * state. The radius follows the number, so that each device keeps hearing a few others.
+ */
 function setDeviceCount(count) {
+  // A sensor on a device taken away moves to the nearest device left, as the source of the walkthrough does.
+  for (const on of world.sensors.values()) {
+    for (const id of [...on]) {
+      if (id >= count) {
+        on.delete(id);
+        on.add(nearest(world.places[id], count));
+      }
+    }
+  }
   world.count = count;
+  world.radius = null;
   element("pg-devices-value").textContent = count;
   if (app.hovered !== null && app.hovered >= count) app.hovered = null;
-  if (app.selected >= count) app.selected = 2 * SIZE + 2;
+  if (app.selected >= count) app.selected = 0;
   worldChanged();
 }
 
@@ -639,6 +692,13 @@ element("wt-home").addEventListener("click", () => {
   changed();
 });
 element("pg-devices").addEventListener("input", (event) => setDeviceCount(Number(event.target.value)));
+element("pg-radius").addEventListener("input", (event) => {
+  world.radius = Number(event.target.value);
+  worldChanged();
+});
+element("pg-speed").addEventListener("change", (event) => {
+  app.speed = Number(event.target.value);
+});
 
 document.addEventListener("keydown", (event) => {
   if (event.metaKey || event.ctrlKey || event.altKey || event.target.closest("input, select, textarea")) return;
@@ -700,8 +760,9 @@ async function start() {
   });
 }
 
-Object.assign(element("pg-devices"), { min: FEWEST, max: MOST, value: FEWEST });
-element("pg-devices-value").textContent = FEWEST;
+Object.assign(element("pg-devices"), { min: FEWEST_DEVICES, max: MOST, value: world.count });
+element("pg-devices-value").textContent = world.count;
+worldChanged();
 resize();
 requestAnimationFrame(frame);
 start().catch((error) => {

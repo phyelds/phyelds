@@ -82,12 +82,11 @@ function rangeOf(count) {
 
 /**
  * The first `count` devices at `places` (PLACES, unless they were moved), their
- * `range` and the `hole` a switched-off one leaves, who is in range of whom, and
- * how many neighbors a device far from the border has (`typical`, the median, to
- * scale their counts).
+ * `range` (rangeOf(count), unless it is given) and the `hole` a switched-off one
+ * leaves, who is in range of whom, and how many neighbors a device far from the
+ * border has (`typical`, the median, to scale their counts).
  */
-export function createNetwork(count = FEWEST, places = PLACES) {
-  const range = rangeOf(count);
+export function createNetwork(count = FEWEST, places = PLACES, range = rangeOf(count)) {
   const hole = LATTICE_HOLE * Math.sqrt(FEWEST / count);
   const devices = places.slice(0, count).map((place, id) => ({ id, ...place }));
   const links = [];
