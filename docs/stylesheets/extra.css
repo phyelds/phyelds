@@ -352,6 +352,107 @@
   box-shadow: 0 -1px 0 var(--ph-line);
 }
 
+/* Home: the hero, the features and the side-by-side taste of code. */
+.ph-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  align-items: center;
+  gap: 2.5rem;
+  margin: 1.5rem 0 1rem;
+}
+
+.ph-hero h1 {
+  margin: 0.5em 0 0.45em;
+  font-size: 2.9em;
+  line-height: 1.04;
+  letter-spacing: -0.045em;
+}
+
+.ph-gradient-text {
+  background: var(--ph-gradient-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.ph-eyebrow {
+  display: inline-block;
+  padding: 0.25em 0.85em;
+  border: 1px solid var(--ph-line-strong);
+  border-radius: 999px;
+  color: var(--ph-muted);
+  font-size: 0.68rem;
+  font-weight: 500;
+}
+
+.ph-lead {
+  color: var(--ph-muted);
+  font-size: 1.08em;
+}
+
+.ph-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 1.4em 0;
+}
+
+.ph-actions .md-button {
+  margin: 0;
+}
+
+.ph-note {
+  color: var(--ph-muted);
+  font-size: 0.68rem;
+}
+
+.ph-hero figure {
+  margin: 0;
+}
+
+.ph-hero img,
+.ph-split img {
+  display: block;
+  width: 100%;
+  box-shadow: var(--ph-shadow);
+}
+
+.ph-hero figcaption {
+  margin-top: 0.7em;
+  color: var(--ph-muted);
+  font-size: 0.68rem;
+}
+
+.ph-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 2rem;
+}
+
+.ph-split .highlight,
+.ph-split p:first-child {
+  margin-top: 0;
+}
+
+/* The animation of a line of devices: only the band where the devices are. */
+.ph-split img {
+  aspect-ratio: 32 / 9;
+  object-fit: cover;
+}
+
+@media screen and (max-width: 60em) {
+  .ph-hero,
+  .ph-split {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+  }
+
+  .ph-hero h1 {
+    font-size: 2.3em;
+  }
+}
+
 /* Steps of a pipeline: cards in the colour of their role. */
 .ph-steps {
   display: grid;
