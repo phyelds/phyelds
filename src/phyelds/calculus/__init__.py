@@ -261,7 +261,9 @@ def ___transform_code(func):
                 print(f"--- Transformed code for {func.__name__} ---")
                 print(ast.unparse(tree))
                 print("--- End transformed code ---")
-            code_obj = compile(tree, filename="<aggregated_code>", mode="exec")
+            # Compiled at the lines of the original file, so that tracebacks point to the source.
+            ast.increment_lineno(tree, func.__code__.co_firstlineno - 1)
+            code_obj = compile(tree, filename=func.__code__.co_filename, mode="exec")
             _TRANSFORMATION_CACHE[func.__code__] = code_obj
         except Exception as e:
             print(f"WARNING: AST transformation failed ({e}). Using original function.")

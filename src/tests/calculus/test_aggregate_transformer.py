@@ -1,6 +1,7 @@
 import ast
 import functools
 import textwrap
+import traceback
 
 import pytest
 from phyelds import engine
@@ -414,6 +415,20 @@ def _run_once(program):
     engine.set(node_engine)
     node_engine.setup(MockNodeContext(0), {}, {})
     return program()
+
+
+def test_aggregate_reports_an_error_at_its_line_in_the_source_file():
+    @aggregate
+    def program():
+        return 1 / 0
+
+    with pytest.raises(ZeroDivisionError) as raised:
+        _run_once(program)
+
+    failing = traceback.extract_tb(raised.value.__traceback__)[-1]
+    assert failing.filename == __file__
+    assert failing.lineno == program.__wrapped__.__code__.co_firstlineno + 2
+    assert failing.line == "return 1 / 0"
 
 
 def test_decorator_above_aggregate_runs_once():
