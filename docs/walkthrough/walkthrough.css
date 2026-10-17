@@ -3,8 +3,8 @@
  * dark (slate) schemes of mkdocs-material, and its highlighting of Python.
  */
 :root {
-  --wt-font: "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --wt-font-mono: "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --wt-font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --wt-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --wt-bar-height: 52px;
   --wt-panel-width: 500px;
 
@@ -60,6 +60,8 @@ body {
   background: var(--wt-bg);
   color: var(--wt-ink);
   font: 15px/1.6 var(--wt-font);
+  /* JetBrains Mono would draw -> as an arrow: code must read as it is typed. */
+  font-variant-ligatures: none;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -91,7 +93,8 @@ button {
   gap: 1.75rem;
   padding: 0 1.25rem;
   border-bottom: 1px solid var(--wt-line);
-  background: var(--wt-bg);
+  /* The gradient of the logo as a thin line on top, as in the header of the docs. */
+  background: linear-gradient(100deg, #c55308, #b4136f) top / 100% 2px no-repeat, var(--wt-bg);
 }
 
 .wt-home {

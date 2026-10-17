@@ -14,13 +14,19 @@ theme:
   name: material
   logo: assets/logo.png
   favicon: assets/logo.png
+  # Inter and JetBrains Mono come from extra_css, with all the weights the stylesheet uses.
+  font: false
   features:
     - content.code.annotate
     - content.code.copy
     - navigation.footer
+    - navigation.path
     - navigation.sections
+    - navigation.tabs
     - navigation.top
     - search.highlight
+    - search.suggest
+    - toc.follow
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
@@ -38,6 +44,7 @@ theme:
         name: Switch to light mode
 
 extra_css:
+  - https://fonts.googleapis.com/css2?family=Inter:wght@400..800&family=JetBrains+Mono:wght@400..700&display=swap
   - stylesheets/extra.css
 
 hooks:
@@ -58,6 +65,7 @@ markdown_extensions:
       alternate_style: true
   - toc:
       permalink: true
+      title: On this page
 
 plugins:
   - search

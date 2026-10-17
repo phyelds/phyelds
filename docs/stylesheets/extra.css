@@ -1,15 +1,29 @@
 /*
- * Palette taken from the phyelds logo: an orange-to-magenta gradient on cream.
- * The logo hues (#FF8601, #EF4186) are too light for text, so text and header use
- * deeper shades of the same colours, all at WCAG AA contrast or better.
+ * The look of the docs, shared with the walkthrough (docs/walkthrough/walkthrough.css):
+ * warm paper, ink text, hairline borders, and the orange-to-magenta gradient of the
+ * logo as the accent. The logo hues (#FF8601, #EF4186) are too light for text, so
+ * text uses deeper shades of the same colours, all at WCAG AA contrast or better.
  */
 :root {
-  --phyelds-orange: #c55308;
-  --phyelds-magenta: #b4136f;
-  --phyelds-gradient: linear-gradient(90deg, var(--phyelds-orange), var(--phyelds-magenta));
+  --md-text-font: "Inter";
+  --md-code-font: "JetBrains Mono";
+
+  /* Deep in both schemes: white text on it stays above 4.5:1. */
+  --ph-gradient: linear-gradient(100deg, #c55308, #b4136f);
 }
 
 [data-md-color-scheme="default"] {
+  --ph-ink: #2a2230;
+  --ph-muted: #6c6372;
+  --ph-line: rgba(42, 34, 48, 0.12);
+  --ph-line-strong: rgba(42, 34, 48, 0.22);
+  --ph-raised: #ffffff;
+  --ph-shadow: 0 1px 2px rgba(42, 34, 48, 0.06), 0 8px 24px rgba(42, 34, 48, 0.08);
+  --ph-orange: #c55308;
+  --ph-magenta: #b4136f;
+  --ph-purple: #6b21a8;
+  --ph-gradient-text: var(--ph-gradient);
+
   --md-primary-fg-color: #b4136f;
   --md-primary-fg-color--light: #e0158b;
   --md-primary-fg-color--dark: #8c0e57;
@@ -17,32 +31,370 @@
   --md-accent-fg-color: #c2410c;
   --md-accent-fg-color--transparent: rgba(194, 65, 12, 0.1);
   --md-default-bg-color: #fefbf4;
+  --md-default-fg-color: var(--ph-ink);
+  --md-default-fg-color--light: var(--ph-muted);
+  --md-default-fg-color--lighter: rgba(42, 34, 48, 0.32);
+  --md-default-fg-color--lightest: rgba(42, 34, 48, 0.07);
   --md-code-bg-color: #f6efe4;
   --md-typeset-a-color: #b4136f;
+  --md-typeset-table-color: var(--ph-line);
+  --md-typeset-table-color--light: rgba(42, 34, 48, 0.03);
 }
 
 [data-md-color-scheme="slate"] {
+  --ph-ink: #ede7f1;
+  --ph-muted: #a59cad;
+  --ph-line: rgba(237, 231, 241, 0.12);
+  --ph-line-strong: rgba(237, 231, 241, 0.22);
+  --ph-raised: #2a2430;
+  --ph-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.28);
+  --ph-orange: #ffb061;
+  --ph-magenta: #f472b6;
+  --ph-purple: #c084fc;
+  --ph-gradient-text: linear-gradient(100deg, #ffb061, #f472b6);
+
   --md-hue: 300;
-  --md-default-bg-color: #1f1a24;
-  --md-code-bg-color: #2a2230;
   --md-primary-fg-color: #b4136f;
   --md-primary-fg-color--light: #f472b6;
   --md-primary-fg-color--dark: #8c0e57;
   --md-primary-bg-color: #ffffff;
   --md-accent-fg-color: #ffb061;
   --md-accent-fg-color--transparent: rgba(255, 176, 97, 0.1);
+  --md-default-bg-color: #1f1a24;
+  --md-default-fg-color: var(--ph-ink);
+  --md-default-fg-color--light: var(--ph-muted);
+  --md-default-fg-color--lighter: rgba(237, 231, 241, 0.32);
+  --md-default-fg-color--lightest: rgba(237, 231, 241, 0.07);
+  --md-code-bg-color: #2a2230;
   --md-typeset-a-color: #f472b6;
+  --md-typeset-table-color: var(--ph-line);
+  --md-typeset-table-color--light: rgba(237, 231, 241, 0.03);
 }
 
-/* The header and the tabs carry the gradient of the logo. */
+/* Header and tabs: the paper of the page, with the gradient of the logo as a thin line on top. */
 .md-header,
 .md-tabs {
-  background: var(--phyelds-gradient);
+  --md-primary-bg-color: var(--ph-ink);
+  --md-primary-bg-color--light: var(--ph-muted);
 }
 
-/* The logo has a cream square background: round it so it sits well on the gradient. */
+.md-header {
+  background-color: color-mix(in srgb, var(--md-default-bg-color) 85%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  backdrop-filter: saturate(180%) blur(12px);
+  box-shadow: 0 1px 0 var(--ph-line);
+}
+
+.md-header::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: var(--ph-gradient);
+}
+
+.md-header--shadow {
+  box-shadow: 0 1px 0 var(--ph-line), 0 10px 30px -18px rgba(42, 34, 48, 0.45);
+}
+
+.md-header__topic:first-child {
+  letter-spacing: -0.01em;
+}
+
+/* The logo has a cream square background: round it, and outline it on the cream header. */
 .md-header__button.md-logo img {
   border-radius: 6px;
+  box-shadow: 0 0 0 1px var(--ph-line);
+}
+
+@media screen and (min-width: 60em) {
+  .md-search__form {
+    border-radius: 0.5rem;
+    background-color: color-mix(in srgb, var(--ph-ink) 6%, transparent);
+  }
+
+  .md-search__form:hover {
+    background-color: color-mix(in srgb, var(--ph-ink) 10%, transparent);
+  }
+}
+
+.md-tabs {
+  background-color: transparent;
+  box-shadow: 0 1px 0 var(--ph-line);
+}
+
+.md-tabs__link {
+  color: var(--ph-muted);
+  font-weight: 500;
+  opacity: 1;
+}
+
+.md-tabs__link:hover,
+.md-tabs__item--active .md-tabs__link {
+  color: var(--ph-ink);
+}
+
+.md-tabs__item--active {
+  box-shadow: inset 0 -2px 0 var(--md-typeset-a-color);
+}
+
+/* The drawer on small screens: the same paper as the header. */
+@media screen and (max-width: 76.234375em) {
+  .md-nav--primary .md-nav__title[for="__drawer"] {
+    background-color: var(--md-default-bg-color);
+    color: var(--ph-ink);
+    box-shadow: 0 1px 0 var(--ph-line);
+  }
+}
+
+/* Navigation: quiet section labels, the current page in the accent colour. */
+.md-nav__item--section > .md-nav__link,
+.md-nav--secondary > .md-nav__title {
+  color: var(--ph-muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.md-nav__item .md-nav__link--active {
+  font-weight: 600;
+}
+
+.md-path__link {
+  color: var(--ph-muted);
+}
+
+/* Type: Inter, with weight and tight tracking for the headings. */
+.md-typeset {
+  line-height: 1.7;
+}
+
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4 {
+  color: var(--ph-ink);
+}
+
+.md-typeset h1 {
+  margin-bottom: 0.9em;
+  font-size: 2.15em;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+}
+
+.md-typeset h2 {
+  font-size: 1.45em;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.md-typeset h3 {
+  font-size: 1.15em;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+
+.md-typeset hr {
+  margin: 2.4em 0 0;
+  border-bottom-color: var(--ph-line);
+}
+
+/* Code: rounded blocks with a hairline border; JetBrains Mono without ligatures. */
+.md-typeset code,
+.md-typeset kbd,
+.md-typeset pre {
+  font-variant-ligatures: none;
+}
+
+.md-typeset code {
+  border-radius: 0.3rem;
+}
+
+.md-typeset pre > code {
+  border-radius: 0.7rem;
+  box-shadow: inset 0 0 0 1px var(--ph-line);
+}
+
+/* Admonitions, tables, images: rounded, flat, with hairline borders. */
+.md-typeset .admonition,
+.md-typeset details {
+  border-width: 1px;
+  border-radius: 0.75rem;
+  box-shadow: none;
+  font-size: 0.72rem;
+}
+
+.md-typeset .admonition-title,
+.md-typeset summary {
+  border-radius: calc(0.75rem - 1px) calc(0.75rem - 1px) 0 0;
+  font-weight: 650;
+}
+
+.md-typeset table:not([class]) {
+  border-radius: 0.75rem;
+  font-size: 0.7rem;
+}
+
+.md-typeset table:not([class]) th {
+  background-color: color-mix(in srgb, var(--ph-ink) 4%, transparent);
+  font-weight: 650;
+}
+
+.md-typeset img {
+  border-radius: 0.75rem;
+}
+
+.md-typeset p > img {
+  border: 1px solid var(--ph-line);
+}
+
+/* Buttons: pills; the primary one carries the gradient. */
+.md-typeset .md-button {
+  border: 1px solid var(--ph-line-strong);
+  border-radius: 999px;
+  padding: 0.6em 1.45em;
+  background-color: var(--ph-raised);
+  color: var(--ph-ink);
+  font-weight: 600;
+  transition: transform 150ms, box-shadow 150ms, border-color 150ms, color 150ms;
+}
+
+.md-typeset .md-button:focus,
+.md-typeset .md-button:hover {
+  border-color: color-mix(in srgb, var(--md-typeset-a-color) 55%, transparent);
+  background-color: var(--ph-raised);
+  color: var(--md-typeset-a-color);
+  box-shadow: var(--ph-shadow);
+  transform: translateY(-1px);
+}
+
+.md-typeset .md-button--primary,
+.md-typeset .md-button--primary:focus,
+.md-typeset .md-button--primary:hover {
+  border-color: transparent;
+  background: var(--ph-gradient);
+  color: #ffffff;
+}
+
+.md-typeset .md-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+  box-shadow: none;
+  transform: none;
+}
+
+/* Cards: raised paper that lifts under the pointer. */
+.md-typeset .grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  grid-gap: 0.8rem;
+}
+
+.md-typeset .grid.cards > ul > li,
+.md-typeset .grid > .card {
+  border: 1px solid var(--ph-line);
+  border-radius: 0.9rem;
+  padding: 1rem 1.1rem;
+  background-color: var(--ph-raised);
+  transition: transform 200ms, box-shadow 200ms, border-color 200ms;
+}
+
+.md-typeset .grid.cards > ul > li:focus-within,
+.md-typeset .grid.cards > ul > li:hover,
+.md-typeset .grid > .card:focus-within,
+.md-typeset .grid > .card:hover {
+  border-color: color-mix(in srgb, var(--md-typeset-a-color) 40%, transparent);
+  box-shadow: var(--ph-shadow);
+  transform: translateY(-2px);
+}
+
+.md-typeset .grid.cards > ul > li > hr {
+  margin: 0.7em 0;
+}
+
+.md-typeset .grid.cards .twemoji {
+  color: var(--md-typeset-a-color);
+}
+
+/* Footer: previous and next page as cards, on the paper of the page. */
+.md-footer {
+  --md-footer-fg-color: var(--ph-ink);
+  --md-footer-fg-color--light: var(--ph-muted);
+  --md-footer-fg-color--lighter: var(--md-default-fg-color--lighter);
+  --md-footer-bg-color: transparent;
+  --md-footer-bg-color--dark: transparent;
+  box-shadow: 0 -1px 0 var(--ph-line);
+}
+
+.md-footer__inner {
+  gap: 0.8rem;
+}
+
+.md-footer__link {
+  flex-grow: 1;
+  flex-basis: 0;
+  border: 1px solid var(--ph-line);
+  border-radius: 0.9rem;
+  padding-right: 0.6rem;
+  transition: border-color 200ms, box-shadow 200ms;
+}
+
+.md-footer__link:focus,
+.md-footer__link:hover {
+  border-color: color-mix(in srgb, var(--md-typeset-a-color) 40%, transparent);
+  box-shadow: var(--ph-shadow);
+  opacity: 1;
+}
+
+.md-footer-meta {
+  box-shadow: 0 -1px 0 var(--ph-line);
+}
+
+/* Steps of a pipeline: cards in the colour of their role. */
+.ph-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.8rem;
+  margin: 1.4rem 0;
+}
+
+.ph-step {
+  --ph-step-color: var(--ph-magenta);
+
+  padding: 0.95rem 1.05rem;
+  border: 1px solid color-mix(in srgb, var(--ph-step-color) 30%, var(--ph-line));
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--ph-step-color) 5%, var(--ph-raised));
+}
+
+.ph-step--orange {
+  --ph-step-color: var(--ph-orange);
+}
+
+.ph-step--purple {
+  --ph-step-color: var(--ph-purple);
+}
+
+.ph-step-title {
+  margin: 0 0 0.4rem;
+  color: var(--ph-step-color);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ph-step p,
+.ph-step ul {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.ph-step ul {
+  padding-left: 1.1rem;
 }
 
 /* Playground: editor, console and images, in the colours of the theme. */
@@ -54,10 +406,10 @@
 }
 
 .pg-toolbar select {
-  padding: 0.3rem 0.4rem;
-  border: 1px solid var(--md-default-fg-color--lighter);
-  border-radius: 0.2rem;
-  background: var(--md-default-bg-color);
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--ph-line-strong);
+  border-radius: 0.5rem;
+  background: var(--ph-raised);
   color: var(--md-default-fg-color);
   font: inherit;
 }
@@ -66,11 +418,6 @@
   margin: 0;
   padding: 0.35em 1.2em;
   cursor: pointer;
-}
-
-.pg-toolbar .md-button:disabled {
-  opacity: 0.5;
-  cursor: default;
 }
 
 .pg-summary,
@@ -109,8 +456,8 @@
   display: block;
   width: 100%;
   min-height: 28rem;
-  border-color: var(--md-default-fg-color--lightest);
-  border-radius: 0.2rem;
+  border-color: var(--ph-line);
+  border-radius: 0.7rem;
   background: transparent;
   color: transparent;
   caret-color: var(--md-code-fg-color);
@@ -131,7 +478,7 @@
   position: absolute;
   inset: 0;
   overflow: hidden;
-  border-radius: 0.2rem;
+  border-radius: 0.7rem;
   background: var(--md-code-bg-color);
   pointer-events: none;
 }
@@ -145,7 +492,7 @@
   max-height: 16rem;
   overflow: auto;
   padding: 0.8rem;
-  border-radius: 0.2rem;
+  border-radius: 0.7rem;
   background: var(--md-code-bg-color);
   font-size: 0.75rem;
   white-space: pre-wrap;
@@ -172,111 +519,6 @@
 
 .pg-images img {
   max-width: 100%;
-  border-radius: 0.2rem;
+  border: 1px solid var(--ph-line);
   background: #ffffff;
-}
-
-/*
- * Conceptual diagrams: theme-aware SVG figures and pipeline cards that adapt
- * automatically to light (default) and dark (slate) modes.
- */
-:root {
-  --ph-diag-bg: var(--md-code-bg-color);
-  --ph-diag-card: var(--md-default-bg-color);
-  --ph-diag-border: rgba(180, 19, 111, 0.22);
-  --ph-diag-muted: var(--md-default-fg-color--light);
-  --ph-diag-text: var(--md-default-fg-color);
-  --ph-diag-magenta: #b4136f;
-  --ph-diag-orange: #c55308;
-  --ph-diag-purple: #6b21a8;
-  --ph-diag-Soft-magenta: rgba(180, 19, 111, 0.1);
-  --ph-diag-soft-orange: rgba(197, 83, 8, 0.12);
-}
-
-[data-md-color-scheme="slate"] {
-  --ph-diag-border: rgba(244, 114, 182, 0.28);
-  --ph-diag-magenta: #f472b6;
-  --ph-diag-orange: #ffb061;
-  --ph-diag-purple: #c084fc;
-  --ph-diag-Soft-magenta: rgba(244, 114, 182, 0.12);
-  --ph-diag-soft-orange: rgba(255, 176, 97, 0.14);
-}
-
-.ph-figure {
-  margin: 1.4rem 0;
-  padding: 1.1rem 1.25rem;
-  border: 1px solid var(--ph-diag-border);
-  border-radius: 0.5rem;
-  background: var(--ph-diag-bg);
-  overflow-x: auto;
-}
-
-.ph-figure svg {
-  display: block;
-  width: 100%;
-  height: auto;
-  margin: 0 auto;
-  font-family: var(--md-text-font-family), sans-serif;
-}
-
-.ph-figure .ph-code {
-  font-family: var(--md-code-font-family), monospace;
-}
-
-.ph-figure-caption {
-  margin-top: 0.65rem;
-  text-align: center;
-  font-size: 0.78rem;
-  color: var(--ph-diag-muted);
-}
-
-.ph-steps {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-  gap: 0.85rem;
-  margin: 1.25rem 0;
-}
-
-.ph-step {
-  padding: 0.9rem 1rem;
-  border: 1px solid var(--ph-diag-border);
-  border-top: 3px solid var(--ph-diag-magenta);
-  border-radius: 0.45rem;
-  background: var(--ph-diag-bg);
-}
-
-.ph-step--orange {
-  border-top-color: var(--ph-diag-orange);
-}
-
-.ph-step--purple {
-  border-top-color: var(--ph-diag-purple);
-}
-
-.ph-step-title {
-  margin: 0 0 0.35rem 0;
-  font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--ph-diag-magenta);
-}
-
-.ph-step--orange .ph-step-title {
-  color: var(--ph-diag-orange);
-}
-
-.ph-step--purple .ph-step-title {
-  color: var(--ph-diag-purple);
-}
-
-.ph-step p,
-.ph-step ul {
-  margin: 0;
-  font-size: 0.82rem;
-  line-height: 1.45;
-}
-
-.ph-step ul {
-  padding-left: 1.1rem;
 }
