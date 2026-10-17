@@ -1,5 +1,6 @@
 """Keeps the Python side of the browser playground working, outside the browser."""
 import importlib.util
+import math
 from pathlib import Path
 
 import pytest
@@ -349,3 +350,112 @@ def test_playground_does_not_run_a_removed_device_again_when_its_id_comes_back(t
 
     runs = capsys.readouterr().out.split()
     assert sorted(runs) == ["0", "0", "1", "1"]
+
+
+WATCHED = """
+from phyelds.calculus import aggregate
+from phyelds.libraries.device import local_id
+
+@aggregate
+def program():
+    if local_id() == 0:
+        return local_id() + 10
+    double = local_id() * 2
+    return double
+"""
+
+CONDITIONAL = """
+from phyelds.calculus import aggregate, remember
+from phyelds.libraries.device import local_id
+
+@aggregate
+def program():
+    step = 1 if local_id() == 0 else 2
+    set_total, total = remember(0)
+    return set_total(total + step)
+"""
+
+TEXTS = """
+from phyelds.calculus import aggregate, neighbors
+from phyelds.libraries.device import local_id
+
+@aggregate
+def program():
+    if local_id() == 0:
+        return float("inf")
+    if local_id() == 1:
+        return None
+    return neighbors(local_id())
+"""
+
+
+def test_playground_records_a_watched_expression_on_every_device(tmp_path):
+    playground = _deployed(tmp_path, WATCHED, selections=[_span(WATCHED, "local_id() * 2")])
+
+    snapshot = playground.advance(1.0)
+
+    assert snapshot.layers[1].numbers[1:] == [2.0, 4.0]
+    assert snapshot.layers[1].texts[1:] == ["2", "4"]
+
+
+def test_playground_leaves_no_value_where_a_device_does_not_reach_the_watched_line(tmp_path):
+    playground = _deployed(tmp_path, WATCHED, selections=[_span(WATCHED, "local_id() * 2")])
+
+    snapshot = playground.advance(1.0)
+
+    assert math.isnan(snapshot.layers[1].numbers[0])
+    assert snapshot.layers[1].texts[0] == ""
+
+
+def test_playground_shows_values_without_a_scale_as_text_only(tmp_path):
+    playground = _deployed(tmp_path, TEXTS)
+
+    snapshot = playground.advance(1.0)
+
+    assert all(math.isnan(number) for number in _results(snapshot))
+    assert snapshot.layers[0].texts[:2] == ["inf", "None"]
+    assert snapshot.layers[0].texts[2].startswith("field {")
+
+
+def test_playground_keeps_the_state_of_the_devices_when_the_watches_change(tmp_path):
+    playground = _deployed(tmp_path, COUNTER)
+    playground.advance(3.0)
+
+    loaded = playground.load(COUNTER, [_span(COUNTER, "count + 1")], restart=False)
+    snapshot = playground.advance(1.0)
+
+    assert loaded.ok
+    assert _results(snapshot) == [4.0, 4.0, 4.0]
+    assert snapshot.layers[1].numbers == [4.0, 4.0, 4.0]
+
+
+def test_playground_keeps_the_state_when_a_branch_of_a_conditional_expression_is_watched(tmp_path):
+    playground = _deployed(tmp_path, CONDITIONAL)
+    playground.advance(3.0)
+    branch, _ = _span(CONDITIONAL, "1 if")
+
+    playground.load(CONDITIONAL, [(branch, branch + 1)], restart=False)
+    snapshot = playground.advance(1.0)
+
+    assert _results(snapshot) == [4.0, 8.0, 8.0]
+
+
+def test_playground_forgets_the_values_of_the_old_watches_when_the_watches_change(tmp_path):
+    playground = _deployed(tmp_path, WATCHED, selections=[_span(WATCHED, "local_id() * 2")])
+    playground.advance(1.0)
+
+    playground.load(WATCHED, [_span(WATCHED, "local_id() + 10")], restart=False)
+    snapshot = playground.advance(0.0)
+
+    assert snapshot.layers[1].texts == ["", "", ""]
+    assert _results(snapshot) == [10.0, 2.0, 4.0]
+
+
+def test_playground_starts_every_device_over_on_restart(tmp_path):
+    playground = _deployed(tmp_path, COUNTER)
+    playground.advance(3.0)
+
+    playground.load(COUNTER, [], restart=True)
+    snapshot = playground.advance(1.0)
+
+    assert _results(snapshot) == [1.0, 1.0, 1.0]

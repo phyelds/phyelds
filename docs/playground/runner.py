@@ -137,6 +137,9 @@ class Playground:
         self._program, self._watches = program, len(watches)
         if restart:
             self._restart()
+        else:
+            # The k-th watch may now be another expression: its values come back as the devices run.
+            self._rows = {node_id: row[:1] for node_id, row in self._rows.items()}
         return Loaded(True, program.__name__, watches)
 
     def update(
