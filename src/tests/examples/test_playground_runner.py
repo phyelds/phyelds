@@ -491,3 +491,49 @@ def test_playground_never_tells_a_network_that_keeps_changing_is_stable(tmp_path
     snapshot = playground.advance(5.0)
 
     assert not snapshot.stable
+
+
+# ---------- completing names ----------
+
+def _names(suggestions):
+    return [suggestion.name for suggestion in suggestions]
+
+
+def test_complete_suggests_the_modules_of_phyelds_in_an_import():
+    code = "from phyelds.libraries import spr"
+
+    suggestions = runner.complete(code, len(code))
+
+    assert runner.Suggestion("spreading", "module") in suggestions
+
+
+def test_complete_suggests_the_names_of_the_program():
+    code = "def program():\n    distance = 1\n    return dis"
+
+    suggestions = runner.complete(code, len(code))
+
+    assert "distance" in _names(suggestions)
+
+
+def test_complete_counts_offsets_in_utf16_like_the_editor():
+    code = "def program():\n    # più 🙂\n    value = 1\n    return val"
+
+    suggestions = runner.complete(code, _span(code, "val", 1)[1])
+
+    assert "value" in _names(suggestions)
+
+
+def test_complete_works_in_code_that_does_not_compile_yet():
+    code = "def program(:\n    distance = 1\n    return dis"
+
+    suggestions = runner.complete(code, len(code))
+
+    assert "distance" in _names(suggestions)
+
+
+def test_complete_suggests_at_most_a_screenful_of_names():
+    code = "import math\nmath."
+
+    suggestions = runner.complete(code, len(code))
+
+    assert 0 < len(suggestions) <= runner.MAX_SUGGESTIONS

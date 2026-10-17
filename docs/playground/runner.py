@@ -37,6 +37,7 @@ WATCH = "__watch__"  # what records the watched values, in the globals of the pr
 LONGEST_LABEL = 40  # characters of the name of a watch
 LONGEST_TEXT = 40  # characters of the text of a value
 ROUND = 1.0  # simulated time between two runs of a device
+MAX_SUGGESTIONS = 40  # names the completion of the editor offers at once
 NOT_WATCHABLE = "Select an expression inside a function, or a line that assigns, returns or tests one."
 
 
@@ -83,6 +84,14 @@ class Snapshot:
     stable: bool
     ran: list[float]
     layers: list[Layer]
+
+
+@dataclass
+class Suggestion:
+    """A name that completes the code at the caret, and what it names: function, module, keyword…"""
+
+    name: str
+    kind: str
 
 
 @dataclass
@@ -385,7 +394,7 @@ class _Source:
 
     def index(self, utf16: int) -> int:
         """The index in the code of an offset in UTF-16 units."""
-        return len(self.code.encode("utf-16-le")[: 2 * utf16].decode("utf-16-le", errors="ignore"))
+        return _index(self.code, utf16)
 
     def utf16(self, index: int) -> int:
         """The offset in UTF-16 units of an index in the code."""
@@ -404,6 +413,32 @@ class _Source:
         """The index in the code of a line and a column of ast, which counts UTF-8 bytes."""
         line = self.lines[lineno - 1]
         return self.starts[lineno - 1] + len(line.encode()[:column].decode())
+
+
+def complete(code: str, offset: int) -> list[Suggestion]:
+    """
+    The names that complete the code at the caret, as jedi infers them.
+
+    Args:
+        code: the program, as the editor holds it, compiling or not.
+        offset: where the caret is, in UTF-16 units, as the editor counts.
+
+    Returns:
+        At most MAX_SUGGESTIONS names, the likeliest first.
+    """
+    # Imported here: the browser downloads jedi only for the readers who type.
+    import jedi  # pylint: disable=import-outside-toplevel
+
+    index = _index(code, offset)
+    line = code.count("\n", 0, index) + 1
+    column = index - (code.rfind("\n", 0, index) + 1)
+    completions = jedi.Script(code).complete(line, column)
+    return [Suggestion(completion.name, completion.type) for completion in completions[:MAX_SUGGESTIONS]]
+
+
+def _index(code: str, utf16: int) -> int:
+    """The index in ``code`` of an offset in UTF-16 units."""
+    return len(code.encode("utf-16-le")[: 2 * utf16].decode("utf-16-le", errors="ignore"))
 
 
 def _trimmed(code: str, start: int, end: int) -> tuple[int, int]:
