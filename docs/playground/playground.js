@@ -501,7 +501,8 @@ function refreshPlayer() {
   play.setAttribute("aria-label", app.playing ? "Pause" : "Play");
   const round = snapshot ? Math.floor(snapshot.time + 1e-9) : 0;
   let state = "not started";
-  if (snapshot?.paused) state = "stopped by an error";
+  if (!python.worker && snapshot) state = "stopped";
+  else if (snapshot?.paused) state = "stopped by an error";
   else if (python.program) state = app.playing ? "running" : "paused";
   const live = app.playing && state === "running";
   element("wt-round").innerHTML =
