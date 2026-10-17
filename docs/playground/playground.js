@@ -11,10 +11,10 @@
  */
 import { createMap } from "../walkthrough/map.js";
 import { FEWEST, MOST, PLACES, SPAN, createNetwork } from "../walkthrough/model.js";
-import { readPalette, toneIndex } from "../walkthrough/palette.js";
+import { readPalette } from "../walkthrough/palette.js";
 import { bindPointer } from "../walkthrough/pointer.js";
-import { GAP, PULSE_MS, createScene, reliefOf } from "../walkthrough/scene.js";
-import { OFF, ON } from "../walkthrough/views.js";
+import { LIFT, PULSE_MS, createScene } from "../walkthrough/scene.js";
+import { MAPS, categoryOf, extendPalette, stopsOf, toneOf } from "./colours.js";
 import { createEditor, shifted } from "./editor.js";
 
 const ROUND_MS = 700; // how long a round lasts while playing: every device runs once in it
@@ -71,7 +71,8 @@ const app = {
   selected: 0, // the device nearest the centre
   speed: 1, // rounds per ROUND_MS
   focus: 0, // the layer in front, which the map shows: 0 is the result, k the k-th watch
-  palette: readPalette(),
+  palette: extendPalette(readPalette()),
+  look: { map: "plasma", height: 1 }, // how the result is drawn: its colour map, and how high it rises
   dirty: true, // the views need drawing again
   panelDirty: true, // the layers, the inspected device and the rounds need writing again
 };
@@ -81,8 +82,8 @@ const app = {
 const python = { worker: null, program: null, code: null, loads: [], stepping: false, asked: 0 };
 let snapshot = null; // what the devices computed, as the last step left them
 let layers = []; // per layer of the snapshot, the look of every device and the scale
-// The watched expressions: where they are in the code Python runs, their label, and where the
-// editor marks them, which edits move (null once an edit went through one).
+// The watched expressions: where they are in the code Python runs, their label, how they are
+// drawn, and where the editor marks them, which edits move (null once an edit went through one).
 let watches = [];
 const display = { z: [], ranAt: new Float64Array(MOST).fill(-Infinity) };
 let examples = [];
@@ -139,11 +140,12 @@ function sendWorld() {
 
 /**
  * Loads `code` in Python, watching the expressions under `selections`: from round 0 if
- * `restart`, else on the running devices. `labels` are the names the reader knows the
- * watches by, null for a new one; `reason` says what to tell the reader.
+ * `restart`, else on the running devices. `previous` are the watches the selections come
+ * from, whose names and looks they keep, null for a new one; `reason` says what to tell
+ * the reader.
  */
-function load(code, selections, restart, reason, labels = selections.map(() => null)) {
-  python.loads.push({ code, restart, reason, labels });
+function load(code, selections, restart, reason, previous = selections.map(() => null)) {
+  python.loads.push({ code, restart, reason, previous });
   post({ type: "load", code, selections, restart });
 }
 
@@ -153,7 +155,6 @@ const spans = (list = watches) => list.map(({ start, end }) => [start, end]);
 /** The watches that edits left in the editor. */
 const kept = () => watches.filter((each) => each.mark);
 const marked = () => kept().map(({ mark }) => [mark.start, mark.end]);
-const labels = (list) => list.map(({ label }) => label);
 
 /** The device nearest `point`, among the first `count`. */
 function nearest(point, count = world.count) {
@@ -173,12 +174,12 @@ function run() {
   });
   clearConsole();
   sendWorld();
-  load(code, marked(), true, "run", labels(kept()));
+  load(code, marked(), true, "run", kept());
   status("Starting the program…");
 }
 
 function restart() {
-  if (python.code !== null) load(python.code, spans(), true, "run", labels(watches));
+  if (python.code !== null) load(python.code, spans(), true, "run", watches);
 }
 
 /** Watches the expression under the selection: on the running devices, if they run the code of the editor. */
@@ -190,12 +191,12 @@ function watch() {
   const { code } = editor;
   const same = code === python.code;
   const old = same ? watches : kept();
-  load(code, [...(same ? spans() : marked()), editor.selection()], !same, "watch", [...labels(old), null]);
+  load(code, [...(same ? spans() : marked()), editor.selection()], !same, "watch", [...old, null]);
 }
 
 function unwatch(index) {
   const others = watches.filter((_, k) => k !== index);
-  load(python.code, spans(others), false, "unwatch", labels(others));
+  load(python.code, spans(others), false, "unwatch", others);
 }
 
 /** Moves the marks of the watches with the edits of the code. */
@@ -243,7 +244,7 @@ function onMessage(message) {
   }
 }
 
-function onLoaded({ ok, program, watches: watched }, { code, restart, reason, labels: known }) {
+function onLoaded({ ok, program, watches: watched }, { code, restart, reason, previous }) {
   if (!ok) {
     const what = reason === "watch" ? "That cannot be watched" : "The program has an error";
     const then = python.program ? "the network goes on as it was" : "fix it and run it again";
@@ -252,11 +253,13 @@ function onLoaded({ ok, program, watches: watched }, { code, restart, reason, la
   }
   const marks = new Map(watches.map((each) => [`${each.start}:${each.end}`, each.mark]));
   const same = editor.code === code;
-  // A watch keeps its name: Python names it after the expression, the reader may have picked a variable.
+  // A watch keeps its name and its look: Python names it after the expression, the reader may
+  // have picked a variable.
   watches = watched.map(({ start, end, label }, k) => ({
     start,
     end,
-    label: known[k] ?? label,
+    label: previous[k]?.label ?? label,
+    look: previous[k]?.look ?? defaultLook(),
     mark: same ? { start, end } : (marks.get(`${start}:${end}`) ?? null),
   }));
   app.focus = reason === "watch" ? watches.length : Math.min(app.focus, watches.length);
@@ -264,8 +267,9 @@ function onLoaded({ ok, program, watches: watched }, { code, restart, reason, la
   if (snapshot) {
     // The values of the old watches are not those of the new ones: they come back as the devices run.
     snapshot.paused = false;
-    layers = layers.slice(0, 1);
+    snapshot.layers = snapshot.layers.slice(0, 1);
   }
+  refreshLooks();
   renderMarks();
   if (reason === "watch") status(`Watching ${watches.at(-1).label} on every device: its layer is on top.`);
   else status(`Every device runs ${program}() once per round. Select an expression and Watch it.`);
@@ -283,7 +287,7 @@ function onSnapshot(message) {
     if (Number.isFinite(time) && time !== snapshot?.ran[id]) display.ranAt[id] = now;
   });
   snapshot = message;
-  layers = snapshot.layers.map(looksOf);
+  refreshLooks();
   if (snapshot.paused && app.playing) {
     setPlaying(false);
     status("A round stopped with an error, below: fix the program and run it again.");
@@ -311,37 +315,71 @@ function stepOnce() {
 
 // --- What the stage draws -------------------------------------------------------------------
 
-/** How a layer looks: per device a tone and a relief in [0, 1], or null without a value; and its scale. */
-function looksOf(layer) {
-  const known = layer.numbers.filter(Number.isFinite);
-  const low = Math.min(...known);
-  const high = Math.max(...known);
-  const looks = layer.numbers.map((number) => {
-    if (!Number.isFinite(number)) return null;
-    if (layer.boolean) return { relief: number, tone: number ? ON : OFF };
-    const relief = high > low ? (number - low) / (high - low) : 0.5;
-    return { relief, tone: relief };
-  });
-  return { looks, texts: layer.texts, boolean: layer.boolean, known: known.length > 0, low, high };
-}
+const RELIEF = 1.0; // world height of a value of 1 at height 1×, in a stack of layers
+const MARGIN = 0.4; // world height between the highest value of a layer and the plane above it
+const HIGHEST = 3; // how many times its usual height a layer rises at most
+const defaultLook = () => ({ map: "plasma", height: 1 });
 
 const layerCount = () => 1 + watches.length;
 const focusedLayer = () => Math.min(app.focus, layerCount() - 1);
 const labelOf = (k) => (k === 0 ? `${python.program ?? "result"}()` : watches[k - 1].label);
+const lookOf = (k) => (k === 0 ? app.look : watches[k - 1]?.look);
+
+/**
+ * How a layer looks: per device a colour and a relief in [0, 1], or null without a
+ * value; and its scale. Booleans are True and False; categories give every value a
+ * colour of its own; other values go along the colour map, from the lowest to the highest.
+ */
+function looksOf(layer, look) {
+  const { palette } = app;
+  const known = layer.numbers.filter(Number.isFinite);
+  const low = Math.min(...known);
+  const high = Math.max(...known);
+  const share = (number) => (high > low ? (number - low) / (high - low) : 0.5);
+  const looks = layer.numbers.map((number, id) => {
+    const finite = Number.isFinite(number);
+    if (layer.boolean) return finite ? { relief: number, colour: number ? palette.on : palette.off } : null;
+    if (look.map === "categories") {
+      return layer.texts[id] ? { relief: finite ? share(number) : 0, colour: categoryOf(palette, number, layer.texts[id]) } : null;
+    }
+    return finite ? { relief: share(number), colour: toneOf(palette, look.map, share(number)) } : null;
+  });
+  return { looks, texts: layer.texts, boolean: layer.boolean, known: known.length > 0, low, high, map: look.map };
+}
+
+/** The looks of the layers of the last step, as the reader set them. */
+function refreshLooks() {
+  layers = snapshot ? snapshot.layers.map((layer, k) => looksOf(layer, lookOf(k) ?? defaultLook())) : [];
+}
+
+/**
+ * The layers of the stack, bottom up: each with the height of its plane and of a value of
+ * 1 in it. A layer alone rises as in the walkthrough; in a stack, each rises as high as the
+ * reader set it, and the next plane comes after its highest value.
+ */
+function stackOf() {
+  const shown = Array.from({ length: layerCount() }, (_, k) => k);
+  const unit = shown.length === 1 ? LIFT : RELIEF;
+  let base = 0;
+  return shown.map((k) => {
+    const relief = unit * lookOf(k).height;
+    const layer = { k, base, relief };
+    base += relief + MARGIN;
+    return layer;
+  });
+}
 
 /** Moves the heights a step toward the values of the layers; true while anything still moves. */
 function ease(elapsed) {
-  const count = layerCount();
-  const relief = reliefOf(count);
   const pull = calm.matches ? 1 : 1 - Math.exp(-elapsed / EASE_MS);
-  display.z.length = count;
   let moving = false;
-  for (let k = 0; k < count; k += 1) {
-    display.z[k] ??= new Float32Array(MOST).fill(k * GAP);
+  display.z.length = layerCount();
+  for (const { k, base, relief } of stackOf()) {
+    display.z[k] ??= new Float32Array(MOST).fill(base);
     const z = display.z[k];
     for (const device of network.devices) {
       const look = layers[k]?.looks[device.id];
-      const gap = k * GAP + (look ? look.relief * relief : 0) - z[device.id];
+      const gap = base + (look ? look.relief * relief : 0) - z[device.id];
       if (Math.abs(gap) > 1e-3) {
         moving = true;
         z[device.id] += gap * pull;
@@ -359,10 +397,11 @@ function focusOf(id, k) {
 }
 
 function draw(now) {
-  const count = layerCount();
   const focused = focusedLayer();
   const hovered = app.hovered;
-  const stack = Array.from({ length: count }, (_, k) => ({
+  const stack = stackOf();
+  const drawn = stack.map(({ k, base }) => ({
+    base,
     label: labelOf(k),
     focused: k === focused,
     devices: network.devices.map((device) => ({
@@ -370,7 +409,7 @@ function draw(now) {
       x: device.x,
       y: device.y,
       z: display.z[k][device.id],
-      color: toneIndex(layers[k]?.looks[device.id]?.tone ?? null),
+      color: layers[k]?.looks[device.id]?.colour ?? null,
       off: false,
       role: rolesOf(device.id).join(", ") || null,
       ranAt: display.ranAt[device.id],
@@ -381,10 +420,12 @@ function draw(now) {
         ? network.inRange[hovered].map((neighbor) => ({ a: hovered, b: neighbor.id, style: "neighbor" }))
         : [],
   }));
+  const highest = stack[stack.length - 1];
   const frame = {
     palette: app.palette,
     network,
-    layers: stack,
+    layers: drawn,
+    top: highest.base + highest.relief,
     focus: focusOf(hovered, focused),
     selected: app.selected,
     // Few devices are drawn larger, up to a point: two would fill the arena.
@@ -393,26 +434,65 @@ function draw(now) {
     pulses: !calm.matches,
   };
   scene.drawLayers(frame);
-  const top = stack[focused];
-  map.draw({ ...frame, devices: top.devices, links: top.links, highlights: top.highlights, cloud: null, camera: scene.camera });
+  const front = drawn.find((layer) => layer.focused) ?? drawn[drawn.length - 1];
+  map.draw({ ...frame, devices: front.devices, links: front.links, highlights: front.highlights, cloud: null, camera: scene.camera });
   app.dirty = false;
 }
 
 // --- The panels -------------------------------------------------------------------------------
 
 function scaleOf(layer) {
-  if (!layer?.known) return "";
+  if (!layer) return "";
   const { palette } = app;
+  const swatch = (colour, label = "") =>
+    `<span class="wt-key"><span class="wt-key-swatch" style="background:${colour}"></span>${label}</span>`;
   if (layer.boolean) {
-    const swatch = (color, label) =>
-      `<span class="wt-key"><span class="wt-key-swatch" style="background:${color}"></span>${label}</span>`;
     return `<div class="wt-legend-keys">${swatch(palette.css[palette.on], "True")}${swatch(palette.css[palette.off], "False")}</div>`;
   }
-  const stops = Array.from({ length: 9 }, (_, k) => palette.css[toneIndex(k / 8)]).join(", ");
+  if (layer.map === "categories") {
+    return `<div class="pg-categories">${stopsOf(palette, "categories").map((colour) => swatch(colour)).join("")}</div>`;
+  }
+  if (!layer.known) return "";
   return (
-    `<div class="wt-legend-bar" style="background:linear-gradient(90deg, ${stops})"></div>` +
+    `<div class="wt-legend-bar" style="background:linear-gradient(90deg, ${stopsOf(palette, layer.map).join(", ")})"></div>` +
     `<div class="wt-legend-ends"><span>${format(layer.low)}</span><span>${format(layer.high)}</span></div>`
   );
+}
+
+function setLook(k, change) {
+  Object.assign(lookOf(k), change);
+  refreshLooks();
+  app.panelDirty = true;
+  changed();
+}
+
+/** The colour map and the height of layer `k`, which the reader sets on its row, when it is in front. */
+function lookControls(k) {
+  const look = lookOf(k);
+  const controls = document.createElement("div");
+  controls.className = "pg-look";
+  if (!layers[k]?.boolean) {
+    const colours = document.createElement("select");
+    colours.title = "Colours of this layer";
+    colours.setAttribute("aria-label", `Colours of ${labelOf(k)}`);
+    for (const name of MAPS) colours.add(new Option(name, name, false, name === look.map));
+    colours.addEventListener("change", () => setLook(k, { map: colours.value }));
+    controls.append(colours);
+  }
+  const height = document.createElement("label");
+  height.className = "pg-height";
+  height.title = "How high the values of this layer rise";
+  const slider = Object.assign(document.createElement("input"), { type: "range", min: 0, max: HIGHEST, step: 0.1 });
+  slider.value = look.height;
+  const shown = document.createElement("output");
+  shown.textContent = `${look.height.toFixed(1)}×`;
+  slider.addEventListener("input", () => {
+    shown.textContent = `${Number(slider.value).toFixed(1)}×`;
+    setLook(k, { height: Number(slider.value) });
+  });
+  height.append("height", slider, shown);
+  controls.append(height);
+  return controls;
 }
 
 let layerRows = null; // the rows of the list of the layers, and the layers they were built for
@@ -421,7 +501,8 @@ let layerRows = null; // the rows of the list of the layers, and the layers they
 function renderLayers() {
   const count = layerCount();
   const focused = focusedLayer();
-  const key = [focused, ...Array.from({ length: count }, (_, k) => labelOf(k))].join("\n");
+  const labels = Array.from({ length: count }, (_, k) => labelOf(k));
+  const key = [focused, Boolean(layers[focused]?.boolean), ...labels].join("\n");
   // Rebuilt only when the layers change, not at every step: a click must find its button.
   if (layerRows?.key !== key) layerRows = { key, rows: buildLayerRows(count, focused) };
   const id = inspected();
@@ -461,7 +542,7 @@ function buildLayerRows(count, focused) {
     }
     row.append(head);
     const scale = k === focused ? document.createElement("div") : null;
-    if (scale) row.append(scale);
+    if (scale) row.append(scale, lookControls(k));
     list.append(row);
     rows.push({ k, value, scale });
   }
@@ -714,7 +795,8 @@ document.addEventListener("keydown", (event) => {
 });
 
 window.addEventListener("themechange", () => {
-  app.palette = readPalette();
+  app.palette = extendPalette(readPalette());
+  refreshLooks();
   app.panelDirty = true;
   changed();
 });

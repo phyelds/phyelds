@@ -14,6 +14,8 @@ and your code is not sent anywhere.
 - Select an expression and press **Watch** (Ctrl+Shift+Enter): its value on every
   device appears as a layer stacked above the result. Watching does not start the
   devices over, and each layer can be removed again.
+- The layer in front, which you pick in the list, chooses its colour map (plasma,
+  viridis, diverging, or categories for ids) and how high its values rise, down to flat.
 - Every `sense("name")` of the program becomes a switch on the selected device.
 - Drag a device, in 3D or on the map, to move it. The sliders choose how many
   devices there are, from two to a hundred, and how far they hear; the devices

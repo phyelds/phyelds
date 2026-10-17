@@ -12,8 +12,6 @@ import { rgba } from "./palette.js";
 export const LIFT = 2.1; // world height of a value of 1
 export const HIDDEN = 255; // colour index of a cloud point without a value
 export const PULSE_MS = 320; // how long the ring of a device that just ran lasts
-export const GAP = 1.4; // world height between two stacked layers
-export const RELIEF = 1.0; // world height of a value of 1 in a stack: less than GAP, so layers never touch
 const DISTANCE = 15; // from the camera to the pivot
 const FOV = 0.5; // vertical field of view, in radians
 const PIVOT = { x: SPAN / 2, y: SPAN / 2, z: 0.75 };
@@ -41,11 +39,6 @@ const LINK_STYLES = {
   neighbor: (palette) => ({ color: rgba(palette.ink, 0.75), width: 1.5 }),
   via: (palette) => ({ color: rgba(palette.ink, 0.95), width: 2.8 }),
 };
-
-/** How high a value of 1 rises in a stack of `count` layers: a layer alone rises as in the walkthrough. */
-export function reliefOf(count) {
-  return count === 1 ? LIFT : RELIEF;
-}
 
 export function createScene(canvas) {
   const context = canvas.getContext("2d");
@@ -403,13 +396,14 @@ export function createScene(canvas) {
 
   /**
    * Several fields of the same devices, each in a layer of its own, stacked from the
-   * ground up: every layer of `frame.layers` has its `label`, `devices` (heights
-   * included), `links` and `highlights`, and one of them is `focused`. Pillars join
-   * the places of a device in every layer; the source and the target are tagged on top.
+   * ground up: every layer of `frame.layers` has the height of its plane (`base`), its
+   * `label`, `devices` (heights included), `links` and `highlights`, and one of them is
+   * `focused`; `frame.top` is the height of the stack, which the camera frames. The
+   * slabs must not overlap. Pillars join the places of a device in every layer, and
+   * the source and the target are tagged on top.
    */
   function drawLayers(frame) {
-    const { layers, palette } = frame;
-    const top = (layers.length - 1) * GAP + reliefOf(layers.length);
+    const { layers, palette, top } = frame;
     pivot = { ...PIVOT, z: top / 2 };
     reach = Math.max(1, (SPAN + top) / (SPAN + LIFT));
     aim();
@@ -419,14 +413,14 @@ export function createScene(canvas) {
     drawStems({ ...frame, devices: highest.devices }, tops);
     // Farthest from the eye first: at a low pitch, the camera sits inside a tall stack, and a
     // layer above the eye hides the ones above it, seen from below.
-    const away = (k) => Math.abs(k * GAP - lens.eye.z);
+    const away = (k) => Math.abs(layers[k].base - lens.eye.z);
     const order = layers.map((_, k) => k).sort((a, b) => away(b) - away(a));
     const drawn = [];
     let focused = null;
     for (const k of order) {
       const layer = layers[k];
       const points = layer.devices.map((device) => project(device.x, device.y, device.z));
-      label(layer.label, drawGround(palette, k * GAP, layer.focused ? 0.4 : 0.14), palette, layer.focused);
+      label(layer.label, drawGround(palette, layer.base, layer.focused ? 0.4 : 0.14), palette, layer.focused);
       drawLinks(frame, layer.links, points);
       drawLinks(frame, layer.highlights, points);
       // The rings of the neighbors and of the devices that just ran belong to the focused layer only.

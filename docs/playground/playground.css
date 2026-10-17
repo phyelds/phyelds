@@ -185,7 +185,7 @@
 
 /* The layers, from the top of the stack down, each with the value of the inspected device. */
 .pg-layers {
-  width: 16rem;
+  width: 17rem;
   pointer-events: auto;
 }
 
@@ -258,6 +258,49 @@
 
 .pg-layer .wt-legend-bar {
   margin-top: 0.35rem;
+}
+
+.pg-categories {
+  display: flex;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+}
+
+/* How the layer in front is drawn: its colour map and how high it rises. */
+.pg-look {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.45rem;
+  font-size: 11.5px;
+}
+
+.pg-look select {
+  padding: 0.1rem 0.25rem;
+  border: 1px solid var(--wt-line);
+  border-radius: 6px;
+  background: var(--wt-raised);
+  color: var(--wt-ink);
+  font: 500 11.5px var(--wt-font-mono);
+}
+
+.pg-height {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--wt-muted);
+  font-family: var(--wt-font-mono);
+}
+
+.pg-height input {
+  width: 4.5rem;
+  accent-color: var(--wt-accent);
+}
+
+.pg-height output {
+  min-width: 2.4em;
+  color: var(--wt-ink);
+  text-align: right;
 }
 
 /* Above the rounds, which take the bottom of the stage and would run into it. */
