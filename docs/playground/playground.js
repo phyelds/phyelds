@@ -31,6 +31,9 @@ const SENSE = /\bsense\(\s*["']([A-Za-z_]\w*)["']\s*\)/g;
 const RESERVED = new Set(["position", "time", "state", "messages", "result", "outputs"]);
 const CONSOLE_LINES = 200; // pieces of output the console keeps: a program may print every round
 const MAX_WATCHES = 4; // expressions watched at once: past five layers, the stack is hard to read
+// From straight above, north up: the plane is level with the screen. A pitch of exactly a right
+// angle would leave the camera no direction to its right.
+const ABOVE = { yaw: -Math.PI / 2, pitch: Math.PI / 2 - 1e-3, zoom: 1.1 };
 const calm = matchMedia("(prefers-reduced-motion: reduce)");
 const element = (id) => document.getElementById(id);
 const base = new URL(".", import.meta.url);
@@ -74,6 +77,8 @@ const app = {
   palette: extendPalette(readPalette()),
   look: { map: "plasma", height: 1, visible: true }, // how the result is drawn: colours, height, whether at all
   solo: false, // only the layer in front is shown
+  flat: false, // the layer in front, from above and flat; the camera of the 3D view is kept in `turned`
+  turned: null,
   dirty: true, // the views need drawing again
   panelDirty: true, // the layers, the inspected device and the rounds need writing again
 };
@@ -219,7 +224,7 @@ function renderMarks() {
  */
 function focusLayer(k, select = true) {
   app.focus = k;
-  if (!app.solo) lookOf(k).visible = true;
+  if (!oneAtATime()) lookOf(k).visible = true;
   const mark = watches[k - 1]?.mark;
   if (mark && select) editor.select(mark.start, mark.end);
   renderMarks();
@@ -229,7 +234,7 @@ function focusLayer(k, select = true) {
 
 /** Moves the front one layer up (+1) or down (-1) the stack: through every layer one at a time, else the shown ones. */
 function moveFocus(direction) {
-  const candidates = allLayers().filter((k) => app.solo || lookOf(k).visible);
+  const candidates = allLayers().filter((k) => oneAtATime() || lookOf(k).visible);
   const next = candidates[candidates.indexOf(focusedLayer()) + direction];
   if (next !== undefined) focusLayer(next, false);
 }
@@ -253,8 +258,28 @@ function toggleShown(k) {
 function setSolo(solo) {
   app.solo = solo;
   // Back to the stack, the layer the reader was looking at stays in view.
-  if (!solo) lookOf(focusedLayer()).visible = true;
+  if (!oneAtATime()) lookOf(focusedLayer()).visible = true;
   element("pg-solo").setAttribute("aria-pressed", String(solo));
+  app.panelDirty = true;
+  changed();
+}
+
+/** Looks at the layer in front from above, flat, or back at the stack in 3D, as the camera left it. */
+function setFlat(flat) {
+  if (flat === app.flat) return;
+  app.flat = flat;
+  if (flat) {
+    app.turned = { ...scene.camera };
+    Object.assign(scene.camera, ABOVE);
+  } else {
+    Object.assign(scene.camera, app.turned);
+    if (!oneAtATime()) lookOf(focusedLayer()).visible = true;
+  }
+  element("pg-flat").setAttribute("aria-pressed", String(flat));
+  element("wt-stage").classList.toggle("is-flat", flat);
+  element("pg-hint").textContent = flat
+    ? "Drag a device to move it · scroll to zoom"
+    : "Drag a device to move it · drag elsewhere to orbit · scroll to zoom";
   app.panelDirty = true;
   changed();
 }
@@ -363,7 +388,8 @@ const layerCount = () => 1 + watches.length;
 const focusedLayer = () => Math.min(app.focus, layerCount() - 1);
 const labelOf = (k) => (k === 0 ? `${python.program ?? "result"}()` : watches[k - 1].label);
 const lookOf = (k) => (k === 0 ? app.look : watches[k - 1]?.look);
-const isShown = (k) => (app.solo ? k === focusedLayer() : lookOf(k).visible);
+const oneAtATime = () => app.solo || app.flat;
+const isShown = (k) => (oneAtATime() ? k === focusedLayer() : lookOf(k).visible);
 
 /**
  * How a layer looks: per device a colour and a relief in [0, 1], or null without a
@@ -399,7 +425,8 @@ function refreshLooks() {
  */
 function stackOf() {
   const shown = allLayers().filter(isShown);
-  const unit = shown.length === 1 ? LIFT : RELIEF;
+  let unit = shown.length === 1 ? LIFT : RELIEF;
+  if (app.flat) unit = 0;
   let base = 0;
   return shown.map((k) => {
     const relief = unit * lookOf(k).height;
@@ -546,7 +573,7 @@ function renderLayers() {
   const count = layerCount();
   const focused = focusedLayer();
   const labels = allLayers().map((k) => `${isShown(k)}:${labelOf(k)}`);
-  const key = [focused, app.solo, Boolean(layers[focused]?.boolean), ...labels].join("\n");
+  const key = [focused, oneAtATime(), Boolean(layers[focused]?.boolean), ...labels].join("\n");
   // Rebuilt only when the layers change, not at every step: a click must find its button.
   if (layerRows?.key !== key) layerRows = { key, rows: buildLayerRows(count, focused) };
   const id = inspected();
@@ -790,6 +817,7 @@ bindPointer(element("wt-scene"), {
   grab: (id, x, y) => scene.pickInstance(x, y),
   drag: (grabbed, x, y) => move(grabbed.id, scene.groundAt(x, y, grabbed.z)),
   orbit: (dx, dy) => {
+    if (app.flat) return;
     scene.orbit(dx, dy);
     changed();
   },
@@ -824,8 +852,10 @@ element("wt-round-step").addEventListener("click", stepOnce);
 element("wt-restart").addEventListener("click", restart);
 element("wt-home").addEventListener("click", () => {
   scene.reset();
+  if (app.flat) Object.assign(scene.camera, ABOVE);
   changed();
 });
+element("pg-flat").addEventListener("click", () => setFlat(!app.flat));
 element("pg-devices").addEventListener("input", (event) => setDeviceCount(Number(event.target.value)));
 element("pg-radius").addEventListener("input", (event) => {
   world.radius = Number(event.target.value);

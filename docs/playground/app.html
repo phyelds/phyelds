@@ -67,6 +67,7 @@
               <input id="pg-radius" type="range" min="0.3" max="5" step="0.05" />
               <output id="pg-radius-value" for="pg-radius"></output>
             </label>
+            <button class="wt-chip" id="pg-flat" type="button" aria-pressed="false" title="Look at the layer in front from above, flat">2D</button>
             <button class="wt-icon" id="wt-home" type="button" title="Reset the view" aria-label="Reset the view">
               <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8a5 5 0 1 0 1.6-3.7M3 2.5v2.8h2.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
@@ -104,7 +105,7 @@
           </select>
         </div>
 
-        <p class="wt-hint">Drag a device to move it · drag elsewhere to orbit · scroll to zoom</p>
+        <p class="wt-hint" id="pg-hint">Drag a device to move it · drag elsewhere to orbit · scroll to zoom</p>
       </section>
     </main>
   </div>

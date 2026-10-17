@@ -364,6 +364,11 @@
   text-align: right;
 }
 
+/* From above, the map would only repeat the stage. */
+.is-flat .wt-map {
+  display: none;
+}
+
 /* Above the rounds, which take the bottom of the stage and would run into it. */
 .pg .wt-hint {
   bottom: 4.6rem;
