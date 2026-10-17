@@ -2,9 +2,9 @@
 
 In this tutorial you will build your first aggregate programs step by step:
 
-1. **The gradient** — every device computes its distance from the nearest *source* using only [`remember`](concepts/state.md) (time) and [`neighbors`](concepts/neighborhood-field.md) (space).
-2. **Self-healing** — watch the field automatically repair itself when the source moves.
-3. **Composing blocks: the channel** — combine spreading (`distance_to`) and collection (`collect_or`) to form a self-healing routing corridor between two nodes.
+- **The gradient** (steps 1–5): every device computes its distance from the nearest *source* using only [`remember`](concepts/state.md) (time) and [`neighbors`](concepts/neighborhood-field.md) (space).
+- **Self-healing** (step 6): watch the field automatically repair itself when the source moves.
+- **Composing blocks** (step 7): combine spreading (`distance_to`) and collection (`collect_or`) into a self-healing corridor between two devices, a channel.
 
 The complete runnable code for the gradient animations is in [`docs/examples/gradient.py`](https://github.com/phyelds/phyelds/blob/master/docs/examples/gradient.py).
 
@@ -28,13 +28,13 @@ through_neighbors = neighbors(distance) + 1
 
 ## 3. Keep the best one
 
-A source device is at distance `0`. Every other device picks the shortest path offered by its neighbors. Calling `exclude_self()` drops the device's own entry so that a node cannot reinforce its own outdated estimate:
+A source device is at distance `0`. Every other device picks the shortest path offered by its neighbors. Calling `exclude_self()` drops the device's own entry so that a node cannot reinforce its own outdated estimate (it returns a plain `dict`, hence `.values()`):
 
 ```python
 --8<-- "gradient.py:hop_gradient"
 ```
 
-Read **locally**, these four lines compare a few numbers from neighboring nodes. Read **globally**, they implement a distributed Bellman-Ford shortest-path algorithm: at every round the wave of distances expands outward from the source until the entire network converges.
+Read **locally**, these five lines compare a few numbers from neighboring nodes. Read **globally**, they implement a distributed Bellman-Ford shortest-path algorithm: at every round the wave of distances expands outward from the source until the entire network converges.
 
 ![Hop-count gradient spreading along a line of four nodes](assets/hop-gradient-stages.png)
 
