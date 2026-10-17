@@ -6,27 +6,29 @@ The bundled simulator is just one host. Any system that can, for each device, ru
 
 ## The round protocol
 
-A phyelds program does not know where it runs. For each device and each round, the host executes five steps:
+A phyelds program does not know where it runs. For each device and each round, the host goes through the three phases of the [execution model](../concepts/aggregate-programs.md#the-execution-model-sense-compute-act):
 
 <div class="ph-steps">
   <div class="ph-step ph-step--orange">
-    <div class="ph-step-title">1. Setup Engine</div>
-    <p>Build <code>NodeContext(id, sensors)</code>, gather <code>inbox</code> from current neighbors, and call <code>engine.setup(ctx, state, inbox)</code>.</p>
+    <div class="ph-step-title">1. Sense</div>
+    <p>Build <code>NodeContext(id, sensors)</code>, gather the <code>inbox</code> from the current neighbors, and load the <code>state</code> of the device.</p>
   </div>
   <div class="ph-step">
-    <div class="ph-step-title">2. Run Program</div>
-    <p>Execute the <code>@aggregate</code> function and unwrap <code>result.value</code> if it returns a <code>State</code> proxy.</p>
+    <div class="ph-step-title">2. Compute</div>
+    <p>Call <code>setup(context, inbox, state)</code> on a fresh engine, run the <code>@aggregate</code> function, and unwrap <code>result.value</code> if it returns a <code>State</code> proxy.</p>
   </div>
   <div class="ph-step ph-step--purple">
-    <div class="ph-step-title">3. Cooldown &amp; Act</div>
+    <div class="ph-step-title">3. Act</div>
     <p>Call <code>cooldown()</code> (which returns the <code>outbox</code> and prunes unused state), then save <code>state_trace()</code> and apply <code>outputs</code>.</p>
   </div>
 </div>
 
+In detail, the host:
+
 1. Builds a **`NodeContext`** with the device ID and a dictionary of **sensors** (by convention `position` and `time`, plus anything the program `sense`s);
 2. Collects the **inbox**: the last *outbox* of each current neighbor, as `{neighbor_id: outbox}`;
 3. Loads the **state** the device kept from its previous round (`{}` the first time);
-4. Sets up a fresh `MutableEngine` in `engine` (`ContextVar`) and runs the `@aggregate` program;
+4. Sets a fresh `MutableEngine` in `engine` (a `ContextVar`), calls `engine.get().setup(context, inbox, state)`, and runs the `@aggregate` program;
 5. Saves the new **outbox** (`cooldown()`), the new **state** (`state_trace()`), and the **outputs** the program `store`d, and sends the outbox to the neighbors.
 
 ```python
