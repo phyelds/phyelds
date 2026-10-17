@@ -503,8 +503,9 @@ function refreshPlayer() {
   let state = "not started";
   if (!python.worker && snapshot) state = "stopped";
   else if (snapshot?.paused) state = "stopped by an error";
-  else if (python.program) state = app.playing ? "running" : "paused";
-  const live = app.playing && state === "running";
+  else if (python.program && snapshot?.stable) state = "stable";
+  else if (python.program) state = app.playing ? "changing" : "paused";
+  const live = app.playing && state === "changing";
   element("wt-round").innerHTML =
     `<span class="wt-status${live ? "" : " is-stable"}"></span>round <strong>${round}</strong> · ${state}`;
 }

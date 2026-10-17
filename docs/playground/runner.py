@@ -72,10 +72,15 @@ class Layer:
 
 @dataclass
 class Snapshot:
-    """The network at ``time``: when each device last ran (NaN before its first round), and the layers."""
+    """
+    The network at ``time``: whether an error paused it, whether it is stable (a whole
+    round changed nothing that a device shows), when each device last ran (NaN before
+    its first round), and the layers.
+    """
 
     time: float
     paused: bool
+    stable: bool
     ran: list[float]
     layers: list[Layer]
 
@@ -119,6 +124,7 @@ class Playground:
         self._recorder = _Recorder()
         self._watches = 0
         self._rows: dict[int, list[Value]] = {}
+        self._changed = 0.0  # when a device last showed something new
 
     def load(self, code: str, selections: Sequence[tuple[int, int]], restart: bool) -> Loaded:
         """
@@ -205,6 +211,7 @@ class Playground:
         self._random = random.Random(self._seed)
         self._clock = 0.0
         self._rows = {}
+        self._changed = 0.0
         self.update(self._positions, self._radius, self._sensors)
 
     def _add(self, node_id: int) -> Node:
@@ -231,7 +238,11 @@ class Playground:
             self._simulator.stop()
             result = None
         node_id = engine.get().node_context.node_id
-        self._rows[node_id] = [_value(result), *(self._recorder.values.get(k, NO_VALUE) for k in range(self._watches))]
+        row = [_value(result), *(self._recorder.values.get(k, NO_VALUE) for k in range(self._watches))]
+        # Compared as shown: NaN differs from itself, and a value settling past the shown digits is settled.
+        if [value.text for value in row] != [value.text for value in self._rows.get(node_id, [])]:
+            self._changed = self._simulator.current_time
+        self._rows[node_id] = row
         return result
 
     def _snapshot(self) -> Snapshot:
@@ -246,7 +257,8 @@ class Playground:
             layers.append(Layer([value.number for value in values], [value.text for value in values], boolean))
         nodes = self._simulator.environment.nodes
         ran = [nodes[node_id].data.get("time", math.nan) for node_id in range(count)]
-        return Snapshot(self._clock, self._error is not None, ran, layers)
+        stable = self._clock - self._changed >= ROUND
+        return Snapshot(self._clock, self._error is not None, stable, ran, layers)
 
 
 class _Recorder:

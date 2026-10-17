@@ -473,3 +473,21 @@ def test_playground_resumes_when_the_error_is_fixed(tmp_path):
     assert loaded.ok
     assert not snapshot.paused
     assert _results(snapshot) == [0.0, 1.0, 2.0]
+
+
+def test_playground_tells_the_network_is_stable_once_a_whole_round_changes_nothing(tmp_path):
+    playground = _deployed(tmp_path, NEIGHBOURS)
+
+    settling = playground.advance(2.0)
+    settled = playground.advance(1.0)
+
+    assert not settling.stable
+    assert settled.stable
+
+
+def test_playground_never_tells_a_network_that_keeps_changing_is_stable(tmp_path):
+    playground = _deployed(tmp_path, COUNTER)
+
+    snapshot = playground.advance(5.0)
+
+    assert not snapshot.stable
