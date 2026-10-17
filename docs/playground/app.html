@@ -50,6 +50,11 @@
         <div class="wt-legend pg-layers" id="pg-layers"></div>
 
         <div class="wt-tools">
+          <label class="wt-chip wt-devices" title="Add devices or take the last ones away: each one keeps hearing only a few neighbours">
+            <span>devices</span>
+            <input id="pg-devices" type="range" step="1" />
+            <output id="pg-devices-value" for="pg-devices"></output>
+          </label>
           <button class="wt-icon" id="wt-home" type="button" title="Reset the view" aria-label="Reset the view">
             <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8a5 5 0 1 0 1.6-3.7M3 2.5v2.8h2.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
@@ -79,7 +84,7 @@
           <span class="wt-round" id="wt-round" aria-live="polite"></span>
         </div>
 
-        <p class="wt-hint">Drag to orbit · scroll to zoom</p>
+        <p class="wt-hint">Drag a device to move it · drag elsewhere to orbit · scroll to zoom</p>
       </section>
     </main>
   </div>

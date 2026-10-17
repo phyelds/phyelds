@@ -15,6 +15,8 @@ and your code is not sent anywhere.
   device appears as a layer stacked above the result. Watching does not start the
   devices over, and each layer can be removed again.
 - Every `sense("name")` of the program becomes a switch on the selected device.
+- Drag a device, in 3D or on the map, to move it; the slider adds devices or
+  takes the last ones away. The devices that stay keep their state.
 - **Run** (Ctrl+Enter) applies the code and starts every device over;
   **Stop** ends a program that never returns.
 - **Share** copies a link that opens the playground with your program.

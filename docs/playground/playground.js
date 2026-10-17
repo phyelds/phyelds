@@ -10,7 +10,7 @@
  * #code=<base64url> for a shared program.
  */
 import { createMap } from "../walkthrough/map.js";
-import { FEWEST, MOST, PLACES, SIZE, createNetwork } from "../walkthrough/model.js";
+import { FEWEST, MOST, PLACES, SIZE, SPAN, createNetwork } from "../walkthrough/model.js";
 import { readPalette, toneIndex } from "../walkthrough/palette.js";
 import { bindPointer } from "../walkthrough/pointer.js";
 import { GAP, PULSE_MS, createScene, reliefOf } from "../walkthrough/scene.js";
@@ -32,11 +32,12 @@ const element = (id) => document.getElementById(id);
 const base = new URL(".", import.meta.url);
 
 const world = {
-  places: PLACES.map(({ x, y }) => ({ x, y })), // where each device is
+  places: PLACES.map(({ x, y }) => ({ x, y })), // where each device is, as the reader moved it
   count: FEWEST,
   sensors: new Map(), // each sensor, and the devices on which it is on
+  dirty: false, // Python has not been told yet
 };
-const network = createNetwork(world.count, world.places);
+let network = createNetwork(world.count, world.places);
 
 const app = {
   playing: true,
@@ -435,10 +436,10 @@ let deviceKey = null;
 function renderDevice() {
   const id = inspected();
   const names = sensorsOf(python.code ?? "");
-  const key = `${id}|${names.map((name) => `${name}:${world.sensors.get(name)?.has(id)}`).join(",")}`;
+  const neighbours = network.inRange[id].length;
+  const key = `${id}|${neighbours}|${names.map((name) => `${name}:${world.sensors.get(name)?.has(id)}`).join(",")}`;
   if (key === deviceKey) return;
   deviceKey = key;
-  const neighbours = network.inRange[id].length;
   element("pg-device-name").innerHTML = `<strong>#${id}</strong> · hears ${neighbours} neighbour${neighbours === 1 ? "" : "s"}`;
   element("pg-sensors").replaceChildren(
     ...names.map((name) => {
@@ -459,9 +460,32 @@ function toggleSensor(name, id) {
   if (on.has(id)) on.delete(id);
   else on.add(id);
   world.sensors.set(name, on);
-  sendWorld();
+  worldChanged();
+}
+
+/** The network changed: Python hears of it at the next frame, once however many changes come. */
+function worldChanged() {
+  network = createNetwork(world.count, world.places);
+  world.dirty = true;
   app.panelDirty = true;
   changed();
+}
+
+/** Adds devices to the running network, or takes the last ones away; the others keep their state. */
+function setDeviceCount(count) {
+  world.count = count;
+  element("pg-devices-value").textContent = count;
+  if (app.hovered !== null && app.hovered >= count) app.hovered = null;
+  if (app.selected >= count) app.selected = 2 * SIZE + 2;
+  worldChanged();
+}
+
+/** Moves device `id` to `point`, kept inside the arena; null when the pointer is off the plane. */
+function move(id, point) {
+  if (!point) return;
+  const inside = (value) => Math.max(0, Math.min(SPAN, value));
+  world.places[id] = { x: inside(point.x), y: inside(point.y) };
+  worldChanged();
 }
 
 function setPlaying(playing) {
@@ -571,10 +595,11 @@ function select(id) {
   changed();
 }
 
+// A device dragged in 3D slides on the plane of the layer it was grabbed in, so that it stays under the pointer.
 bindPointer(element("wt-scene"), {
   pick: scene.pick,
-  grab: () => null,
-  drag: () => {},
+  grab: (id, x, y) => scene.pickInstance(x, y),
+  drag: (grabbed, x, y) => move(grabbed.id, scene.groundAt(x, y, grabbed.z)),
   orbit: (dx, dy) => {
     scene.orbit(dx, dy);
     changed();
@@ -582,7 +607,13 @@ bindPointer(element("wt-scene"), {
   hover,
   select,
 });
-bindPointer(element("wt-map"), { pick: map.pick, grab: () => null, drag: () => {}, hover, select });
+bindPointer(element("wt-map"), {
+  pick: map.pick,
+  grab: (id) => ({ id }),
+  drag: (grabbed, x, y) => move(grabbed.id, map.worldAt(x, y)),
+  hover,
+  select,
+});
 
 element("wt-scene").addEventListener(
   "wheel",
@@ -605,6 +636,7 @@ element("wt-home").addEventListener("click", () => {
   scene.reset();
   changed();
 });
+element("pg-devices").addEventListener("input", (event) => setDeviceCount(Number(event.target.value)));
 
 document.addEventListener("keydown", (event) => {
   if (event.metaKey || event.ctrlKey || event.altKey || event.target.closest("input, select, textarea")) return;
@@ -637,6 +669,10 @@ let lastFrame = performance.now();
 function frame(now) {
   const elapsed = Math.min(64, now - lastFrame);
   lastFrame = now;
+  if (world.dirty && python.worker) {
+    sendWorld();
+    world.dirty = false;
+  }
   if (app.playing) askStep(now);
   if (app.panelDirty) {
     renderLayers();
@@ -662,6 +698,8 @@ async function start() {
   });
 }
 
+Object.assign(element("pg-devices"), { min: FEWEST, max: MOST, value: FEWEST });
+element("pg-devices-value").textContent = FEWEST;
 resize();
 requestAnimationFrame(frame);
 start().catch((error) => {
