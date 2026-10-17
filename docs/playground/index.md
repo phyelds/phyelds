@@ -26,4 +26,5 @@ and your code is not sent anywhere.
   under the network says when a whole round changed nothing: the program is stable.
 - **Run** (Ctrl+Enter) applies the code and starts every device over;
   **Stop** ends a program that never returns.
-- **Share** copies a link that opens the playground with your program.
+- **Share** copies a link that opens the playground with your program, its watches
+  and how you were looking at them.

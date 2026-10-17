@@ -761,9 +761,39 @@ function decode(text) {
   return new TextDecoder().decode(Uint8Array.from(binary, (char) => char.charCodeAt(0)));
 }
 
+/**
+ * The view of the stack, for a link: how the result is drawn, the watches that edits left,
+ * where they are in the editor with their names and looks, the front, and the modes.
+ */
+function viewOf() {
+  return {
+    look: app.look,
+    watches: kept().map(({ mark, label, look }) => [mark.start, mark.end, label, look]),
+    focus: app.focus,
+    solo: app.solo,
+    flat: app.flat,
+  };
+}
+
+/** Opens `view` with the code it was taken from, which the editor holds. */
+function openView(view) {
+  Object.assign(app.look, view.look);
+  watches = view.watches.map(([start, end, label, look]) => ({
+    start,
+    end,
+    label,
+    look: { ...defaultLook(), ...look },
+    mark: { start, end },
+  }));
+  app.focus = view.focus;
+  renderMarks();
+  setSolo(Boolean(view.solo));
+  setFlat(Boolean(view.flat));
+}
+
 async function share() {
   const url = new URL(window.location.href);
-  url.hash = `code=${encode(editor.code)}`;
+  url.hash = `code=${encode(editor.code)}&view=${encode(JSON.stringify(viewOf()))}`;
   history.replaceState(null, "", url);
   try {
     await navigator.clipboard.writeText(url.href);
@@ -793,6 +823,14 @@ async function openFromHash() {
   element("pg-summary").textContent = "A shared program.";
   watches = [];
   editor.setCode(decode(hash.get("code")));
+  if (hash.has("view")) {
+    try {
+      openView(JSON.parse(decode(hash.get("view"))));
+    } catch {
+      // A link cut short, or edited by hand: the program alone is still worth opening.
+      watches = [];
+    }
+  }
   run();
 }
 
