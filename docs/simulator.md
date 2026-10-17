@@ -19,6 +19,10 @@ for physics or robotics, see [integration](integration/index.md).
 
 ## A run, step by step
 
+Here `program` is any `@aggregate` function without parameters, such as the
+`program` of the [tutorial](tutorial.md#4-run-it-in-the-simulator) that runs the
+gradient from the `"source"` sensor:
+
 ```python
 from phyelds.simulator import Simulator
 from phyelds.simulator.deployments import random_in_circle

@@ -57,7 +57,7 @@ All collective behaviors in **phyelds** come from combining just four mechanisms
 | [`neighbors`](neighborhood-field.md) | `nbr` | Shares a value with neighbors and returns their values as a `NeighborhoodField` |
 | [`exchange`](neighborhood-field.md#exchange) | `exchange` | Evolves state and sends (possibly distinct, per-neighbor) values in one step |
 | [`if` / `align`](alignment.md) | branching | Isolates branches into separate, non-interfering communication domains |
-| `sense`, `store`, `local_id` | sensors / actuators | Reads device sensors and writes actuation/metric outputs (`phyelds.libraries.device`) |
+| `sense`, `store`, `local_id` | sensors / actuators | Reads device sensors and writes actuation/metric outputs ([`phyelds.libraries.device`](libraries.md#device-sensors-actuators-phyeldslibrariesdevice)) |
 
 ---
 

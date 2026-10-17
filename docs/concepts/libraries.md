@@ -57,8 +57,8 @@ Every aggregate program interacts with its host device through four basic functi
 | --- | --- |
 | `local_id()` | The unique identifier of the current device |
 | `local_position()` | The position tuple of the current device (`sense("position")`) |
-| `sense(name)` | The current value of sensor `name` (`None` if missing) |
-| `store(name, value)` | Writes an output named `name` for the platform/simulator to read (actuation, metrics) |
+| `sense(sensor)` | The current value of sensor `sensor` (`None` if missing) |
+| `store(output, value)` | Writes an output named `output` for the platform/simulator to read (actuation, metrics) |
 
 ---
 
