@@ -195,3 +195,157 @@ def test_instrument_watches_the_whole_f_string_when_its_text_is_selected():
 def test_instrument_rejects_a_selection_that_is_not_an_expression_of_a_function(code, selected):
     with pytest.raises(ValueError):
         runner.instrument(code, [_span(code, selected)])
+
+
+# ---------- running the program on the network of the page ----------
+
+LINE = [(0.0, 0.0), (1.0, 0.0), (2.0, 0.0)]  # three devices in a row, one apart
+
+TIMES_TEN = """
+from phyelds.calculus import aggregate
+from phyelds.libraries.device import local_id
+
+@aggregate
+def helper():
+    return -1
+
+@aggregate
+def program():
+    return local_id() * 10
+"""
+
+COUNTER = """
+from phyelds.calculus import aggregate, remember
+
+@aggregate
+def rounds():
+    set_count, count = remember(0)
+    return set_count(count + 1)
+"""
+
+NEIGHBOURS = """
+from phyelds.calculus import aggregate, neighbors
+
+@aggregate
+def neighbour_count():
+    return len(neighbors(1).exclude_self())
+"""
+
+SOURCE = """
+from phyelds.calculus import aggregate
+from phyelds.libraries.device import sense
+
+@aggregate
+def is_source():
+    return sense("source")
+"""
+
+
+def _deployed(tmp_path, code, positions=LINE, radius=1.5, sensors=None, selections=()):
+    """A playground running ``code`` on ``positions``, before its first round."""
+    playground = runner.Playground(tmp_path / "run")
+    playground.update(positions, radius, sensors or {})
+    loaded = playground.load(code, list(selections), restart=True)
+    assert loaded.ok
+    return playground
+
+
+def _results(snapshot):
+    return snapshot.layers[0].numbers
+
+
+def test_playground_runs_the_last_aggregate_function_on_every_device(tmp_path):
+    playground = runner.Playground(tmp_path / "run")
+    playground.update(LINE, 1.5, {})
+
+    loaded = playground.load(TIMES_TEN, [], restart=True)
+    snapshot = playground.advance(1.0)
+
+    assert loaded.ok
+    assert loaded.program == "program"
+    assert _results(snapshot) == [0.0, 10.0, 20.0]
+
+
+def test_playground_runs_every_device_once_per_round(tmp_path):
+    positions = [(x / 10, 0.0) for x in range(50)]
+    playground = _deployed(tmp_path, COUNTER, positions)
+
+    first = playground.advance(1.0)
+    for _ in range(4):
+        snapshot = playground.advance(0.5)
+
+    assert _results(first) == [1.0] * 50
+    assert _results(snapshot) == [3.0] * 50
+    assert snapshot.time == 3.0
+
+
+def test_playground_changes_the_neighbours_when_the_page_changes_the_radius(tmp_path):
+    playground = _deployed(tmp_path, NEIGHBOURS)
+    before = playground.advance(2.0)
+
+    playground.update(LINE, 2.5, {})
+    after = playground.advance(2.0)
+
+    assert _results(before) == [1.0, 2.0, 1.0]
+    assert _results(after) == [2.0, 2.0, 2.0]
+
+
+def test_playground_gives_the_program_the_sensors_switched_on_by_the_page(tmp_path):
+    playground = _deployed(tmp_path, SOURCE, sensors={"source": [1]})
+
+    snapshot = playground.advance(1.0)
+
+    assert _results(snapshot) == [0.0, 1.0, 0.0]
+    assert snapshot.layers[0].texts == ["False", "True", "False"]
+    assert snapshot.layers[0].boolean
+
+
+def test_playground_runs_added_devices_from_the_next_round_and_forgets_removed_ones(tmp_path):
+    playground = _deployed(tmp_path, COUNTER, LINE[:2])
+    playground.advance(2.0)
+
+    playground.update(LINE, 1.5, {})
+    grown = playground.advance(1.0)
+    playground.update(LINE[:1], 1.5, {})
+    shrunk = playground.advance(0.0)
+    # Added back before its next round: the device that was removed must not run again.
+    playground.update(LINE[:2], 1.5, {})
+    playground.advance(1.0)
+    regrown = playground.advance(1.0)
+
+    assert _results(grown) == [3.0, 3.0, 1.0]
+    assert _results(shrunk) == [3.0]
+    assert _results(regrown) == [5.0, 2.0]
+
+
+def test_playground_moves_a_device_where_the_page_puts_it(tmp_path):
+    playground = _deployed(tmp_path, NEIGHBOURS)
+
+    playground.update([(0.0, 0.0), (1.0, 0.0), (9.0, 9.0)], 1.5, {})
+    snapshot = playground.advance(2.0)
+
+    assert _results(snapshot) == [1.0, 1.0, 0.0]
+
+
+PRINT_ID = """
+from phyelds.calculus import aggregate
+from phyelds.libraries.device import local_id
+
+@aggregate
+def program():
+    print(local_id())
+    return local_id()
+"""
+
+
+def test_playground_does_not_run_a_removed_device_again_when_its_id_comes_back(tmp_path, capsys):
+    playground = _deployed(tmp_path, PRINT_ID)
+    playground.advance(2.0)
+    capsys.readouterr()
+
+    playground.update(LINE[:1], 1.5, {})
+    playground.update(LINE[:2], 1.5, {})
+    playground.advance(2.0)
+
+    runs = capsys.readouterr().out.split()
+    assert sorted(runs) == ["0", "0", "1", "1"]

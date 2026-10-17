@@ -6,21 +6,36 @@ tested with pytest like the rest of the documentation examples.
 """
 import ast
 import contextlib
+import heapq
 import io
 import itertools
+import linecache
+import math
+import numbers
+import random
+import reprlib
 import runpy
 import shutil
 import sys
 import traceback
-from collections.abc import Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from matplotlib import pyplot as plt
+
+from phyelds import engine
+from phyelds.data import NeighborhoodField, State
+from phyelds.simulator import Node, Simulator
+from phyelds.simulator.neighborhood import radius_neighborhood
+from phyelds.simulator.runner import aggregate_program_runner
 
 PRODUCED_SUFFIXES = (".gif", ".png")
 WATCH = "__watch__"  # what records the watched values, in the globals of the program
 LONGEST_LABEL = 40  # characters of the name of a watch
+LONGEST_TEXT = 40  # characters of the text of a value
+ROUND = 1.0  # simulated time between two runs of a device
 NOT_WATCHABLE = "Select an expression inside a function, or a line that assigns, returns or tests one."
 
 
@@ -31,6 +46,238 @@ class Watch:
     start: int
     end: int
     label: str
+
+
+@dataclass
+class Value:
+    """What a device computed, as the page shows it: a number on a scale, NaN if it has none, and a text."""
+
+    number: float
+    text: str
+    boolean: bool = False
+
+
+NO_VALUE = Value(math.nan, "")
+
+
+@dataclass
+class Layer:
+    """A field over the devices, the result of the program or a watched expression: a number and a text each."""
+
+    numbers: list[float]
+    texts: list[str]
+    boolean: bool
+
+
+@dataclass
+class Snapshot:
+    """The network at ``time``: when each device last ran (NaN before its first round), and the layers."""
+
+    time: float
+    paused: bool
+    ran: list[float]
+    layers: list[Layer]
+
+
+@dataclass
+class Loaded:
+    """Whether the code was loaded, the name of the function that runs, and what it watches."""
+
+    ok: bool
+    program: str = ""
+    watches: list[Watch] = field(default_factory=list)
+
+
+class Playground:
+    """
+    The program of the page, running on the network of the page.
+
+    The page owns the network: where the devices are, how far they hear and what they
+    sense, sent with ``update``. The program is the last ``@aggregate`` function of the
+    code sent with ``load``: every device runs it once per round, asynchronously, in
+    an order drawn from ``seed``.
+
+    Args:
+        run_dir: where the program is written, as main.py, for @aggregate to read it.
+        seed: the seed of the order in which the devices run.
+    """
+
+    def __init__(self, run_dir: Path, seed: int = 0) -> None:
+        run_dir.mkdir(parents=True, exist_ok=True)
+        self._main = run_dir / "main.py"
+        self._seed = seed
+        self._random = random.Random(seed)
+        self._simulator = Simulator()
+        self._clock = 0.0
+        self._positions: list[tuple[float, ...]] = []
+        self._radius = 0.0
+        self._sensors: dict[str, set[int]] = {}
+        self._program: Callable[[], Any] | None = None
+        self._recorder = _Recorder()
+        self._watches = 0
+        self._rows: dict[int, list[Value]] = {}
+
+    def load(self, code: str, selections: Sequence[tuple[int, int]], restart: bool) -> Loaded:
+        """
+        Run the code and deploy its program, watching the expressions under ``selections``.
+
+        Args:
+            code: the module that defines the program.
+            selections: the expressions to watch, as ``instrument`` takes them.
+            restart: start every device over, rather than swap the program of the running ones.
+
+        Returns:
+            The program loaded and its watches.
+        """
+        source, watches = instrument(code, selections)
+        self._main.write_text(source)
+        linecache.clearcache()
+        namespace = runpy.run_path(str(self._main), init_globals={WATCH: self._recorder}, run_name="playground")
+        program = namespace[_program_name(ast.parse(code))]
+        self._program, self._watches = program, len(watches)
+        if restart:
+            self._restart()
+        return Loaded(True, program.__name__, watches)
+
+    def update(
+        self, positions: Sequence[Sequence[float]], radius: float, sensors: Mapping[str, Collection[int]]
+    ) -> None:
+        """
+        Place the devices as the page has them.
+
+        Args:
+            positions: where each device is: device k at ``positions[k]``. Devices past
+                the end are removed; new ones run from the next round on.
+            radius: how far a device hears.
+            sensors: for every sensor, the devices on which it is on.
+        """
+        self._positions = [tuple(position) for position in positions]
+        self._radius = radius
+        self._sensors = {name: set(on) for name, on in sensors.items()}
+        environment = self._simulator.environment
+        count = len(self._positions)
+        removed = [node_id for node_id in environment.nodes if node_id >= count]
+        for node_id in removed:
+            environment.remove_node(node_id)
+            self._rows.pop(node_id, None)
+        if removed:
+            # Their next rounds go too: a device added back with the same id would run twice.
+            queue = self._simulator.event_queue
+            queue[:] = [event for event in queue if event.args[2].id < count]
+            heapq.heapify(queue)
+        for node_id, position in enumerate(self._positions):
+            node = environment.nodes[node_id] if node_id in environment.nodes else self._add(node_id)
+            node.position = position
+            node.data.update({name: node_id in on for name, on in self._sensors.items()})
+        environment.set_neighborhood_function(radius_neighborhood(radius))
+
+    def advance(self, rounds: float) -> Snapshot:
+        """Run the devices for ``rounds`` rounds, if a program is loaded, and return the network."""
+        if self._program is not None:
+            self._clock += rounds
+            self._simulator.run(self._clock)
+        return self._snapshot()
+
+    def _restart(self) -> None:
+        """Every device from its first round, in the order of the previous restart."""
+        self._simulator = Simulator()
+        self._random = random.Random(self._seed)
+        self._clock = 0.0
+        self._rows = {}
+        self.update(self._positions, self._radius, self._sensors)
+
+    def _add(self, node_id: int) -> Node:
+        """A new device, whose first round comes within a round from now."""
+        node = self._simulator.create_node(self._positions[node_id], node_id=node_id)
+        # In (0, 1]: a first round at the start of the window would fall in it with the second.
+        first = self._clock + ROUND * (1.0 - self._random.random())
+        self._simulator.schedule_event(
+            first - self._simulator.current_time, aggregate_program_runner, self._simulator, ROUND, node, self._run
+        )
+        return node
+
+    def _run(self) -> Any:
+        """The program on the device that the simulator runs, recording its result and its watches."""
+        self._recorder.values = {}
+        result = self._program()
+        node_id = engine.get().node_context.node_id
+        self._rows[node_id] = [_value(result), *(self._recorder.values.get(k, NO_VALUE) for k in range(self._watches))]
+        return result
+
+    def _snapshot(self) -> Snapshot:
+        """The network now."""
+        count = len(self._positions)
+        rows = [self._rows.get(node_id, []) for node_id in range(count)]
+        layers = []
+        for k in range(1 + self._watches):
+            values = [row[k] if k < len(row) else NO_VALUE for row in rows]
+            known = [value for value in values if value.text]
+            boolean = bool(known) and all(value.boolean for value in known)
+            layers.append(Layer([value.number for value in values], [value.text for value in values], boolean))
+        nodes = self._simulator.environment.nodes
+        ran = [nodes[node_id].data.get("time", math.nan) for node_id in range(count)]
+        return Snapshot(self._clock, False, ran, layers)
+
+
+class _Recorder:
+    """``__watch__`` in the program: ``__watch__[k, value]`` records ``value`` as the k-th watch, and returns it."""
+
+    def __init__(self) -> None:
+        self.values: dict[int, Value] = {}
+
+    def __getitem__(self, key: tuple[int, Any]) -> Any:
+        index, value = key
+        self.values[index] = _value(value)
+        return value
+
+
+class _Short(reprlib.Repr):
+    """Short texts of values, with floats to four significant digits."""
+
+    def repr_float(self, value: float, level: int) -> str:  # pylint: disable=unused-argument
+        """A float, to four significant digits."""
+        return f"{value:.4g}"
+
+
+_SHORT = _Short(maxstring=LONGEST_TEXT, maxother=LONGEST_TEXT)
+
+
+def _value(value: Any) -> Value:
+    """How the page shows ``value``: on a scale if it is a finite number or a boolean."""
+    try:
+        if isinstance(value, State):
+            value = value.value
+        if isinstance(value, bool):
+            return Value(float(value), str(value), boolean=True)
+        if isinstance(value, numbers.Real):
+            number = float(value)
+            text = str(value) if isinstance(value, numbers.Integral) else f"{number:.4g}"
+            return Value(number if math.isfinite(number) else math.nan, text)
+        if isinstance(value, NeighborhoodField):
+            return Value(math.nan, f"field {_SHORT.repr(value.data)}")
+        return Value(math.nan, _SHORT.repr(value))
+    # The program may print values whose __repr__ fails: that must not stop its round.
+    except Exception:  # pylint: disable=broad-exception-caught
+        return Value(math.nan, "?")
+
+
+def _program_name(tree: ast.Module) -> str:
+    """The name of the last function of the module decorated with @aggregate: the program."""
+    names = [
+        node.name
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef) and any(map(_is_aggregate, node.decorator_list))
+    ]
+    if not names:
+        raise ValueError("Define an @aggregate function: the playground runs the last one.")
+    return names[-1]
+
+
+def _is_aggregate(decorator: ast.expr) -> bool:
+    """True for ``@aggregate`` and ``@calculus.aggregate``."""
+    if isinstance(decorator, ast.Name):
+        return decorator.id == "aggregate"
+    return isinstance(decorator, ast.Attribute) and decorator.attr == "aggregate"
 
 
 def instrument(code: str, selections: Sequence[tuple[int, int]]) -> tuple[str, list[Watch]]:
