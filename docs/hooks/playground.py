@@ -3,7 +3,8 @@ MkDocs hook: publish what the playground loads in the browser.
 
 After every build, ``site/playground/`` gets ``phyelds.zip`` (the package of
 this commit, which Pyodide unpacks into site-packages), the examples and a
-``manifest.json`` that lists them for the menu.
+``manifest.json`` that lists them for the menu. The standalone walkthrough
+replaces its Markdown placeholder, and stays out of the previous and next links.
 """
 import ast
 import json
@@ -17,8 +18,22 @@ ROOT = Path(__file__).resolve().parents[2]
 PACKAGE = ROOT / "src" / "phyelds"
 EXAMPLES = ROOT / "docs" / "examples" / "playground"
 WALKTHROUGH = ROOT / "docs" / "walkthrough"
+WALKTHROUGH_PAGE = "walkthrough/index.md"
 # The menu follows this tour; examples not listed come after, by name.
 TOUR = ["neighbours", "gradient", "self_healing", "channel", "leaders", "bubbles"]
+
+
+def on_nav(nav: Any, **_: Any) -> Any:
+    """Link every page to its neighbors in the nav, skipping the walkthrough.
+
+    The walkthrough opens full screen, without the footer of the other pages:
+    a reader who reached it with "next" would find no "previous" to come back.
+    """
+    pages = [page for page in nav.pages if page.file.src_uri != WALKTHROUGH_PAGE]
+    bookended = [None, *pages, None]
+    for before, page, after in zip(bookended, bookended[1:], bookended[2:]):
+        page.previous_page, page.next_page = before, after
+    return nav
 
 
 def on_post_build(config: Mapping[str, Any], **_: Any) -> None:

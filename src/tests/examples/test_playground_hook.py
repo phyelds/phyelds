@@ -3,6 +3,7 @@ import importlib.util
 import json
 import zipfile
 from pathlib import Path
+from types import SimpleNamespace
 
 DOCS = Path(__file__).resolve().parents[3] / "docs"
 
@@ -15,6 +16,25 @@ def _load_hook():
 
 
 hook = _load_hook()
+
+
+def _linked_navigation(*sources: str) -> SimpleNamespace:
+    """A navigation of pages linked to the previous and the next one, as MkDocs links them."""
+    pages = [SimpleNamespace(file=SimpleNamespace(src_uri=source), previous_page=None, next_page=None)
+             for source in sources]
+    for before, after in zip(pages, pages[1:]):
+        before.next_page, after.previous_page = after, before
+    return SimpleNamespace(pages=pages)
+
+
+def test_on_nav_leaves_the_walkthrough_out_of_previous_and_next():
+    nav = _linked_navigation("playground/index.md", "walkthrough/index.md", "concepts/state.md")
+    playground, _, state = nav.pages
+
+    hook.on_nav(nav, config={}, files=None)
+
+    assert playground.next_page is state
+    assert state.previous_page is playground
 
 
 def test_on_post_build_publishes_phyelds_as_an_importable_archive(tmp_path):

@@ -71,3 +71,7 @@ Most aggregate computing frameworks (such as ScaFi, Protelis, or FCPP) enforce a
     1. **Decorate every aggregate helper with `@aggregate`** so its calls and `if`/`else` branches are properly aligned across devices.
     2. **Never call `neighbors` a data-dependent number of times** (e.g., inside a `for` loop whose length varies from device to device).
     3. **Keep device state in `remember`, not in Python globals or mutated neighbor objects**, because all simulated nodes share the same Python process.
+
+---
+
+To watch fields, neighbors and gradients evolve round by round, open the [interactive 3D walkthrough](../walkthrough/index.md), a full-screen page apart from these docs; then go on with the [tutorial](../tutorial.md).

@@ -108,7 +108,8 @@ library version, [`distance_to`](libraries/spreading-and-collect.md), with real 
 
 ## Learning path
 
-Start here, in order: each step builds on the previous one.
+Start here, in order: each step builds on the previous one. The 3D walkthrough is apart,
+on its own full-screen page.
 
 <div class="grid cards" markdown>
 
@@ -118,23 +119,24 @@ Start here, in order: each step builds on the previous one.
 
     Fields, rounds (*Sense → Compute → Act*), and the local and global reading of a program.
 
--   :material-cube-outline:{ .lg .middle } __[2. Interactive 3D walkthrough](walkthrough/index.md)__
-
-    ---
-
-    A field, neighbors, a gradient, a channel and a branch, round by round, in 3D.
-
--   :material-school-outline:{ .lg .middle } __[3. Step-by-step tutorial](tutorial.md)__
+-   :material-school-outline:{ .lg .middle } __[2. Step-by-step tutorial](tutorial.md)__
 
     ---
 
     Build the gradient from scratch, watch it self-heal, and compose blocks into a channel.
 
--   :material-play-circle-outline:{ .lg .middle } __[4. Browser playground](playground/index.md)__
+-   :material-play-circle-outline:{ .lg .middle } __[3. Browser playground](playground/index.md)__
 
     ---
 
     Edit and run the examples in your browser, with nothing to install.
+
+-   :material-cube-outline:{ .lg .middle } __[Interactive 3D walkthrough](walkthrough/index.md)__
+
+    ---
+
+    Apart, full screen: a field, neighbors, a gradient, a channel and a branch, round by
+    round, in 3D.
 
 </div>
 
