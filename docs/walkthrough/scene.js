@@ -388,14 +388,17 @@ export function createScene(canvas) {
     projected = points.map((point, id) => ({ id, x: point.x, y: point.y, z: frame.devices[id].z }));
   }
 
-  /** The name of a layer, left of the corner of its plane that is leftmost on screen; on the plane if it does not fit. */
+  /** The name of a layer, left of the corner of its plane that is leftmost on screen, shortened to fit. */
   function label(text, corners, palette, focused) {
     const left = corners.reduce((best, corner) => (corner.x < best.x ? corner : best));
+    const room = left.x - 14;
     context.font = `${focused ? 600 : 500} 11.5px ${palette.mono}`;
+    let shown = text;
+    while (shown.length > 2 && context.measureText(shown).width > room) shown = `${shown.slice(0, -2)}…`;
+    if (context.measureText(shown).width > room) return;
     context.fillStyle = rgba(palette.ink, focused ? 0.95 : 0.55);
-    const fits = left.x - 10 - context.measureText(text).width >= 4;
-    context.textAlign = fits ? "right" : "left";
-    context.fillText(text, fits ? left.x - 10 : left.x + 12, fits ? left.y + 4 : left.y - 6);
+    context.textAlign = "right";
+    context.fillText(shown, left.x - 10, left.y + 4);
   }
 
   /**

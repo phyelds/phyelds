@@ -11,6 +11,9 @@ and your code is not sent anywhere.
 - The editor holds a Python module: every device runs its last `@aggregate`
   function, once per round. The playground owns the network: how many devices
   there are, where they are, and what they sense.
+- Select an expression and press **Watch** (Ctrl+Shift+Enter): its value on every
+  device appears as a layer stacked above the result. Watching does not start the
+  devices over, and each layer can be removed again.
 - Every `sense("name")` of the program becomes a switch on the selected device.
 - **Run** (Ctrl+Enter) applies the code and starts every device over;
   **Stop** ends a program that never returns.

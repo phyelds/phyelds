@@ -33,6 +33,7 @@
       <section class="wt-panel" aria-label="The program">
         <div class="pg-actions">
           <button class="wt-button wt-button--primary" id="pg-run" type="button" title="Run the program from round 0 (Ctrl+Enter)">Run</button>
+          <button class="wt-button" id="pg-watch" type="button" title="Watch the selected expression on every device (Ctrl+Shift+Enter)">Watch</button>
           <button class="wt-button" id="pg-stop" type="button" title="Stop Python, for a program that never returns">Stop</button>
           <p class="pg-summary" id="pg-summary"></p>
         </div>
@@ -46,7 +47,7 @@
       <section class="wt-stage" id="wt-stage" aria-label="The network in 3D">
         <canvas id="wt-scene"></canvas>
 
-        <div class="wt-legend pg-layers" id="pg-layers" aria-live="polite"></div>
+        <div class="wt-legend pg-layers" id="pg-layers"></div>
 
         <div class="wt-tools">
           <button class="wt-icon" id="wt-home" type="button" title="Reset the view" aria-label="Reset the view">

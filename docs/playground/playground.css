@@ -125,11 +125,34 @@
   color: transparent;
 }
 
-.pg-highlight {
+.pg-highlight,
+.pg-marks {
   position: absolute;
   inset: 0;
   overflow: hidden;
   pointer-events: none;
+}
+
+/* Under the code, the watched expressions; deeper in nested watches, underlined in front. */
+.pg-marks .pg-layer-text {
+  color: transparent;
+}
+
+.pg-mark {
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--wt-accent) 13%, transparent);
+}
+
+.pg-mark[data-depth="2"] {
+  background: color-mix(in srgb, var(--wt-accent) 22%, transparent);
+}
+
+.pg-mark[data-depth="3"] {
+  background: color-mix(in srgb, var(--wt-accent) 31%, transparent);
+}
+
+.pg-mark.is-focused {
+  box-shadow: inset 0 -2px 0 var(--wt-accent);
 }
 
 .pg-layer-text {
@@ -189,6 +212,11 @@
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
+}
+
+.pg-layer-name:hover {
+  color: var(--wt-ink);
 }
 
 .pg-layer.is-focused .pg-layer-name {
@@ -208,6 +236,24 @@
 
 .pg-layer-value:empty {
   display: none;
+}
+
+.pg-layer-remove {
+  width: 1.2rem;
+  height: 1.2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--wt-muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.pg-layer-remove:hover {
+  background: color-mix(in srgb, var(--wt-ink) 10%, transparent);
+  color: var(--wt-ink);
 }
 
 .pg-layer .wt-legend-bar {

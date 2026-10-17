@@ -3,7 +3,8 @@
  * network that runs it, in 3D. The page owns the network: where the devices are,
  * how far they hear and what they sense. Python, in a worker (worker.js), runs the
  * program on it round after round and sends back what every device computed, which
- * the stage draws as a stack of layers: the result at the bottom.
+ * the stage draws as a stack of layers: the result at the bottom, and above it every
+ * expression of the program that the reader selects and watches.
  *
  * The URL hash selects what the editor opens with: #example=<name> for an example,
  * #code=<base64url> for a shared program.
@@ -14,7 +15,7 @@ import { readPalette, toneIndex } from "../walkthrough/palette.js";
 import { bindPointer } from "../walkthrough/pointer.js";
 import { GAP, PULSE_MS, createScene, reliefOf } from "../walkthrough/scene.js";
 import { OFF, ON } from "../walkthrough/views.js";
-import { createEditor } from "./editor.js";
+import { createEditor, shifted } from "./editor.js";
 
 const ROUND_MS = 700; // how long a round lasts while playing: every device runs once in it
 const MAX_STEP = 0.5; // rounds asked of Python at once at most, so that the devices are seen to run in turn
@@ -25,6 +26,7 @@ const SENSE = /\bsense\(\s*["']([A-Za-z_]\w*)["']\s*\)/g;
 // What the simulator keeps in the data of a device besides its sensors: nothing to switch.
 const RESERVED = new Set(["position", "time", "state", "messages", "result", "outputs"]);
 const CONSOLE_LINES = 200; // pieces of output the console keeps: a program may print every round
+const MAX_WATCHES = 4; // expressions watched at once: past five layers, the stack is hard to read
 const calm = matchMedia("(prefers-reduced-motion: reduce)");
 const element = (id) => document.getElementById(id);
 const base = new URL(".", import.meta.url);
@@ -40,6 +42,7 @@ const app = {
   playing: true,
   hovered: null,
   selected: 2 * SIZE + 2, // a device in the middle
+  focus: 0, // the layer in front, which the map shows: 0 is the result, k the k-th watch
   palette: readPalette(),
   dirty: true, // the views need drawing again
   panelDirty: true, // the layers, the inspected device and the rounds need writing again
@@ -50,18 +53,20 @@ const app = {
 const python = { worker: null, program: null, code: null, loads: [], stepping: false, asked: 0 };
 let snapshot = null; // what the devices computed, as the last step left them
 let layers = []; // per layer of the snapshot, the look of every device and the scale
+// The watched expressions: where they are in the code Python runs, their label, and where the
+// editor marks them, which edits move (null once an edit went through one).
+let watches = [];
 const display = { z: [], ranAt: new Float64Array(MOST).fill(-Infinity) };
 let examples = [];
 
 const scene = createScene(element("wt-scene"));
 const map = createMap(element("wt-map"));
-const editor = createEditor(element("pg-code"), { onRun: run });
+const editor = createEditor(element("pg-code"), { onRun: run, onWatch: watch, onEdit });
 
 const changed = () => {
   app.dirty = true;
 };
 const inspected = () => app.hovered ?? app.selected;
-const escape = (text) => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 const format = (number) => String(Number(number.toPrecision(3)));
 
 /** The sensors a program reads, in order: every sense("name") with a name written in it. */
@@ -104,11 +109,23 @@ function sendWorld() {
   });
 }
 
-/** Loads `code` in Python: from round 0 if `restart`, else on the running devices. */
-function load(code, restart) {
-  python.loads.push({ code });
-  post({ type: "load", code, selections: [], restart });
+/**
+ * Loads `code` in Python, watching the expressions under `selections`: from round 0 if
+ * `restart`, else on the running devices. `labels` are the names the reader knows the
+ * watches by, null for a new one; `reason` says what to tell the reader.
+ */
+function load(code, selections, restart, reason, labels = selections.map(() => null)) {
+  python.loads.push({ code, restart, reason, labels });
+  post({ type: "load", code, selections, restart });
 }
+
+/** Where the watches are in the code Python runs. */
+const spans = (list = watches) => list.map(({ start, end }) => [start, end]);
+
+/** The watches that edits left in the editor. */
+const kept = () => watches.filter((each) => each.mark);
+const marked = () => kept().map(({ mark }) => [mark.start, mark.end]);
+const labels = (list) => list.map(({ label }) => label);
 
 /** Runs the code of the editor from round 0, with its sensors switched on where they start. */
 function run() {
@@ -118,12 +135,51 @@ function run() {
   });
   clearConsole();
   sendWorld();
-  load(code, true);
+  load(code, marked(), true, "run", labels(kept()));
   status("Starting the program…");
 }
 
 function restart() {
-  if (python.code !== null) load(python.code, true);
+  if (python.code !== null) load(python.code, spans(), true, "run", labels(watches));
+}
+
+/** Watches the expression under the selection: on the running devices, if they run the code of the editor. */
+function watch() {
+  if (watches.length >= MAX_WATCHES) {
+    status(`At most ${MAX_WATCHES} expressions are watched at once: remove one first, with ×.`);
+    return;
+  }
+  const { code } = editor;
+  const same = code === python.code;
+  const old = same ? watches : kept();
+  load(code, [...(same ? spans() : marked()), editor.selection()], !same, "watch", [...labels(old), null]);
+}
+
+function unwatch(index) {
+  const others = watches.filter((_, k) => k !== index);
+  load(python.code, spans(others), false, "unwatch", labels(others));
+}
+
+/** Moves the marks of the watches with the edits of the code. */
+function onEdit(change) {
+  for (const each of watches) {
+    if (each.mark) each.mark = shifted(each.mark, change);
+  }
+  renderMarks();
+  if (editor.code !== python.code) status("Edited: Run (Ctrl+Enter) applies the code and starts the devices over.");
+}
+
+function renderMarks() {
+  editor.setMarks(watches.flatMap((each, k) => (each.mark ? [{ ...each.mark, focused: k + 1 === focusedLayer() }] : [])));
+}
+
+function focusLayer(k) {
+  app.focus = k;
+  const mark = watches[k - 1]?.mark;
+  if (mark) editor.select(mark.start, mark.end);
+  renderMarks();
+  app.panelDirty = true;
+  changed();
 }
 
 function onMessage(message) {
@@ -149,19 +205,35 @@ function onMessage(message) {
   }
 }
 
-function onLoaded({ ok, program }, { code }) {
+function onLoaded({ ok, program, watches: watched }, { code, restart, reason, labels: known }) {
   if (!ok) {
-    status(
-      python.program
-        ? "The program has an error, below: the network goes on with the previous one."
-        : "The program has an error, below: fix it and run it again.",
-    );
+    const what = reason === "watch" ? "That cannot be watched" : "The program has an error";
+    const then = python.program ? "the network goes on as it was" : "fix it and run it again";
+    status(`${what}, as the console says: ${then}.`);
     return;
   }
+  const marks = new Map(watches.map((each) => [`${each.start}:${each.end}`, each.mark]));
+  const same = editor.code === code;
+  // A watch keeps its name: Python names it after the expression, the reader may have picked a variable.
+  watches = watched.map(({ start, end, label }, k) => ({
+    start,
+    end,
+    label: known[k] ?? label,
+    mark: same ? { start, end } : (marks.get(`${start}:${end}`) ?? null),
+  }));
+  app.focus = reason === "watch" ? watches.length : Math.min(app.focus, watches.length);
   Object.assign(python, { program, code });
-  if (snapshot) snapshot.paused = false;
-  setPlaying(true);
-  status(`Every device runs ${program}() once per round.`);
+  if (snapshot) {
+    // The values of the old watches are not those of the new ones: they come back as the devices run.
+    snapshot.paused = false;
+    layers = layers.slice(0, 1);
+  }
+  renderMarks();
+  if (reason === "watch") status(`Watching ${watches.at(-1).label} on every device: its layer is on top.`);
+  else status(`Every device runs ${program}() once per round. Select an expression and Watch it.`);
+  // A watch added to a paused network shows up after one round, which is when the devices compute it.
+  if (restart) setPlaying(true);
+  else if (!app.playing) stepOnce();
   app.panelDirty = true;
   changed();
 }
@@ -215,9 +287,9 @@ function looksOf(layer) {
   return { looks, texts: layer.texts, boolean: layer.boolean, known: known.length > 0, low, high };
 }
 
-const layerCount = () => Math.max(1, layers.length);
-const focusedLayer = () => layerCount() - 1;
-const labelOf = (k) => `${python.program ?? "result"}()`;
+const layerCount = () => 1 + watches.length;
+const focusedLayer = () => Math.min(app.focus, layerCount() - 1);
+const labelOf = (k) => (k === 0 ? `${python.program ?? "result"}()` : watches[k - 1].label);
 
 /** Moves the heights a step toward the values of the layers; true while anything still moves. */
 function ease(elapsed) {
@@ -304,21 +376,57 @@ function scaleOf(layer) {
   );
 }
 
+let layerRows = null; // the rows of the list of the layers, and the layers they were built for
+
 /** The layers, from the top of the stack down, with the values of the inspected device. */
 function renderLayers() {
+  const count = layerCount();
+  const focused = focusedLayer();
+  const key = [focused, ...Array.from({ length: count }, (_, k) => labelOf(k))].join("\n");
+  // Rebuilt only when the layers change, not at every step: a click must find its button.
+  if (layerRows?.key !== key) layerRows = { key, rows: buildLayerRows(count, focused) };
   const id = inspected();
-  const rows = [];
-  for (let k = layerCount() - 1; k >= 0; k -= 1) {
-    const layer = layers[k];
-    const focused = k === focusedLayer();
-    rows.push(
-      `<div class="pg-layer${focused ? " is-focused" : ""}">` +
-        `<div class="pg-layer-head"><span class="pg-layer-name">${escape(labelOf(k))}</span>` +
-        `<span class="pg-layer-value">${escape(layer?.texts[id] ?? "")}</span></div>` +
-        `${focused ? scaleOf(layer) : ""}</div>`,
-    );
+  for (const { k, value, scale } of layerRows.rows) {
+    value.textContent = layers[k]?.texts[id] ?? "";
+    if (scale) scale.innerHTML = scaleOf(layers[k]);
   }
-  element("pg-layers").innerHTML = rows.join("");
+}
+
+function buildLayerRows(count, focused) {
+  const list = element("pg-layers");
+  const rows = [];
+  list.replaceChildren();
+  for (let k = count - 1; k >= 0; k -= 1) {
+    const row = document.createElement("div");
+    row.className = `pg-layer${k === focused ? " is-focused" : ""}`;
+    const head = document.createElement("div");
+    head.className = "pg-layer-head";
+    const name = document.createElement("button");
+    name.type = "button";
+    name.className = "pg-layer-name";
+    name.textContent = labelOf(k);
+    name.title = k === 0 ? "Bring the result to the front" : "Bring this layer to the front, and select its expression";
+    name.addEventListener("click", () => focusLayer(k));
+    const value = document.createElement("span");
+    value.className = "pg-layer-value";
+    head.append(name, value);
+    if (k > 0) {
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "pg-layer-remove";
+      remove.textContent = "×";
+      remove.title = "Stop watching";
+      remove.setAttribute("aria-label", `Stop watching ${labelOf(k)}`);
+      remove.addEventListener("click", () => unwatch(k - 1));
+      head.append(remove);
+    }
+    row.append(head);
+    const scale = k === focused ? document.createElement("div") : null;
+    if (scale) row.append(scale);
+    list.append(row);
+    rows.push({ k, value, scale });
+  }
+  return rows;
 }
 
 let deviceKey = null;
@@ -430,6 +538,7 @@ async function openExample(name) {
   element("pg-example").value = example.name;
   element("pg-summary").textContent = example.summary.replace(/^./, (first) => first.toUpperCase());
   const response = await fetch(new URL(`examples/${example.name}.py`, base));
+  watches = [];
   editor.setCode(await response.text());
   run();
 }
@@ -442,6 +551,7 @@ async function openFromHash() {
   }
   element("pg-example").value = "";
   element("pg-summary").textContent = "A shared program.";
+  watches = [];
   editor.setCode(decode(hash.get("code")));
   run();
 }
@@ -485,6 +595,7 @@ element("wt-scene").addEventListener(
 );
 
 element("pg-run").addEventListener("click", run);
+element("pg-watch").addEventListener("click", watch);
 element("pg-stop").addEventListener("click", () => stop("Stopped. Python starts again at the next run."));
 element("pg-share").addEventListener("click", share);
 element("wt-play").addEventListener("click", () => setPlaying(!app.playing));
