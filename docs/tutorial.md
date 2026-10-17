@@ -124,7 +124,7 @@ Look closely at the animation: the region around the *new* source settles rapidl
 
 The real power of aggregate computing comes from **composing** field functions just like ordinary Python functions.
 
-Suppose we want to highlight a communication corridor (a **channel** of width $w$) along the shortest path between a `source` device and a `target` device. We can build it in three steps by combining spreading (`distance_to`) and collection (`collect_or`):
+Suppose we want to highlight a communication corridor (a **channel**): the devices within `width` of the shortest path between a `source` device and a `target` device. We can build it in three steps by combining spreading (`distance_to`) and collection (`collect_or`):
 
 <div class="ph-steps">
   <div class="ph-step ph-step--orange">
@@ -158,11 +158,14 @@ def my_channel(width: float = 1.6) -> float:
 
 1. **Spread (`G`)**: every device computes its distance to the `target`.
 2. **Collect (`C`)**: `collect_or` flows downhill along `to_target` from `source` to `target`, setting `on_path = True` on every node along the shortest path.
-3. **Spread (`G`)**: a second `distance_to(on_path, ...)` measures how far each node is from the shortest path, selecting all devices within `width`. (This pattern is also available ready-made as `phyelds.libraries.spreading.channel`.)
+3. **Spread (`G`)**: a second `distance_to(on_path, ...)` measures how far each node is from the shortest path, selecting all devices within `width`.
 
 ![A self-organizing channel between bottom-left and top-right corners](assets/channel.gif){ width="480" }
 
 [Run the channel in the playground](playground/index.md#example=channel){ .md-button }
+
+!!! note "The library `channel` is built differently"
+    `phyelds.libraries.spreading.channel(source, target, width)` needs no collection: a device belongs to it when the shortest route from the source to the target *through that device* is at most `width` longer than the shortest route overall (`to_source + to_target <= between + width`). Its `width` is a slack on the length of the path, not a distance from it: the channel is an ellipse with foci in the source and the target rather than a band, as the [3D walkthrough](walkthrough/index.md) shows step by step.
 
 ---
 

@@ -386,7 +386,10 @@ def channel(
     strategy: SpreadingStrategy | None = None,
 ) -> bool:
     """
-    Select devices lying within ``width`` of the shortest path between ``source`` and ``target``.
+    Select the devices on a near-shortest route from ``source`` to ``target``.
+
+    A device belongs to the channel when the shortest route from ``source`` to ``target``
+    through it is at most ``width`` longer than the shortest route overall.
 
     Args:
         source: True on source devices.

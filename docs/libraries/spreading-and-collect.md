@@ -14,7 +14,7 @@ Spreading functions propagate distances and data **outward** from one or more `s
 | `broadcast(source, data, distances=None, *, strategy=None)` | The `data` of the nearest `source`, propagated outward along the gradient |
 | `cast_from(source, data, accumulation, distances=None, *, strategy=None)` | Like `broadcast`, applying `accumulation(current, step_dist)` at each hop |
 | `distance_between(source, target, distances=None, *, strategy=None)` | The shortest distance between `source` and `target`, broadcast across the network |
-| `channel(source, target, width=0.0, distances=None, *, strategy=None)` | `True` on devices within `width` of the shortest path between `source` and `target` |
+| `channel(source, target, width=0.0, distances=None, *, strategy=None)` | `True` on devices on a route from `source` to `target` at most `width` longer than the shortest one |
 
 When `distances` is omitted, `hops_distance()` (1 per hop) is used; pass `neighbors_distances()` for metric Euclidean distances.
 
@@ -81,9 +81,9 @@ def network_size():
     return count_nodes(potential, strategy=point_to_point())
 ```
 
-### Combining Spreading + Collection: `channel`
+### Combining spreading and collection: a corridor
 
-Combining two gradients and `collect_or` creates a self-healing communication corridor between `source` and `target`:
+A gradient towards a `target`, `collect_or` along it from a `source`, and a second gradient from the devices it marks create a self-healing corridor: the devices within `width` of the shortest path (the [tutorial](../tutorial.md#7-composing-blocks-building-a-channel) builds it step by step). Unlike `channel`, whose `width` is a slack on the length of the route, here `width` is a distance from the path:
 
 ![A self-organizing channel between bottom-left and top-right corners](../assets/channel.gif){ width="480" }
 

@@ -33,7 +33,7 @@ Combining just these three blocks gives you:
 
 - **`S → G`** (*Voronoi partitioning*): elect sparse leaders with `elect_leaders`, then `broadcast` each leader's ID so the network splits into self-healing clusters.
 - **`G → C → G`** (*Regional / network-wide `summarize`*): build a gradient from a sink (`G`), collect values from all nodes into the sink (`C`), and broadcast the aggregated result back out (`G`).
-- **`G + C + G`** (*`channel`*): build a self-healing routing corridor of width $w$ along the shortest path between a source and a target.
+- **`G + G + G`** (*`channel`*): add the gradients from a source and from a target (`G`, `G`), and compare the sum with the distance between the two, broadcast from the source (`G`): where it exceeds that distance by at most `width`, the devices form a self-healing channel along the shortest path. The [tutorial](../tutorial.md#7-composing-blocks-building-a-channel) builds a corridor with `G → C → G` instead.
 
 ---
 
