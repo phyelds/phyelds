@@ -502,10 +502,20 @@
     align-items: flex-start;
   }
 
+  /* Over the stack, which a small screen cannot keep clear of it: on a veil, and scrolling. */
   .pg .wt-legend {
     top: auto;
     bottom: 4.25rem;
     left: 0.75rem;
+    max-height: 40%;
+    overflow-y: auto;
+    padding: 0.5rem 0.65rem;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--wt-stage) 88%, transparent);
+  }
+
+  .pg .wt-stage {
+    height: 80vh;
   }
 
   .pg .wt-map {
