@@ -27,7 +27,7 @@ The very same path also keys the local state of [`remember`](state.md) and [`exc
 `@aggregate` marks a Python function as part of the aggregate computation. When the function runs, `@aggregate` does two things:
 
 1. **Pushes the function onto the alignment path**, so all calls inside it are scoped under its name and call index.
-2. **Rewrites `if` statements and conditional expressions** (`a if cond else b`) at the AST level so that the `True` branch and the `False` branch run under distinct alignment scopes (`align_left` vs `align_right`).
+2. **Rewrites `if` statements and conditional expressions** (`a if cond else b`) at the AST level so that the `True` branch and the `False` branch run under distinct alignment scopes (`with align_left()` and `with align_right()`, which add `left` and `right` to the path).
 
 Because the two branches have different alignment paths:
 
@@ -45,8 +45,8 @@ def program():
         return neighbors("sensor")     # (2)!
 ```
 
-1. Path: `program@0 / align_left@0 / neighbors@0`. Only neighbors that also took the `True` branch appear in this `NeighborhoodField`.
-2. Path: `program@0 / align_right@0 / neighbors@0`. Only neighbors that also took the `False` branch appear here.
+1. Path: `program@0 / left@0 / neighbors@0`. Only neighbors that also took the `True` branch appear in this `NeighborhoodField`.
+2. Path: `program@0 / right@0 / neighbors@0`. Only neighbors that also took the `False` branch appear here.
 
 The same automatic splitting applies to Python conditional expressions (`a if c else b`). This also keeps devices aligned for all calls *after* the conditional expression, even when only one branch communicates:
 
@@ -71,7 +71,7 @@ from phyelds.calculus import str_transformed_code
 print(str_transformed_code(program))
 ```
 
-Because AST rewriting inspects the function's source code, `@aggregate` functions must be defined in a `.py` file or a Jupyter notebook cell (if source code is unavailable, such as inside `exec`, phyelds logs a warning and runs the function un-rewritten).
+Because AST rewriting inspects the function's source code, `@aggregate` functions must be defined in a `.py` file or a Jupyter notebook cell (if source code is unavailable, such as inside `exec`, phyelds prints a warning and runs the function without rewriting it).
 
 ---
 
