@@ -53,6 +53,7 @@ pylint = "^3.0.0"
 pytest-cov = "^3.0.0"
 ruff = "^0.3.0"
 flake8 = "^7.0.0"
+jedi = "^0.19.2"
 
 [tool.poetry.group.docs]
 optional = true
