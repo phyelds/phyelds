@@ -45,7 +45,7 @@ function jitter(seed) {
  * Where the devices sit: a deformed lattice, then every further device in the
  * widest gap left (best candidate sampling). Adding devices never moves the others.
  */
-const PLACES = (() => {
+export const PLACES = (() => {
   const places = [];
   for (let row = 0; row < SIZE; row += 1) {
     for (let col = 0; col < SIZE; col += 1) {
@@ -81,14 +81,15 @@ function rangeOf(count) {
 }
 
 /**
- * The first `count` devices, their `range` and the `hole` a switched-off one
- * leaves, who is in range of whom, and how many neighbors a device far from the
- * border has (`typical`, the median, to scale their counts).
+ * The first `count` devices at `places` (PLACES, unless they were moved), their
+ * `range` and the `hole` a switched-off one leaves, who is in range of whom, and
+ * how many neighbors a device far from the border has (`typical`, the median, to
+ * scale their counts).
  */
-export function createNetwork(count = FEWEST) {
+export function createNetwork(count = FEWEST, places = PLACES) {
   const range = rangeOf(count);
   const hole = LATTICE_HOLE * Math.sqrt(FEWEST / count);
-  const devices = PLACES.slice(0, count).map((place, id) => ({ id, ...place }));
+  const devices = places.slice(0, count).map((place, id) => ({ id, ...place }));
   const links = [];
   const inRange = devices.map(() => []);
   for (const a of devices) {
