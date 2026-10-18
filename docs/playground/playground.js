@@ -244,11 +244,21 @@ function focusLayer(k, select = true) {
   changed();
 }
 
-/** Moves the front one layer up (+1) or down (-1) the stack: through every layer one at a time, else the shown ones. */
+/** Moves the front one layer up (-1) or down (+1) the stack: through every layer one at a time, else the shown ones. */
 function moveFocus(direction) {
-  const candidates = allLayers().filter((k) => oneAtATime() || lookOf(k).visible);
+  const candidates = stackOrder().filter((k) => oneAtATime() || lookOf(k).visible);
   const next = candidates[candidates.indexOf(focusedLayer()) + direction];
   if (next !== undefined) focusLayer(next, false);
+}
+
+/** Moves watch layer `k` up (-1) or down (+1) among the watches; the result stays on top. */
+function moveWatch(k, step) {
+  const watched = stackOrder().slice(1);
+  const other = watched[watched.indexOf(k) + step];
+  if (other === undefined) return;
+  [lookOf(k).rank, lookOf(other).rank] = [lookOf(other).rank, lookOf(k).rank];
+  app.panelDirty = true;
+  changed();
 }
 
 /** Hides layer `k`, or shows it again; one layer stays shown, and the front moves off a hidden one. */
@@ -341,6 +351,10 @@ function onLoaded({ ok, program, watches: watched }, { code, restart, reason, pr
     look: previous[k]?.look ?? defaultLook(),
     mark: same ? { start, end } : (marks.get(`${start}:${end}`) ?? null),
   }));
+  // A new watch goes right under the result; the others keep their places.
+  for (const each of watches) {
+    if (each.look.rank === undefined) each.look.rank = Math.min(0, ...watches.map((other) => other.look.rank ?? 0)) - 1;
+  }
   app.focus = reason === "watch" ? watches.length : Math.min(app.focus, watches.length);
   Object.assign(python, { program, code });
   if (snapshot) {
@@ -350,7 +364,7 @@ function onLoaded({ ok, program, watches: watched }, { code, restart, reason, pr
   }
   refreshLooks();
   renderMarks();
-  if (reason === "watch") status(`Watching ${watches.at(-1).label} on every device: its layer is on top.`);
+  if (reason === "watch") status(`Watching ${watches.at(-1).label} on every device: its layer is under the result.`);
   else status(`Every device runs ${program}() once per round. Select an expression and Watch it.`);
   // A watch added to a paused network shows up after one round, which is when the devices compute it.
   if (restart) setPlaying(true);
@@ -406,6 +420,8 @@ const labelOf = (k) => (k === 0 ? `${python.program ?? "result"}()` : watches[k 
 const lookOf = (k) => (k === 0 ? app.look : watches[k - 1]?.look);
 const oneAtATime = () => app.solo || app.flat;
 const isShown = (k) => (oneAtATime() ? k === focusedLayer() : lookOf(k).visible);
+/** The layers from the top of the stack down: the result, then the watches in the order the reader gave them. */
+const stackOrder = () => [0, ...allLayers().slice(1).sort((a, b) => lookOf(a).rank - lookOf(b).rank)];
 
 /**
  * How a layer looks: per device a colour and a relief in [0, 1], or null without a
@@ -440,7 +456,7 @@ function refreshLooks() {
  * reader set it, and the next plane comes after its highest value.
  */
 function stackOf() {
-  const shown = allLayers().filter(isShown);
+  const shown = stackOrder().reverse().filter(isShown);
   let unit = shown.length === 1 ? LIFT : RELIEF;
   if (app.flat) unit = 0;
   let base = 0;
@@ -581,17 +597,20 @@ function lookControls(k) {
 let layerRows = null; // the rows of the list of the layers, and the layers they were built for
 const EYE =
   '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8z" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="8" r="1.9" fill="currentColor"/></svg>';
+const UP =
+  '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 10l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const DOWN =
+  '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const EYE_SHUT =
   '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8z" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2.5 13.5l11-11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
 
 /** The layers, from the top of the stack down, with the values of the inspected device. */
 function renderLayers() {
-  const count = layerCount();
   const focused = focusedLayer();
-  const labels = allLayers().map((k) => `${isShown(k)}:${labelOf(k)}`);
+  const labels = stackOrder().map((k) => `${isShown(k)}:${labelOf(k)}`);
   const key = [focused, oneAtATime(), Boolean(layers[focused]?.boolean), ...labels].join("\n");
   // Rebuilt only when the layers change, not at every step: a click must find its button.
-  if (layerRows?.key !== key) layerRows = { key, rows: buildLayerRows(count, focused) };
+  if (layerRows?.key !== key) layerRows = { key, rows: buildLayerRows(focused) };
   const id = inspected();
   for (const { k, value, scale } of layerRows.rows) {
     value.textContent = layers[k]?.texts[id] ?? "";
@@ -599,11 +618,25 @@ function renderLayers() {
   }
 }
 
-function buildLayerRows(count, focused) {
+/** A button of a row that moves its watch, `icon` pointing where. */
+function arrow(icon, title, label, disabled, move) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "pg-layer-move";
+  button.innerHTML = icon;
+  button.title = title;
+  button.disabled = disabled;
+  button.setAttribute("aria-label", label);
+  button.addEventListener("click", move);
+  return button;
+}
+
+function buildLayerRows(focused) {
   const list = element("pg-layers");
   const rows = [];
+  const watched = stackOrder().slice(1);
   list.replaceChildren();
-  for (let k = count - 1; k >= 0; k -= 1) {
+  for (const k of stackOrder()) {
     const row = document.createElement("div");
     row.className = `pg-layer${k === focused ? " is-focused" : ""}${isShown(k) ? "" : " is-hidden"}`;
     const head = document.createElement("div");
@@ -627,6 +660,11 @@ function buildLayerRows(count, focused) {
     value.className = "pg-layer-value";
     head.append(name, value);
     if (k > 0) {
+      const position = watched.indexOf(k);
+      head.append(
+        arrow(UP, "Move up the stack", `Move ${labelOf(k)} up`, position === 0, () => moveWatch(k, -1)),
+        arrow(DOWN, "Move down the stack", `Move ${labelOf(k)} down`, position === watched.length - 1, () => moveWatch(k, 1)),
+      );
       const remove = document.createElement("button");
       remove.type = "button";
       remove.className = "pg-layer-remove";
@@ -933,7 +971,7 @@ document.addEventListener("keydown", (event) => {
     setSolo(!app.solo);
   } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
     event.preventDefault();
-    moveFocus(event.key === "ArrowUp" ? 1 : -1);
+    moveFocus(event.key === "ArrowUp" ? -1 : 1);
   }
 });
 

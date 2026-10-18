@@ -335,6 +335,36 @@
   display: none;
 }
 
+.pg-layer-move {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--wt-muted);
+  cursor: pointer;
+}
+
+.pg-layer-move svg {
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
+.pg-layer-move:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--wt-ink) 10%, transparent);
+  color: var(--wt-ink);
+}
+
+.pg-layer-move:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
 .pg-layer-remove {
   width: 1.2rem;
   height: 1.2rem;

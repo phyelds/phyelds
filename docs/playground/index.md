@@ -15,8 +15,9 @@ and your code is not sent anywhere.
   of phyelds, your own names, and what comes after a dot, such as the methods of
   `neighbors(1).`.
 - Select an expression and press **Watch** (Ctrl+Shift+Enter): its value on every
-  device appears as a layer stacked above the result. Watching does not start the
-  devices over, and each layer can be removed again.
+  device appears as a layer stacked under the result, which stays on top. Watching
+  does not start the devices over; the arrows of a watch move it up or down the
+  stack, and × removes it.
 - The layer in front, which you pick in the list, chooses its colour map (plasma,
   viridis, diverging, or categories for ids) and how high its values rise, down to flat.
 - The eye of a layer hides it from the stack. **One at a time** (S) shows only the layer
