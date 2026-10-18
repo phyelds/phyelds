@@ -10,6 +10,9 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # lets codecov authenticate the upload with OIDC, without a token
     strategy:
       fail-fast: false
       matrix:
@@ -49,7 +52,7 @@ jobs:
       uses: codecov/codecov-action@v5
       with:
         files: coverage.xml
-        token: ${{ secrets.CODECOV_TOKEN }}
+        use_oidc: true
 
   vmas:
     runs-on: ubuntu-latest
