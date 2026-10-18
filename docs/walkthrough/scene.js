@@ -399,8 +399,8 @@ export function createScene(canvas) {
    * ground up: every layer of `frame.layers` has the height of its plane (`base`), its
    * `label`, `devices` (heights included), `links` and `highlights`, and one of them is
    * `focused`; `frame.top` is the height of the stack, which the camera frames. The
-   * slabs must not overlap. Pillars join the places of a device in every layer, and
-   * the source and the target are tagged on top.
+   * slabs must not overlap. A pillar joins the places in every layer of the device
+   * under the pointer, and the source and the target are tagged on top.
    */
   function drawLayers(frame) {
     const { layers, palette, top } = frame;
@@ -410,7 +410,10 @@ export function createScene(canvas) {
     context.clearRect(0, 0, size.width, size.height);
     const highest = layers[layers.length - 1];
     const tops = highest.devices.map((device) => project(device.x, device.y, device.z));
-    drawStems({ ...frame, devices: highest.devices }, tops);
+    // Alone, a layer stands every device on a stem, as in the walkthrough. In a stack, stems would
+    // cross every plane: only the device under the pointer keeps one, to be found in each layer.
+    const stemmed = layers.length === 1 ? highest.devices : highest.devices.filter((device) => device.id === frame.focus?.id);
+    drawStems({ ...frame, devices: stemmed }, tops);
     // Farthest from the eye first: at a low pitch, the camera sits inside a tall stack, and a
     // layer above the eye hides the ones above it, seen from below.
     const away = (k) => Math.abs(layers[k].base - lens.eye.z);
