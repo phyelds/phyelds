@@ -1,0 +1,10 @@
+# The dark theme of the animations of the docs: drawn on the background of the dark pages,
+# with their light text. Colours are written without '#', which starts a comment here.
+figure.facecolor: 1f1a24
+axes.facecolor: 1f1a24
+savefig.facecolor: 1f1a24
+text.color: ede7f1
+axes.labelcolor: ede7f1
+axes.edgecolor: ede7f1
+xtick.color: ede7f1
+ytick.color: ede7f1

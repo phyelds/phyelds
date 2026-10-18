@@ -93,7 +93,8 @@ def hop_gradient(source: bool) -> float:
 
 <div markdown>
 
-![The hop-count gradient spreading along a line of ten devices](assets/gradient-hops.gif)
+![The hop-count gradient spreading along a line of ten devices](assets/gradient-hops.gif#only-light)
+![The hop-count gradient spreading along a line of ten devices](assets/gradient-hops-dark.gif#only-dark)
 
 Every device runs these five lines: it remembers its estimate, shares it with its
 neighbors, and keeps the smallest one plus one hop. Together, the devices compute how many

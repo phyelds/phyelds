@@ -1,12 +1,15 @@
 """
 The gradient, step by step: the programs and scenes shown in the README.
 
-Run it to regenerate the animations in ``docs/assets``:
+Run it to regenerate the animations in ``docs/assets``, each in the light theme of the
+docs and, with ``-dark`` in its name, in the dark one:
 
     poetry run python docs/examples/gradient.py
 """
 import random
 from pathlib import Path
+
+from matplotlib import pyplot as plt
 
 from phyelds.calculus import aggregate, neighbors, remember
 from phyelds.libraries.device import sense
@@ -26,6 +29,8 @@ from phyelds.simulator.render import RenderMonitor
 from phyelds.simulator.runner import schedule_program_for_all
 
 ASSETS = Path(__file__).resolve().parent.parent / "assets"
+# The suffix of each animation, and the matplotlib style it is drawn in: as it is, and dark.
+THEMES = {"": {}, "-dark": Path(__file__).resolve().parent / "dark.mplstyle"}
 INFINITY = float("inf")
 ROUND = 0.5  # time between two rounds of a device, and between two frames
 LATTICE_DIAMETER = 16.0  # about the distance between opposite corners of a 12x12 lattice
@@ -106,13 +111,13 @@ def record(
     RenderMonitor(simulator, config)
 
 
-def hops_on_a_line() -> None:
+def hops_on_a_line(suffix: str = "") -> None:
     """A wave of hop counts that leaves the source and crosses the line."""
     simulator = deploy_grid(width=10, height=1)
     set_source(simulator, 0)
     record(
         simulator,
-        "gradient-hops.gif",
+        f"gradient-hops{suffix}.gif",
         vmax=9,
         labels=True,
         title="Hop-count gradient",
@@ -123,21 +128,21 @@ def hops_on_a_line() -> None:
     simulator.run(12 * ROUND)
 
 
-def distances_on_a_lattice() -> None:
+def distances_on_a_lattice(suffix: str = "") -> None:
     """The metric gradient on an irregular network."""
     simulator = deploy_grid(width=12, height=12, deformation=0.25, radius=1.5)
     set_source(simulator, 0)
-    record(simulator, "gradient-distance.gif", LATTICE_DIAMETER, title="Distance gradient")
+    record(simulator, f"gradient-distance{suffix}.gif", LATTICE_DIAMETER, title="Distance gradient")
     schedule_program_for_all(simulator, 0.0, ROUND, metric_gradient_program)
     simulator.run(25 * ROUND)
 
 
-def self_healing() -> None:
+def self_healing(suffix: str = "") -> None:
     """The source jumps to the opposite corner: the field repairs itself."""
     simulator = deploy_grid(width=12, height=12, deformation=0.25, radius=1.5)
     set_source(simulator, 0)
     record(
-        simulator, "gradient-self-healing.gif", LATTICE_DIAMETER, title="Self-healing gradient"
+        simulator, f"gradient-self-healing{suffix}.gif", LATTICE_DIAMETER, title="Self-healing gradient"
     )
     schedule_program_for_all(simulator, 0.0, ROUND, metric_gradient_program)
     last = len(simulator.environment.nodes) - 1
@@ -146,12 +151,15 @@ def self_healing() -> None:
 
 
 def main() -> None:
-    """Regenerate every animation used by the README."""
-    random.seed(42)
+    """Regenerate every animation used by the README, in both themes."""
     ASSETS.mkdir(parents=True, exist_ok=True)
-    hops_on_a_line()
-    distances_on_a_lattice()
-    self_healing()
+    for suffix, style in THEMES.items():
+        with plt.style.context(style):
+            # The same seed in each theme: the same lattices, only the colours change.
+            random.seed(42)
+            hops_on_a_line(suffix)
+            distances_on_a_lattice(suffix)
+            self_healing(suffix)
 
 
 if __name__ == "__main__":

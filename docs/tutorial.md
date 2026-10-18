@@ -38,7 +38,8 @@ Read **locally**, these five lines compare a few numbers from neighboring nodes.
 
 ![Hop-count gradient spreading along a line of four nodes](assets/hop-gradient-stages.png)
 
-![A hop-count gradient spreading along a line of ten devices](assets/gradient-hops.gif){ width="640" }
+![A hop-count gradient spreading along a line of ten devices](assets/gradient-hops.gif#only-light){ width="640" }
+![A hop-count gradient spreading along a line of ten devices](assets/gradient-hops-dark.gif#only-dark){ width="640" }
 
 !!! note "Why does the wave move more than one hop per round?"
     In the bundled simulator, the devices scheduled at the same timestamp run one after another and read the freshest outboxes of neighbors that already ran in that step. The final converged field does not depend on execution order—only the transient speed does.
@@ -93,7 +94,8 @@ def program():
     return distance_to(sense("source"), neighbors_distances())
 ```
 
-![A distance gradient on an irregular lattice](assets/gradient-distance.gif){ width="480" }
+![A distance gradient on an irregular lattice](assets/gradient-distance.gif#only-light){ width="480" }
+![A distance gradient on an irregular lattice](assets/gradient-distance-dark.gif#only-dark){ width="480" }
 
 [Run it in the playground](playground/index.md#example=gradient){ .md-button }
 
@@ -103,7 +105,8 @@ def program():
 
 Nothing in the program refers to *when* the source appeared or *where* it is located: every round recomputes the field from the current sensors and neighbor messages. When the source jumps from the bottom-left corner to the top-right corner halfway through the run, the field repairs itself with zero extra code:
 
-![The gradient re-converging after the source moves](assets/gradient-self-healing.gif){ width="480" }
+![The gradient re-converging after the source moves](assets/gradient-self-healing.gif#only-light){ width="480" }
+![The gradient re-converging after the source moves](assets/gradient-self-healing-dark.gif#only-dark){ width="480" }
 
 [Move the source yourself in the playground](playground/index.md#example=self_healing){ .md-button }
 
@@ -160,7 +163,8 @@ def my_channel(width: float = 1.6) -> float:
 2. **Collect (`C`)**: `collect_or` flows downhill along `to_target` from `source` to `target`, setting `on_path = True` on every node along the shortest path.
 3. **Spread (`G`)**: a second `distance_to(on_path, ...)` measures how far each node is from the shortest path, selecting all devices within `width`.
 
-![A self-organizing channel between bottom-left and top-right corners](assets/channel.gif){ width="480" }
+![A self-organizing channel between bottom-left and top-right corners](assets/channel.gif#only-light){ width="480" }
+![A self-organizing channel between bottom-left and top-right corners](assets/channel-dark.gif#only-dark){ width="480" }
 
 [Run the corridor in the playground](playground/index.md#example=corridor){ .md-button }
 

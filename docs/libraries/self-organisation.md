@@ -38,7 +38,8 @@ def cluster_id(grain: float = 4.5) -> int:
     return broadcast(is_leader, local_id(), distances)
 ```
 
-![Self-organizing Voronoi clusters around elected leaders](../assets/leaders.gif){ width="480" }
+![Self-organizing Voronoi clusters around elected leaders](../assets/leaders.gif#only-light){ width="480" }
+![Self-organizing Voronoi clusters around elected leaders](../assets/leaders-dark.gif#only-dark){ width="480" }
 
 [Run leader clusters in the playground](../playground/index.md#example=leaders){ .md-button }
 
@@ -109,6 +110,7 @@ def program() -> dict[int, int]:
 1. When the origin device senses `"clear"`, a termination wave shuts down the entire `origin_id` bubble across the network.
 2. Devices farther than `max_hops` hops immediately leave the bubble (`EXTERNAL`) and do not execute or relay the process further.
 
-![A process bubble spawning at the center, expanding to 3 hops, and shutting down](../assets/bubbles.gif){ width="480" }
+![A process bubble spawning at the center, expanding to 3 hops, and shutting down](../assets/bubbles.gif#only-light){ width="480" }
+![A process bubble spawning at the center, expanding to 3 hops, and shutting down](../assets/bubbles-dark.gif#only-dark){ width="480" }
 
 [Run process bubbles in the playground](../playground/index.md#example=bubbles){ .md-button }

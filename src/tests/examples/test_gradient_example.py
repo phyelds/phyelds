@@ -3,6 +3,8 @@ import importlib.util
 from pathlib import Path
 
 import pytest
+from matplotlib import pyplot as plt
+from PIL import Image
 
 from phyelds.simulator.runner import schedule_program_for_all
 
@@ -55,3 +57,13 @@ def test_hop_gradient_heals_when_the_source_moves():
     simulator.run(3 * ROUNDS)
 
     assert _results(simulator) == [4, 3, 2, 1, 0]
+
+
+def test_gradient_example_records_the_dark_animation_on_the_background_of_the_dark_docs(tmp_path, monkeypatch):
+    monkeypatch.setattr(gradient, "ASSETS", tmp_path)
+
+    with plt.style.context(gradient.THEMES["-dark"]):
+        gradient.hops_on_a_line("-dark")
+
+    first_frame = Image.open(tmp_path / "gradient-hops-dark.gif").convert("RGB")
+    assert first_frame.getpixel((0, 0)) == (0x1F, 0x1A, 0x24)

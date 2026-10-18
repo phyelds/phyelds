@@ -231,7 +231,10 @@ distributed shortest-path algorithm: at every round the correct distances spread
 further from the source, until the whole network holds the hop count.
 
 <p align="center">
-  <img src="docs/assets/gradient-hops.gif" alt="A hop-count gradient spreading along a line of ten devices" width="640">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/gradient-hops-dark.gif">
+    <img src="docs/assets/gradient-hops.gif" alt="A hop-count gradient spreading along a line of ten devices" width="640">
+  </picture>
 </p>
 
 > In the phyelds simulator the devices of one round run one after the other and
@@ -298,7 +301,10 @@ def program():
 ```
 
 <p align="center">
-  <img src="docs/assets/gradient-distance.gif" alt="A distance gradient spreading on an irregular lattice from the bottom-left corner" width="480">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/gradient-distance-dark.gif">
+    <img src="docs/assets/gradient-distance.gif" alt="A distance gradient spreading on an irregular lattice from the bottom-left corner" width="480">
+  </picture>
 </p>
 
 ### Step 6 — Self-healing
@@ -309,7 +315,10 @@ source moves (here, from the bottom-left to the top-right corner, halfway throug
 the run) the field repairs itself, with no extra code.
 
 <p align="center">
-  <img src="docs/assets/gradient-self-healing.gif" alt="The gradient re-converging after the source moves to the opposite corner" width="480">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/gradient-self-healing-dark.gif">
+    <img src="docs/assets/gradient-self-healing.gif" alt="The gradient re-converging after the source moves to the opposite corner" width="480">
+  </picture>
 </p>
 
 Look closely: the area around the new source settles quickly, while the old area

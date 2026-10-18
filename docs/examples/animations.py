@@ -2,7 +2,8 @@
 The animations of the library pages: leader clusters, a process bubble and a corridor.
 
 They run the programs of the playground examples, on the larger scenes the pages show.
-Run it to regenerate them in ``docs/assets``:
+Run it to regenerate them in ``docs/assets``, each in the light theme of the docs and,
+with ``-dark`` in its name, in the dark one:
 
     poetry run python docs/examples/animations.py
 """
@@ -11,6 +12,8 @@ import random
 from collections.abc import Iterable
 from pathlib import Path
 from types import ModuleType
+
+from matplotlib import pyplot as plt
 
 from phyelds.simulator import Simulator
 from phyelds.simulator.deployments import deformed_lattice
@@ -22,7 +25,9 @@ from phyelds.simulator.runner import schedule_program_for_all
 ASSETS = Path(__file__).resolve().parent.parent / "assets"
 PLAYGROUND = Path(__file__).resolve().parent / "playground"
 ROUND = 0.5  # time between two rounds of a device, and between two frames
-SEED = 42  # the same lattices at every run
+SEED = 42  # the same lattices at every run, and in each theme
+# The suffix of each animation, and the matplotlib style it is drawn in: as it is, and dark.
+THEMES = {"": {}, "-dark": Path(__file__).resolve().parent / "dark.mplstyle"}
 
 
 def example(name: str) -> ModuleType:
@@ -52,14 +57,14 @@ def record(simulator: Simulator, name: str, title: str, cmap: str, vmax: float) 
     RenderMonitor(simulator, config)
 
 
-def leaders(save: bool = True) -> Simulator:
+def leaders(save: bool = True, suffix: str = "") -> Simulator:
     """Leaders elected sparsely over a 10x10 lattice, each the centre of a cluster."""
     program = example("leaders")
     # The playground's arena is 5 wide: on a lattice twice as large, the leaders lie farther apart.
     program.GRAIN = 4.5
     simulator = deploy(10, deformation=0.25)
     if save:
-        record(simulator, "leaders.gif", "Leader clusters", "tab20", vmax=99.0)
+        record(simulator, f"leaders{suffix}.gif", "Leader clusters", "tab20", vmax=99.0)
     schedule_program_for_all(simulator, 0.0, ROUND, program.cluster_id)
     simulator.run(16 * ROUND)
     return simulator
@@ -70,7 +75,7 @@ def clear_alarm(simulator: Simulator, node_id: int) -> None:
     simulator.environment.nodes[node_id].data.update({"alarm": False, "clear": True})
 
 
-def bubbles(save: bool = True) -> Simulator:
+def bubbles(save: bool = True, suffix: str = "") -> Simulator:
     """A process bubble spawned by an alarm in the middle of a 9x9 lattice, then shut down."""
     program = example("bubbles")
     program.MAX_HOPS = 3.0  # on the larger lattice, the bubble reaches farther
@@ -78,14 +83,14 @@ def bubbles(save: bool = True) -> Simulator:
     simulator = deploy(9, deformation=0.2, sensors=["alarm", "clear"])
     simulator.environment.nodes[origin].data["alarm"] = True
     if save:
-        record(simulator, "bubbles.gif", "Process bubble", "magma", vmax=program.MAX_HOPS + 1.0)
+        record(simulator, f"bubbles{suffix}.gif", "Process bubble", "magma", vmax=program.MAX_HOPS + 1.0)
     schedule_program_for_all(simulator, 0.0, ROUND, program.monitor_alerts)
     simulator.schedule_event(8 * ROUND + ROUND / 2, clear_alarm, simulator, origin)
     simulator.run(16 * ROUND)
     return simulator
 
 
-def corridor(save: bool = True) -> Simulator:
+def corridor(save: bool = True, suffix: str = "") -> Simulator:
     """The corridor between two opposite corners of a 12x12 lattice."""
     program = example("corridor")
     program.WIDTH = 1.6  # devices one apart: a corridor a device or so wide on each side of the path
@@ -93,18 +98,20 @@ def corridor(save: bool = True) -> Simulator:
     simulator.environment.nodes[0].data["source"] = True
     simulator.environment.nodes[12 * 12 - 1].data["target"] = True
     if save:
-        record(simulator, "channel.gif", "Channel", "plasma", vmax=1.0)
+        record(simulator, f"channel{suffix}.gif", "Channel", "plasma", vmax=1.0)
     schedule_program_for_all(simulator, 0.0, ROUND, program.corridor)
     simulator.run(25 * ROUND)
     return simulator
 
 
 def main() -> None:
-    """Regenerate the animations of the library pages."""
+    """Regenerate the animations of the library pages, in both themes."""
     ASSETS.mkdir(parents=True, exist_ok=True)
-    leaders()
-    bubbles()
-    corridor()
+    for suffix, style in THEMES.items():
+        with plt.style.context(style):
+            leaders(suffix=suffix)
+            bubbles(suffix=suffix)
+            corridor(suffix=suffix)
 
 
 if __name__ == "__main__":
