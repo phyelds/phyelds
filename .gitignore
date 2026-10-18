@@ -7,3 +7,6 @@ docs/assets/gradient-*.png
 
 # mkdocs build output
 site/
+
+# npm install, for semantic-release and for recording the playground
+node_modules/

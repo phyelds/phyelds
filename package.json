@@ -1,9 +1,10 @@
 {
     "devDependencies": {
-      "semantic-release-preconfigured-conventional-commits": "^1.1.119"
-    }, 
+        "puppeteer-core": "^24.43.1",
+        "semantic-release-preconfigured-conventional-commits": "^1.1.119"
+    },
     "engines": {
-      "node": "20.17",
-      "npm": ">=3.0.0"
+        "node": "20.17",
+        "npm": ">=3.0.0"
     }
-  }
+}
