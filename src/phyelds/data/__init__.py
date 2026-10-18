@@ -118,11 +118,7 @@ class NeighborhoodField(Generic[T], Iterator[T]):
                   that are present in the given neighborhood.
         """
         # We look at keys present in both, where the *other* neighborhood's value is truthy
-        return [
-            self.data[k]
-            for k in self.data.keys() & neighborhood.data.keys()
-            if neighborhood.data[k]
-        ]
+        return [self.data[k] for k in self.data if neighborhood.data.get(k, False)]
 
     def any(
         self,
@@ -416,10 +412,7 @@ class NeighborhoodField(Generic[T], Iterator[T]):
                 else op(self.default, other.default)
             )
             return NeighborhoodField(
-                {
-                    k: op(self.data[k], other.data[k])
-                    for k in self.data.keys() & other.data.keys()
-                },
+                {k: op(self.data[k], other.data[k]) for k in self.data if k in other.data},
                 self.node_id,
                 default=combined_default,
             )
