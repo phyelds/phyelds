@@ -1,4 +1,4 @@
-"""Keeps the gradient walkthrough of the README and the docs working."""
+"""Keeps the gradient walkthrough of the docs working."""
 import importlib.util
 from pathlib import Path
 
