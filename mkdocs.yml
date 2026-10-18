@@ -105,6 +105,7 @@ nav:
       - Built-in simulator: simulator.md
       - Running phyelds anywhere: integration/index.md
       - "Case study: VMAS": integration/vmas.md
+      - MicroPython & ESP32: integration/micropython.md
   - API reference:
       - phyelds.calculus: reference/calculus.md
       - phyelds.data: reference/data.md
