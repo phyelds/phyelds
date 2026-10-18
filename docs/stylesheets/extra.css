@@ -251,6 +251,11 @@
   border: 1px solid var(--ph-line);
 }
 
+/* The animations are narrower than the column: they sit in its middle. */
+.md-typeset p:has(> img[src*=".gif"]) {
+  text-align: center;
+}
+
 /* Buttons: pills; the primary one carries the gradient. */
 .md-typeset .md-button {
   border: 1px solid var(--ph-line-strong);
