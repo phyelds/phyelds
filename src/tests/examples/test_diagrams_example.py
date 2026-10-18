@@ -24,3 +24,13 @@ def test_diagrams_example_draws_the_dark_figure_on_the_background_of_the_dark_do
 
     figure = Image.open(tmp_path / "local-vs-global-dark.png").convert("RGB")
     assert figure.getpixel((0, 0)) == (0x1F, 0x1A, 0x24)
+
+
+def test_diagrams_example_draws_every_figure_at_the_width_of_the_docs_column(tmp_path, monkeypatch):
+    monkeypatch.setattr(diagrams, "ASSETS", tmp_path)
+
+    diagrams.main()
+
+    widths = {path.name: Image.open(path).width for path in tmp_path.glob("*.png")}
+    assert len(widths) == 20
+    assert set(widths.values()) == {round(diagrams.COLUMN_WIDTH * diagrams.DPI)}
