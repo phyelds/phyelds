@@ -18,6 +18,7 @@ PYTHONPATH="packages/phyelds-vmas/src" poetry run pytest packages/phyelds-vmas/t
 poetry install --with docs         # documentation dependencies
 poetry run mkdocs build --strict   # build the docs, as in CI (mkdocs serve to preview)
 poetry run python docs/examples/gradient.py   # regenerate the gifs in docs/assets
+poetry run python docs/examples/animations.py # and those of the library pages
 npm install && node docs/examples/hero.mjs     # record the gifs of the home page (Chrome, ffmpeg, gifsicle)
 ```
 

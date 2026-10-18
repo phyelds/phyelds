@@ -13,9 +13,9 @@ WIDTH = 0.8  # how far from the path a device still belongs to the channel
 
 
 @aggregate
-def corridor() -> bool:
-    """Whether the device is within WIDTH of the shortest path from the source to the target."""
+def corridor() -> float:
+    """1.0 on the devices within WIDTH of the shortest path from the source to the target, 0.0 elsewhere."""
     distances = neighbors_distances()
     to_target = distance_to(sense("target"), distances)
     on_path = collect_or(to_target, sense("source"))
-    return distance_to(on_path, distances) < WIDTH
+    return 1.0 if distance_to(on_path, distances) < WIDTH else 0.0
