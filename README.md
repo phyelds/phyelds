@@ -10,6 +10,7 @@ Lightweight, pythonic aggregate computing & field calculus toolkit for building,
 [![Python versions](https://img.shields.io/pypi/pyversions/phyelds.svg)](https://pypi.org/project/phyelds/)
 [![Downloads](https://static.pepy.tech/badge/phyelds/month)](https://pepy.tech/project/phyelds)
 [![Tests](https://github.com/phyelds/phyelds/actions/workflows/test.yml/badge.svg)](https://github.com/phyelds/phyelds/actions/workflows/test.yml)
+[![Coverage](https://codecov.io/gh/phyelds/phyelds/graph/badge.svg)](https://codecov.io/gh/phyelds/phyelds)
 [![Docs](https://github.com/phyelds/phyelds/actions/workflows/docs.yml/badge.svg)](https://phyelds.github.io/phyelds/)
 <br>
 [![License](https://img.shields.io/github/license/phyelds/phyelds.svg)](https://github.com/phyelds/phyelds/blob/master/LICENSE)

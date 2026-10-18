@@ -13,3 +13,4 @@ site/
 
 # npm install, for semantic-release and for recording the playground
 node_modules/
+coverage.xml
