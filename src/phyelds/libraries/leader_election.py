@@ -45,6 +45,12 @@ class Candidacy:
             return NotImplemented
         return self._sort_key() < other._sort_key()
 
+    def __gt__(self, other: object) -> bool:
+        # Python would reflect > onto __lt__, MicroPython does not.
+        if not isinstance(other, Candidacy):
+            return NotImplemented
+        return self._sort_key() > other._sort_key()
+
 
 def _validate_area(area: float) -> None:
     """Ensure ``area`` is finite and strictly positive so leader election can self-stabilize."""
