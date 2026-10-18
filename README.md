@@ -34,8 +34,8 @@ communication, and the library stays small enough to read in an afternoon.
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/phyelds/phyelds/master/docs/assets/gradient-self-healing-dark.gif">
-    <img src="https://raw.githubusercontent.com/phyelds/phyelds/master/docs/assets/gradient-self-healing.gif" alt="A distance gradient re-converging after its source moves to the opposite corner" width="480">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/phyelds/phyelds/master/docs/assets/channel-dark.gif">
+    <img src="https://raw.githubusercontent.com/phyelds/phyelds/master/docs/assets/channel.gif" alt="A self-organizing channel between the bottom-left and top-right corners" width="480">
   </picture>
 </p>
 
@@ -51,26 +51,33 @@ Requires Python 3.12+.
 
 ## A taste
 
-The *gradient*, every device's distance in hops from the nearest source, is the
-"hello world" of aggregate computing:
+A *channel* (or corridor): the devices within `WIDTH` of the shortest path between
+a source and a target, as in the animation above. It is three building blocks of
+the standard library, composed like ordinary Python functions:
 
 ```python
-from phyelds.calculus import aggregate, neighbors, remember
+from phyelds.calculus import aggregate
+from phyelds.libraries.collect import collect_or
+from phyelds.libraries.device import sense
+from phyelds.libraries.distances import neighbors_distances
+from phyelds.libraries.spreading import distance_to
+
+WIDTH = 0.8
 
 @aggregate
-def hop_gradient(source: bool) -> float:
-    set_distance, distance = remember(float("inf"))      # local state across rounds
-    through_neighbors = neighbors(distance) + 1           # one hop through each neighbor
-    nearest = min(through_neighbors.exclude_self().values(), default=float("inf"))
-    set_distance(0 if source else nearest)
-    return distance
+def corridor() -> bool:
+    distances = neighbors_distances()
+    to_target = distance_to(sense("target"), distances)    # gradient towards the target
+    on_path = collect_or(to_target, sense("source"))       # mark the path from the source
+    return distance_to(on_path, distances) < WIDTH         # widen it into a corridor
 ```
 
-Read locally, it compares a few numbers; read globally, it is a self-healing
-distributed shortest-path algorithm. The
-[tutorial](https://phyelds.github.io/phyelds/tutorial/) builds it step by step and
-runs it in the simulator, and the
-[playground](https://phyelds.github.io/phyelds/playground/) runs it in your browser.
+Every device runs the same function, talking only to its neighbors, and the
+corridor heals by itself when devices move or fail. The
+[tutorial](https://phyelds.github.io/phyelds/tutorial/) builds it step by step from
+`remember` and `neighbors`, and the
+[playground](https://phyelds.github.io/phyelds/playground/#example=corridor) runs it
+in your browser.
 
 ## What's inside
 
