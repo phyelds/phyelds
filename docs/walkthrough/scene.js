@@ -410,9 +410,9 @@ export function createScene(canvas) {
     context.clearRect(0, 0, size.width, size.height);
     const highest = layers[layers.length - 1];
     const tops = highest.devices.map((device) => project(device.x, device.y, device.z));
-    // Alone, a layer stands every device on a stem, as in the walkthrough. In a stack, stems would
-    // cross every plane: only the device under the pointer keeps one, to be found in each layer.
-    const stemmed = layers.length === 1 ? highest.devices : highest.devices.filter((device) => device.id === frame.focus?.id);
+    // Stems from every device down to the ground would hide the values they hold up: only the
+    // device under the pointer keeps one, to be found on the ground and in every layer.
+    const stemmed = highest.devices.filter((device) => device.id === frame.focus?.id);
     drawStems({ ...frame, devices: stemmed }, tops);
     // Farthest from the eye first: at a low pitch, the camera sits inside a tall stack, and a
     // layer above the eye hides the ones above it, seen from below.
