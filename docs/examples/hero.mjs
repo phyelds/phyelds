@@ -37,8 +37,11 @@ const HOLD = 1.5; // seconds the last round stays
 const WIDTH = 560; // pixels of the animation
 const SOURCE = { x: 4, y: 4 }; // near where the playground switches the first sensor on
 const TARGET = { x: 0.8, y: 0.9 }; // where the source is dragged to, across the network
-// Everything but the network, which the animation shows alone. The map stays, unseen: the source is dragged on it.
-const CLEAN = ".pg-side, .wt-player, .wt-hint, .pg-layers { display: none !important; } .wt-map { opacity: 0; }";
+// Everything but the network, which the animation shows alone, on the background of the docs, where it
+// then sits with no frame. The map stays, unseen: the source is dragged on it.
+const CLEAN =
+  ".pg-side, .wt-player, .wt-hint, .pg-layers { display: none !important; } .wt-map { opacity: 0; }" +
+  " .wt-stage { background: var(--wt-bg) !important; }";
 
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 

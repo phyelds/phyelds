@@ -414,6 +414,14 @@
 .ph-split img {
   display: block;
   width: 100%;
+}
+
+/* The animation of the hero has the background of the page: it needs no frame. */
+.md-typeset .ph-hero img {
+  border: 0;
+}
+
+.ph-split img {
   box-shadow: var(--ph-shadow);
 }
 
