@@ -116,6 +116,7 @@ export const STEPS = [
     warm: true,
     roles: ["source", "target"],
     width: true,
+    playground: "channel",
     code: [
       { code: "@aggregate" },
       {

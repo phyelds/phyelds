@@ -22,7 +22,7 @@ EXAMPLES = DOCS / "examples" / "playground"
 # Pages that open full screen: docs/<name>/app.html, published in place of docs/<name>/index.md.
 FULL_SCREEN = ("walkthrough", "playground")
 # The menu follows this tour; examples not listed come after, by name.
-TOUR = ["neighbours", "gradient", "self_healing", "channel", "leaders", "bubbles"]
+TOUR = ["neighbours", "gradient", "self_healing", "channel", "corridor", "leaders", "bubbles"]
 
 
 def on_nav(nav: Any, **_: Any) -> Any:

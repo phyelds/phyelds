@@ -83,11 +83,11 @@ def network_size():
 
 ### Combining spreading and collection: a corridor
 
-A gradient towards a `target`, `collect_or` along it from a `source`, and a second gradient from the devices it marks create a self-healing corridor: the devices within `width` of the shortest path (the [tutorial](../tutorial.md#7-composing-blocks-building-a-channel) builds it step by step). Unlike `channel`, whose `width` is a slack on the length of the route, here `width` is a distance from the path:
+A gradient towards a `target`, `collect_or` along it from a `source`, and a second gradient from the devices it marks create a self-healing corridor: the devices within `width` of the shortest path (the [tutorial](../tutorial.md#7-composing-blocks-building-a-channel) builds it step by step). Unlike `channel`, whose `width` is a slack on the length of the route (the [playground](../playground/index.md#example=channel) runs it term by term), here `width` is a distance from the path:
 
 ![A self-organizing channel between bottom-left and top-right corners](../assets/channel.gif){ width="480" }
 
-[Run the channel in the playground](../playground/index.md#example=channel){ .md-button }
+[Run the corridor in the playground](../playground/index.md#example=corridor){ .md-button }
 
 ---
 

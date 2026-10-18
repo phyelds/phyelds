@@ -162,10 +162,10 @@ def my_channel(width: float = 1.6) -> float:
 
 ![A self-organizing channel between bottom-left and top-right corners](assets/channel.gif){ width="480" }
 
-[Run the channel in the playground](playground/index.md#example=channel){ .md-button }
+[Run the corridor in the playground](playground/index.md#example=corridor){ .md-button }
 
 !!! note "The library `channel` is built differently"
-    `phyelds.libraries.spreading.channel(source, target, width)` needs no collection: a device belongs to it when the shortest route from the source to the target *through that device* is at most `width` longer than the shortest route overall (`to_source + to_target <= between + width`). Its `width` is a slack on the length of the path, not a distance from it: the channel is an ellipse with foci in the source and the target rather than a band, as the [3D walkthrough](walkthrough/index.md) shows step by step.
+    `phyelds.libraries.spreading.channel(source, target, width)` needs no collection: a device belongs to it when the shortest route from the source to the target *through that device* is at most `width` longer than the shortest route overall (`to_source + to_target <= between + width`). Its `width` is a slack on the length of the path, not a distance from it: the channel is an ellipse with foci in the source and the target rather than a band, as the [3D walkthrough](walkthrough/index.md) shows step by step. The [playground](playground/index.md#example=channel) runs it with one line per term, ready to watch.
 
 ---
 
