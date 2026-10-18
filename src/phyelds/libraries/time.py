@@ -9,10 +9,12 @@ from typing import TypeVar
 from phyelds import engine
 from phyelds.calculus import aggregate, align, exchange, remember, remember_and_evolve
 from phyelds.data import NeighborhoodField, StateT
+from phyelds.data.codec import register
 
 T = TypeVar("T")
 
 
+@register
 @dataclass(frozen=True)
 class _ReplicaTimer:
     """State of the distributed timer driving replica creation."""

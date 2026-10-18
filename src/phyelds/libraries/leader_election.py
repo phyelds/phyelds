@@ -10,6 +10,7 @@ from typing import Any, Tuple
 
 from phyelds.calculus import aggregate, exchange, neighbors, remember
 from phyelds.data import NeighborhoodField, StateT
+from phyelds.data.codec import register
 from phyelds.libraries.device import local_id
 from phyelds.libraries.distances import hops_distance
 from phyelds.libraries.spreading import distance_to
@@ -18,6 +19,7 @@ from phyelds.libraries.utils import min_with_default
 ElectionStrategy = Callable[[float, NeighborhoodField[float]], int | None]
 
 
+@register
 @dataclass(frozen=True)
 class Candidacy:
     """
