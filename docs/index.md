@@ -35,8 +35,9 @@ in Jupyter notebooks, <code>pip install phyelds-vmas</code> for the VMAS multi-r
 
 </div>
 <figure markdown>
-![A distance gradient repairing itself after its source moves](assets/gradient-self-healing.gif)
-<figcaption>A distance gradient repairs itself when its source jumps to the opposite corner.</figcaption>
+![A distance gradient, in 3D, repairing itself as its source is dragged across the network](assets/hero.gif#only-light)
+![A distance gradient, in 3D, repairing itself as its source is dragged across the network](assets/hero-dark.gif#only-dark)
+<figcaption markdown>In the [playground](playground/index.md#example=self_healing), a distance gradient repairs itself as its source is dragged across the network.</figcaption>
 </figure>
 </div>
 
