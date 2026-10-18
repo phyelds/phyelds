@@ -21,8 +21,8 @@ and your code is not sent anywhere.
 - The layer in front, which you pick in the list, chooses its colour map (plasma,
   viridis, diverging, or categories for ids) and how high its values rise, down to flat.
 - The eye of a layer hides it from the stack. **One at a time** (S) shows only the layer
-  in front, and ↑ and ↓ move through the stack. **2D** shows the layer in front from
-  above, flat.
+  in front, and ↑ and ↓ move through the stack; Shift+↑ and Shift+↓ move the watch in
+  front up and down it. **2D** shows the layer in front from above, flat.
 - Every `sense("name")` of the program becomes a switch on the selected device.
 - Drag a device, in 3D or on the map, to move it. The sliders choose how many
   devices there are, from two to a hundred, and how far they hear; the devices

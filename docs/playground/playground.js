@@ -253,6 +253,7 @@ function moveFocus(direction) {
 
 /** Moves watch layer `k` up (-1) or down (+1) among the watches; the result stays on top. */
 function moveWatch(k, step) {
+  if (k === 0) return;
   const watched = stackOrder().slice(1);
   const other = watched[watched.indexOf(k) + step];
   if (other === undefined) return;
@@ -662,8 +663,8 @@ function buildLayerRows(focused) {
     if (k > 0) {
       const position = watched.indexOf(k);
       head.append(
-        arrow(UP, "Move up the stack", `Move ${labelOf(k)} up`, position === 0, () => moveWatch(k, -1)),
-        arrow(DOWN, "Move down the stack", `Move ${labelOf(k)} down`, position === watched.length - 1, () => moveWatch(k, 1)),
+        arrow(UP, "Move up the stack (Shift+↑ when in front)", `Move ${labelOf(k)} up`, position === 0, () => moveWatch(k, -1)),
+        arrow(DOWN, "Move down the stack (Shift+↓ when in front)", `Move ${labelOf(k)} down`, position === watched.length - 1, () => moveWatch(k, 1)),
       );
       const remove = document.createElement("button");
       remove.type = "button";
@@ -970,8 +971,11 @@ document.addEventListener("keydown", (event) => {
   } else if (event.key === "s" || event.key === "S") {
     setSolo(!app.solo);
   } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+    // The arrows walk the stack; with Shift, they carry the layer in front along.
     event.preventDefault();
-    moveFocus(event.key === "ArrowUp" ? -1 : 1);
+    const step = event.key === "ArrowUp" ? -1 : 1;
+    if (event.shiftKey) moveWatch(focusedLayer(), step);
+    else moveFocus(step);
   }
 });
 
