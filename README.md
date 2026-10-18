@@ -51,33 +51,31 @@ Requires Python 3.12+.
 
 ## A taste
 
-A *channel* (or corridor): the devices within `WIDTH` of the shortest path between
-a source and a target, as in the animation above. It is three building blocks of
-the standard library, composed like ordinary Python functions:
+A *channel*: the devices on a route from a source to a target at most `width` longer
+than the shortest one. A device is on such a route when its distance from the source
+plus its distance from the target is close to the distance between the two, so the
+channel is three gradients of the standard library, composed like ordinary Python
+functions:
 
 ```python
 from phyelds.calculus import aggregate
-from phyelds.libraries.collect import collect_or
-from phyelds.libraries.device import sense
 from phyelds.libraries.distances import neighbors_distances
-from phyelds.libraries.spreading import distance_to
-
-WIDTH = 0.8
+from phyelds.libraries.spreading import distance_between, distance_to
 
 @aggregate
-def corridor() -> bool:
+def channel(source: bool, target: bool, width: float) -> bool:
     distances = neighbors_distances()
-    to_target = distance_to(sense("target"), distances)    # gradient towards the target
-    on_path = collect_or(to_target, sense("source"))       # mark the path from the source
-    return distance_to(on_path, distances) < WIDTH         # widen it into a corridor
+    to_source = distance_to(source, distances)
+    to_target = distance_to(target, distances)
+    between = distance_between(source, target, distances)
+    return to_source + to_target <= between + width
 ```
 
 Every device runs the same function, talking only to its neighbors, and the
-corridor heals by itself when devices move or fail. The
-[tutorial](https://phyelds.github.io/phyelds/tutorial/) builds it step by step from
-`remember` and `neighbors`, and the
-[playground](https://phyelds.github.io/phyelds/playground/#example=corridor) runs it
-in your browser.
+channel heals by itself when devices move or fail. The
+[playground](https://phyelds.github.io/phyelds/playground/#example=channel) runs it
+in your browser, and the [tutorial](https://phyelds.github.io/phyelds/tutorial/)
+builds the gradient beneath it step by step from `remember` and `neighbors`.
 
 ## What's inside
 
