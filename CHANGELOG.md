@@ -1,3 +1,15 @@
+## [7.6.5](https://github.com/phyelds/phyelds/compare/7.6.4...7.6.5) (2026-10-18)
+
+### Documentation
+
+* **readme:** point to the documentation instead of repeating it ([8d53f49](https://github.com/phyelds/phyelds/commit/8d53f494ad567bc0203531aeaaa36356dd40342b))
+* **readme:** show a channel as the first example ([e040df4](https://github.com/phyelds/phyelds/commit/e040df47c91afe57cd8a7be476f14efca3c12a5a))
+
+### Build and continuous integration
+
+* authenticate the coverage upload with oidc ([e322c7f](https://github.com/phyelds/phyelds/commit/e322c7feb6174d5d4005c3d2add73ab8156c4b98))
+* report the test coverage to codecov ([058edb9](https://github.com/phyelds/phyelds/commit/058edb997da3585ed5e7d95f50174f42a0df9250))
+
 ## [7.6.4](https://github.com/phyelds/phyelds/compare/7.6.3...7.6.4) (2026-10-18)
 
 ### Documentation
