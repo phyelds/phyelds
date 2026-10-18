@@ -1,3 +1,9 @@
+## [7.6.6](https://github.com/phyelds/phyelds/compare/7.6.5...7.6.6) (2026-10-18)
+
+### Documentation
+
+* **readme:** build the channel from the distances to its two ends ([7a7d931](https://github.com/phyelds/phyelds/commit/7a7d931d94675cc56a09ec6891425ce21788f941))
+
 ## [7.6.5](https://github.com/phyelds/phyelds/compare/7.6.4...7.6.5) (2026-10-18)
 
 ### Documentation
