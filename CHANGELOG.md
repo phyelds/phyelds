@@ -1,3 +1,19 @@
+## [7.6.4](https://github.com/phyelds/phyelds/compare/7.6.3...7.6.4) (2026-10-18)
+
+### Documentation
+
+* center the animations in the column of the pages ([5bde77b](https://github.com/phyelds/phyelds/commit/5bde77b9019bec66b0f24335844533787906fad0))
+* draw the animations of the docs in the dark theme too ([a8f6acd](https://github.com/phyelds/phyelds/commit/a8f6acd1caa4777a89ccf95a69bc52c387452d33))
+* draw the figures of the docs in the dark theme too ([44c6169](https://github.com/phyelds/phyelds/commit/44c6169bb8b25362e14d7bbc7671ed03507d7a9b))
+* **examples:** draw the figures of the docs at the width of the column ([bae22a8](https://github.com/phyelds/phyelds/commit/bae22a8b6eed417f69916ece30772124878efe69))
+* **examples:** regenerate the animations of the library pages ([aa8b57d](https://github.com/phyelds/phyelds/commit/aa8b57d3ce01fbf077e6363332a9140f089ce70a))
+* **home:** let the animation of the hero sit on the page, unframed ([ed48821](https://github.com/phyelds/phyelds/commit/ed4882101925522c79e4a5e56b9101c3b7db0a08))
+* **home:** show the playground in 3D at the top of the home page ([61e4e9c](https://github.com/phyelds/phyelds/commit/61e4e9c315b33766f64a1e9367f7f3dc3d5cb6c5))
+
+### Build and continuous integration
+
+* add puppeteer-core to record the playground ([20a619c](https://github.com/phyelds/phyelds/commit/20a619c1fa8c8ebe4e3855bd9db90ca4bf0a4dcd))
+
 ## [7.6.3](https://github.com/phyelds/phyelds/compare/7.6.2...7.6.3) (2026-10-18)
 
 ### Bug Fixes
