@@ -3,6 +3,8 @@ Internal classes used to manage the state and the neighborhood of the system
 (namely `rep` and `nbr` of field calculus).
 """
 
+import sys
+from collections import OrderedDict
 from typing import (
     Any,
     Callable,
@@ -29,6 +31,9 @@ StateT = Union[S, "State[S]"]  # pylint: disable=invalid-name
 
 _MISSING = object()
 
+# Fields go through devices by id: MicroPython dicts do not keep the sorted order.
+_Sorted = OrderedDict if sys.implementation.name == "micropython" else dict
+
 
 class NeighborhoodField(Generic[T], Iterator[T]):
     """
@@ -40,7 +45,7 @@ class NeighborhoodField(Generic[T], Iterator[T]):
     """
 
     def __init__(self, data: Dict[int, T], node_id: int, default: Any = _MISSING) -> None:
-        self.data: Dict[int, T] = dict(sorted(data.items()))
+        self.data: Dict[int, T] = _Sorted(sorted(data.items()))
         self._iter_index: Optional[int] = None
         self._iter_keys: Optional[List[int]] = None
         self.node_id: int = node_id
