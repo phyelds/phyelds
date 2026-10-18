@@ -63,7 +63,8 @@ Collection (`C`) is the dual of spreading: values flow **inward** (downhill alon
 
 Collection functions support three pluggable routing strategies:
 
-![Single-parent tree collection versus multi-path DAG collection](../assets/collect-strategies.png)
+![Single-parent tree collection versus multi-path DAG collection](../assets/collect-strategies.png#only-light)
+![Single-parent tree collection versus multi-path DAG collection](../assets/collect-strategies-dark.png#only-dark)
 
 - **`broadcast_collect()`** *(default)*: each node selects its single best parent (`find_parent(potential)`) and advertises `(parent_id, total)` via `neighbors`.
 - **`point_to_point()`**: uses an anisotropic [`exchange`](../concepts/neighborhood-field.md#exchange) so each device sends its accumulated total **only** to its selected parent and `identity` to everyone else.

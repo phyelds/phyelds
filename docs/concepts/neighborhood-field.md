@@ -77,7 +77,8 @@ def closest_neighbor_distance():
 
 While `neighbors(v)` broadcasts the **same** value `v` to every neighbor, `exchange(initial)` combines state evolution and neighbor communication into a single operator (from *Exchange Calculus*) that can send **different values to different neighbors**.
 
-![Comparison between isotropic neighbors(v) and anisotropic exchange(init)](../assets/neighbors-vs-exchange.png)
+![Comparison between isotropic neighbors(v) and anisotropic exchange(init)](../assets/neighbors-vs-exchange.png#only-light)
+![Comparison between isotropic neighbors(v) and anisotropic exchange(init)](../assets/neighbors-vs-exchange-dark.png#only-dark)
 
 `exchange(initial)` returns a pair `(set_field, field)`:
 

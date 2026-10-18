@@ -36,7 +36,8 @@ A source device is at distance `0`. Every other device picks the shortest path o
 
 Read **locally**, these five lines compare a few numbers from neighboring nodes. Read **globally**, they implement a distributed Bellman-Ford shortest-path algorithm: at every round the wave of distances expands outward from the source until the entire network converges.
 
-![Hop-count gradient spreading along a line of four nodes](assets/hop-gradient-stages.png)
+![Hop-count gradient spreading along a line of four nodes](assets/hop-gradient-stages.png#only-light)
+![Hop-count gradient spreading along a line of four nodes](assets/hop-gradient-stages-dark.png#only-dark)
 
 ![A hop-count gradient spreading along a line of ten devices](assets/gradient-hops.gif#only-light){ width="640" }
 ![A hop-count gradient spreading along a line of ten devices](assets/gradient-hops-dark.gif#only-dark){ width="640" }

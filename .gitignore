@@ -4,7 +4,9 @@
 
 # final snapshots written next to the generated docs animations
 docs/assets/gradient-*.png
-docs/assets/*-dark.png
+docs/assets/leaders-dark.png
+docs/assets/bubbles-dark.png
+docs/assets/channel-dark.png
 
 # mkdocs build output
 site/

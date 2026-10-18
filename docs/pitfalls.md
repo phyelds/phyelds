@@ -23,7 +23,8 @@
 
 Calls are aligned by their sequential position (`@0`, `@1`, `@2`, …). Inside a loop, the *i*-th iteration on one device is aligned with the *i*-th iteration on its neighbors, regardless of what elements they are iterating over.
 
-![Misaligned loop iterations across two devices](assets/misaligned-loop.png)
+![Misaligned loop iterations across two devices](assets/misaligned-loop.png#only-light)
+![Misaligned loop iterations across two devices](assets/misaligned-loop-dark.png#only-dark)
 
 ```python
 # ❌ device 0 iterates over ["a", "b"], the others over ["b"]:

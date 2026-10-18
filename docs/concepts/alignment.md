@@ -16,7 +16,8 @@ def program():
     return hop_gradient(False)  # path: program@0 / hop_gradient@2 / ...
 ```
 
-![Call-path alignment tree](../assets/alignment-tree.png)
+![Call-path alignment tree](../assets/alignment-tree.png#only-light)
+![Call-path alignment tree](../assets/alignment-tree-dark.png#only-dark)
 
 The very same path also keys the local state of [`remember`](state.md) and [`exchange`](neighborhood-field.md#exchange).
 
@@ -34,7 +35,8 @@ Because the two branches have different alignment paths:
 - **Devices that take different branches do not see each other's messages**—the network is automatically partitioned into two isolated sub-networks (domains).
 - **State inside a branch that is not taken is dropped** at the end of the round.
 
-![Automatic network splitting on an if statement](../assets/alignment-split.png)
+![Automatic network splitting on an if statement](../assets/alignment-split.png#only-light)
+![Automatic network splitting on an if statement](../assets/alignment-split-dark.png#only-dark)
 
 ```python
 @aggregate

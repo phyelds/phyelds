@@ -10,7 +10,8 @@ For the theoretical foundations, see the [main paper on aggregate computing](htt
 
 A **computational field** assigns a value to every device at every moment in time (for example: a field of temperatures, a field of distances from an exit, or a field of cluster IDs). No single coordinator holds the whole field; instead, it emerges from every device repeatedly running the same program and exchanging values only with its immediate neighbors.
 
-![Local view of one device versus the global computational field across the network](../assets/local-vs-global.png)
+![Local view of one device versus the global computational field across the network](../assets/local-vs-global.png#only-light)
+![Local view of one device versus the global computational field across the network](../assets/local-vs-global-dark.png#only-dark)
 
 Every aggregate function therefore has **two readings**:
 
@@ -25,7 +26,8 @@ You design by composing **global** fields, while Python executes the **local** s
 
 Every device executes the aggregate program in periodic, asynchronous **rounds**. In each round, a device goes through three phases:
 
-![The three phases of an aggregate round: Sense, Compute, and Act](../assets/round-lifecycle.png)
+![The three phases of an aggregate round: Sense, Compute, and Act](../assets/round-lifecycle.png#only-light)
+![The three phases of an aggregate round: Sense, Compute, and Act](../assets/round-lifecycle-dark.png#only-dark)
 
 1. **Sense**: the runtime gathers the device's current sensor readings, the state saved at the end of its own previous round, and the most recent messages received from its current neighbors.
 2. **Compute**: the device runs the `@aggregate` function from top to bottom. Whenever the code calls `remember(...)`, it reads from the previous state; whenever it calls `neighbors(...)`, it reads the neighbors' values for that exact call site and records its own value for the outbox.

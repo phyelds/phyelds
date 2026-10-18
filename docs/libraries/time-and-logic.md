@@ -56,7 +56,8 @@ def smoke_detector():
 
 Given a boolean field `region` (where `True` marks nodes inside the region), SLCS operators classify the topological structure of the region and its reachability:
 
-![Topological regions in Spatial Logic for Closure Spaces (SLCS)](../assets/slcs-regions.png)
+![Topological regions in Spatial Logic for Closure Spaces (SLCS)](../assets/slcs-regions.png#only-light)
+![Topological regions in Spatial Logic for Closure Spaces (SLCS)](../assets/slcs-regions-dark.png#only-dark)
 
 | Spatial operator (SLCS) | Returns |
 | --- | --- |

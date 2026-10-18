@@ -25,7 +25,8 @@ def counter():
 
 ## How state evolves across rounds
 
-![State evolution across three consecutive rounds using remember](../assets/state-evolution.png)
+![State evolution across three consecutive rounds using remember](../assets/state-evolution.png#only-light)
+![State evolution across three consecutive rounds using remember](../assets/state-evolution-dark.png#only-dark)
 
 ---
 
