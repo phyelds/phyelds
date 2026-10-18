@@ -1,3 +1,58 @@
+## [7.6.3](https://github.com/phyelds/phyelds/compare/7.6.2...7.6.3) (2026-10-18)
+
+### Bug Fixes
+
+* **calculus:** report errors of aggregate functions at their own line ([c56b2d6](https://github.com/phyelds/phyelds/commit/c56b2d6d7694606da9b5dec57a4cffc63b1637d2))
+
+### Documentation
+
+* **alignment:** show the paths that the branches really get ([907471c](https://github.com/phyelds/phyelds/commit/907471c907f89d0651c95257af43489abc3f7503))
+* describe the live playground where the docs point to it ([ecaac7d](https://github.com/phyelds/phyelds/commit/ecaac7df4ae004afc9256185afaef1b941be604a))
+* **examples:** build the channel of the playground from its distances ([f707d64](https://github.com/phyelds/phyelds/commit/f707d6499323550463690c20b697c00b32363106))
+* **examples:** turn the playground examples into programs ([5962f33](https://github.com/phyelds/phyelds/commit/5962f33c2a485bc25af72c2006817bac63cac220))
+* **home:** turn the home page into a landing page ([7d0c208](https://github.com/phyelds/phyelds/commit/7d0c20865fade6666fae0a7b3830e39440d70098))
+* **integration:** fix the setup call and the phases of a round ([22e717a](https://github.com/phyelds/phyelds/commit/22e717a8b0822c1cff9a4a6e0f57605ff4075cda))
+* **playground:** choose the colours and the height of each layer ([796d869](https://github.com/phyelds/phyelds/commit/796d8693fcfd4278d879fefcda8f321b601fa61c))
+* **playground:** choose the size, the radius and the speed of the network ([47c2084](https://github.com/phyelds/phyelds/commit/47c2084b7ebb1c5587dc4baa3ad33570c51c8dd5))
+* **playground:** complete the names of the code with jedi ([0c4d064](https://github.com/phyelds/phyelds/commit/0c4d0645c37644558caf01b920afb7bb5722b47d))
+* **playground:** drop the pillars of the devices from a stack of layers ([92a9e06](https://github.com/phyelds/phyelds/commit/92a9e06304d49af2e31ace8d987fb2b366c6e1ca))
+* **playground:** drop the stems under the devices of a single layer too ([1983e6e](https://github.com/phyelds/phyelds/commit/1983e6e00284877d38fecffb8be85987a586cdfe))
+* **playground:** hide layers, or show them one at a time ([d617bf2](https://github.com/phyelds/phyelds/commit/d617bf2677879cbc3f38c366222cea285a6bb75c))
+* **playground:** keep the hint of the stage clear of the rounds ([bd75517](https://github.com/phyelds/phyelds/commit/bd755175d19d69d18a0f6a357f0f42dce5aa48a3))
+* **playground:** keep the list of the layers readable on a phone ([d2edb3c](https://github.com/phyelds/phyelds/commit/d2edb3cbe46568f81deff4642fa337c960522dca))
+* **playground:** keep the result on top and let the watches move ([dd409a3](https://github.com/phyelds/phyelds/commit/dd409a363845048084f9abc5270ef4dce0779302))
+* **playground:** look at a layer from above, in 2D ([b422c4a](https://github.com/phyelds/phyelds/commit/b422c4a96e9f82025527c713b76d863dd45c7ed2))
+* **playground:** move the devices and change how many there are ([03861e8](https://github.com/phyelds/phyelds/commit/03861e839ebec56db610817cafe7cadfa6267e75))
+* **playground:** move the layer in front with Shift and the arrows ([05e67df](https://github.com/phyelds/phyelds/commit/05e67dfbf38e183c9104a3247fb2e3f3977771c8))
+* **playground:** offer the names that complete the code as it is typed ([16f4982](https://github.com/phyelds/phyelds/commit/16f49823025eb49f1194a79b1ee77bbebb100e9f))
+* **playground:** report errors and keep the network going ([360325d](https://github.com/phyelds/phyelds/commit/360325d667a804173b825d677d53a017fb16632e))
+* **playground:** run the program live on a network in 3D ([47127d2](https://github.com/phyelds/phyelds/commit/47127d283865ac30b1e16f9fce7666521e0cb1e3))
+* **playground:** run the program on the network of the page ([68b495e](https://github.com/phyelds/phyelds/commit/68b495e7263c6df9d03d033b10c7d480f46e3cb4))
+* **playground:** say that the network stopped after Stop ([809c525](https://github.com/phyelds/phyelds/commit/809c5257023efb106f0abbb3f724f06b6d42dfff))
+* **playground:** share the watches along with the program ([c3ff3e9](https://github.com/phyelds/phyelds/commit/c3ff3e9fde9ef7eeb145ad73ee70b903c8a5a4b6))
+* **playground:** swap the watches without restarting the devices ([649a976](https://github.com/phyelds/phyelds/commit/649a976af799a3c0c20febe40d5dd122f05ec7f4))
+* **playground:** tell when the network is stable ([1b40117](https://github.com/phyelds/phyelds/commit/1b40117074f71bf6e58fc051ecb9bdb3a8ded185))
+* **playground:** watch expressions as layers stacked over the result ([f5bc9b4](https://github.com/phyelds/phyelds/commit/f5bc9b43fa67bfec23297d226c6f8ebc637d331d))
+* **playground:** watch the expression under a selection ([743563d](https://github.com/phyelds/phyelds/commit/743563d762ab290e13b544508928701891ed92db))
+* point to what a page uses before defining it ([e518626](https://github.com/phyelds/phyelds/commit/e5186267896d94e89eca27281bf2603b33a0b42b))
+* **reference:** parse both docstring styles and hide private names ([4d8827d](https://github.com/phyelds/phyelds/commit/4d8827df621a9bb7f1c79b75321f62cd98a41741))
+* **style:** give the site a lighter, modern look ([b37e41d](https://github.com/phyelds/phyelds/commit/b37e41d3a85577cc42d4f5b11a119649c3864fe0))
+* tell the corridor of the tutorial from the library channel ([6f74383](https://github.com/phyelds/phyelds/commit/6f7438336b349a97b0c29b4bccc41597fb4b224c))
+* **tutorial:** match the overview with the numbered steps ([83a35d8](https://github.com/phyelds/phyelds/commit/83a35d86ea9717380eb9a6426669ba21060a8b79))
+* **walkthrough:** draw stacked layers in the 3D scene ([6b771b2](https://github.com/phyelds/phyelds/commit/6b771b280b5956483f4b7c272aaffe8982bac5bd))
+* **walkthrough:** keep the walkthrough out of previous and next ([999e88d](https://github.com/phyelds/phyelds/commit/999e88d11704e9c2d15101a88cee213d07e3ebeb))
+* write the maths symbols as plain text ([b24e669](https://github.com/phyelds/phyelds/commit/b24e66919a2ca6a7334e8277df5ce4785c8dfd65))
+
+### Build and continuous integration
+
+* add jedi to the dev dependencies ([9d8eec9](https://github.com/phyelds/phyelds/commit/9d8eec9607d2ff35bee308b213ad2b328ec4ab7c))
+
+### Refactoring
+
+* **walkthrough:** let createNetwork take the places of the devices ([c3e8efa](https://github.com/phyelds/phyelds/commit/c3e8efa1b87d6352728e37ddaa219d95f25922e5))
+* **walkthrough:** move the colour scheme script to theme.js ([569930b](https://github.com/phyelds/phyelds/commit/569930b3f530d4772986f4753d5c89713d31cd26))
+* **walkthrough:** move the pointer gestures to pointer.js ([dc30784](https://github.com/phyelds/phyelds/commit/dc307843e6885d3686b6e06906d98beea93e1ce0))
+
 ## [7.6.2](https://github.com/phyelds/phyelds/compare/7.6.1...7.6.2) (2026-10-16)
 
 ### Documentation
