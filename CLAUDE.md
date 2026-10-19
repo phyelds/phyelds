@@ -1,8 +1,9 @@
 # CLAUDE.md
 
 phyelds is a lightweight Python library for aggregate computing. The core package
-lives in `src/phyelds/` (`calculus`, `data`, `libraries`, `vm`), its tests in
-`src/tests/`. The simulator (`phyelds.simulator`) is a separate package in
+lives in `src/phyelds/` (`calculus`, `data`, `libraries`, `vm`, `experimental`), its
+tests in `src/tests/`. `experimental` holds studies in progress, whose API is not
+settled and may change in any release; a study that settles moves to `libraries`. The simulator (`phyelds.simulator`) is a separate package in
 `packages/phyelds-simulator/`, and so are the VMAS extension in
 `packages/phyelds-vmas/`, the Mesa extension in `packages/phyelds-mesa/` and the
 Webots extension in `packages/phyelds-webots/`; all of them share the `phyelds` namespace. The core

@@ -108,9 +108,13 @@ nav:
       - Mesa: integration/mesa.md
       - Webots: integration/webots.md
       - MicroPython & ESP32: integration/micropython.md
+  - Experimental:
+      - What experimental means: experimental/index.md
+      - Collective state machines: experimental/state-machines.md
   - API reference:
       - phyelds.calculus: reference/calculus.md
       - phyelds.data: reference/data.md
+      - phyelds.experimental: reference/experimental.md
       - phyelds.libraries: reference/libraries.md
       - phyelds.simulator: reference/simulator.md
       - phyelds.vm: reference/vm.md
