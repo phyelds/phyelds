@@ -2,12 +2,13 @@
 Collective state machines: a finite state machine run by the whole network, whose states
 are collective behaviours and whose transitions are collective agreements.
 
-Each device runs the machine on its own and proposes transitions from what it senses; the
-devices share the history of the transitions they went through and adopt the most
-advanced one, so that a transition proposed by one device spreads to all of them. Two
-devices that propose different transitions at once are in conflict: the one with the
-higher priority wins, then the greater state. Based on *Macroscopic Design of Swarms with
-Collective State Machines* (https://github.com/cric96/experiments-2025-collective-state-machines).
+The model of *Macroscopic Design of Swarms with Collective State Machines* (Aguzzi et al.,
+ICCCI 2026, https://doi.org/10.1007/978-3-032-36868-3_28), whose definitions the comments
+cite. Each device runs the program of its state and extends the history of the machine
+with the prioritised state the program produces; the devices take the maximum of the
+histories of their neighbors, so that a transition proposed by one device spreads to all
+of them. Two devices that propose different transitions at once are in conflict: the one
+with the higher priority wins, then the greater state.
 """
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass

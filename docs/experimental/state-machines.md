@@ -3,12 +3,15 @@
 !!! warning "Experimental"
     This is a [study in progress](index.md): its API will probably change.
 
-A collective state machine is a finite state machine run by a whole collective: its
-states are collective behaviours (*explore*, *defend*), its transitions are collective
-agreements. A device senses an event and proposes a transition; the network makes it a
-decision of everyone. It comes from the paper *Macroscopic Design of Swarms with
-Collective State Machines*, and from [its experiments in
-ScaFi](https://github.com/cric96/experiments-2025-collective-state-machines).
+A collective state machine (cFSM) is a finite state machine run by a whole collective:
+its states are collective behaviours (*explore*, *defend*), its transitions are
+collective agreements. A device senses an event and proposes a transition; the network
+makes it a decision of everyone. This module implements the model of [*Macroscopic
+Design of Swarms with Collective State
+Machines*](https://doi.org/10.1007/978-3-032-36868-3_28) (Aguzzi, Audrito, Girau,
+Torta, Casadei, ICCCI 2026), whose experiments are [in
+ScaFi](https://github.com/cric96/experiments-2025-collective-state-machines); the
+definitions below are the paper's.
 
 ```python
 from phyelds.experimental.state_machines import StateMachine
@@ -45,30 +48,45 @@ def drone():
   `@aggregate` too if it calls them in branches, as any other function. `to` lists the
   states it may go to: optional, but it lets the machine check them and draw itself.
 - **`mission.go(state, priority=...)`**: from the function of a state, proposes a
-  transition. A function that does not call it stays.
-- **`mission.run()`**: runs a round, and returns the state the device is in and what
-  its function returned.
+  transition (see [priorities](#how-it-works) below). A function that does not call
+  it stays.
+- **`mission.run()`**: runs a round, and returns the state the device agreed on and
+  what its function returned.
 - **`mission.to_mermaid()`**: the diagram of the declared transitions.
 
 ---
 
 ## How it works
 
-In every round, each device:
+A history is the sequence of prioritised states `(priority, state)` the machine went
+through, from the initial one (Definition 3). It never loops, but at its end: while the
+machine stays in a state, the history ends with a *self-loop*, which records the
+priority of staying. In every round, each device (Definition 6):
 
-1. **Agrees.** Each device keeps the history of the transitions its machine went
-   through, and sends it to its neighbors. It adopts the most advanced history among
-   its own and its neighbors': a longer history wins over its own prefix, so a
-   transition spreads to the whole network, hop by hop.
-2. **Acts.** It runs the function of the state it agreed on, so what `run` returns is
-   always what that state does.
-3. **Proposes.** A transition proposed with `go` is added to its history, which its
-   neighbors receive; the device moves to the new state from the next round.
+1. **Agrees.** It takes the maximum of the histories its neighbors sent, its own
+   included: histories are compared lexicographically, each entry by priority, then by
+   state, and a prefix is smaller (Definition 5). A transition spreads to the whole
+   network, hop by hop.
+2. **Acts.** It runs the program of the last state of that history, aligned on it.
+3. **Extends.** It extends the history with the prioritised state the program produced:
+   a final self-loop is replaced, any other entry is kept (Definition 4). It sends the
+   result to its neighbors.
 
-Two devices can propose different transitions at once: the histories diverge, and the
-first transition that differs decides. The one with the higher **priority** wins, then
-the state **declared later**. `go` has the lowest priority by default; if a function
-proposes more than one transition, the one that would win a conflict is kept.
+The program of a state produces the greatest of staying, with the lowest priority, and
+of the transitions it proposes with `go` (Remark 1). Two devices can propose different
+transitions at once: the histories diverge, and the first entry that differs decides,
+the higher **priority** first, then the state **declared later**.
+
+!!! note "Priorities"
+    Staying has the lowest priority, and is recorded too: a transition with the same
+    priority wins only if it goes to a later state. A transition to an earlier state
+    needs a higher priority. The case study of the paper gives standard transitions the
+    time they happen, negated, so that the earlier wins, and the urgent ones `math.inf`:
+
+    ```python
+    mission.go("wait", priority=-local_time())
+    mission.go("defend", priority=math.inf)
+    ```
 
 ---
 
@@ -131,34 +149,19 @@ priority.
 
 ---
 
-## Bounded memory
+## Compressed histories
 
-The history grows with every transition, and so do the messages. With
-`memory=n`, each device remembers only its last `n` transitions, and counts those it
-forgot, so that two histories are still compared from the first transition both
-remember:
+A history grows with every transition, and so do the messages. With `window=`, each
+device forgets the entries older than `window` time units, keeping at least two, and
+counts those it forgot (Definition 7, Section 3.1):
 
 ```python
-mission = StateMachine("wait", "explore", "defend", memory=8)
+mission = StateMachine("wait", "explore", "defend", window=60.0)
 ```
 
-Two histories that diverged before what both remember are told apart by their last
-transitions only, so a short memory can settle a conflict differently from a full one.
-
----
-
-## Differences from the original
-
-- **Transitions only.** The original history also has an entry for staying in a state,
-  refreshed at every round. A transition proposed at the same position competes with
-  that entry, and with the same priority loses to it when the new state is the smaller
-  one; here the history holds transitions only, so a transition always wins over staying.
-- **Agree, then act.** The original runs the logic of its own state, then adopts the
-  state of its neighbors: in the round it adopts one, it acts as the state it left (or
-  with the velocity of a neighbor). Here a device agrees first, then runs the agreed
-  state.
-- **Memory in transitions.** The original forgets the transitions older than a time
-  window, which needs the clocks of the devices to agree; here the memory is a number of
-  transitions.
-- **No payload in the states.** In the original, a state also carries what the drone does
-  in it (its velocity). Here the function of a state returns it, next to the state.
+Each entry records when its state was entered, on an approximately shared clock: the
+`time` sensor (`local_time()`), or the `clock` given to `run`. To take the maximum, the
+histories are aligned on their forgotten entries: a history smaller than another at
+their first incompatible entry is dropped, and the others are merged (Definition 8). If
+the window is longer than the time a message takes to cross the network, the machine
+behaves as with the whole history.
