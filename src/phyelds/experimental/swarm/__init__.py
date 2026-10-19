@@ -6,6 +6,14 @@ The blocks of *MacroSwarm: A Field-based Compositional Framework for Swarm Progr
 their ScaFi implementation (https://github.com/scafi/macro-swarm). Each block is an
 aggregate function that returns a ``Vector``: a velocity, or a heading to scale.
 """
+from phyelds.experimental.swarm.flocking import (
+    alignment,
+    cohesion,
+    cucker_smale,
+    reynolds,
+    separation,
+    vicsek,
+)
 from phyelds.experimental.swarm.movement import (
     avoid_obstacles,
     brownian,
@@ -21,13 +29,19 @@ from phyelds.experimental.swarm.vector import Vector
 
 __all__ = [
     "Vector",
+    "alignment",
     "avoid_obstacles",
     "brownian",
+    "cohesion",
+    "cucker_smale",
     "explore",
     "go_to",
     "is_close",
     "maintain_trajectory",
     "maintain_until",
     "neighbors_vectors",
+    "reynolds",
+    "separation",
     "stand_still",
+    "vicsek",
 ]
