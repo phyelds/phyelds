@@ -14,6 +14,14 @@ from phyelds.experimental.swarm.flocking import (
     separation,
     vicsek,
 )
+from phyelds.experimental.swarm.leader import (
+    Team,
+    align_with_leader,
+    is_team_formed,
+    sink_at,
+    spin_around,
+    team_formation,
+)
 from phyelds.experimental.swarm.movement import (
     avoid_obstacles,
     brownian,
@@ -28,7 +36,9 @@ from phyelds.experimental.swarm.movement import (
 from phyelds.experimental.swarm.vector import Vector
 
 __all__ = [
+    "Team",
     "Vector",
+    "align_with_leader",
     "alignment",
     "avoid_obstacles",
     "brownian",
@@ -37,11 +47,15 @@ __all__ = [
     "explore",
     "go_to",
     "is_close",
+    "is_team_formed",
     "maintain_trajectory",
     "maintain_until",
     "neighbors_vectors",
     "reynolds",
     "separation",
+    "sink_at",
+    "spin_around",
     "stand_still",
+    "team_formation",
     "vicsek",
 ]
