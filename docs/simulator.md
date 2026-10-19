@@ -17,7 +17,7 @@ pip install phyelds-simulator
 | `Simulator` | `phyelds.simulator` | event queue and clock; `run(until)` |
 | `Environment`, `Node` | `phyelds.simulator` | the devices: `position`, `data` (sensors and results) |
 | deployments | `phyelds.simulator.deployments` | place nodes: `grid_generation`, `deformed_lattice`, `random_in_circle`, `random_walk` |
-| neighborhoods | `phyelds.simulator.neighborhood` | who is a neighbor: `radius_neighborhood(r)`, `k_nearest_neighbors(k)`, `full_neighborhood` |
+| neighborhoods | `phyelds.simulator.neighborhood` | who is a neighbor: `radius_neighborhood(r)`, `adaptive_range(r, neighbors=k, tolerance=t)`, `k_nearest_neighbors(k)`, `full_neighborhood` |
 | runner | `phyelds.simulator.runner` | `schedule_program_for_all(simulator, start, frequency, program)` |
 | actions | `phyelds.simulator.actions` | recurring movements: `move_with_velocity`, `gaussian_movement` |
 | monitors | `phyelds.simulator` / `.render` | observe the run: `Monitor`, `RenderMonitor` |
@@ -66,6 +66,25 @@ simulator.schedule_event(25.0, turn_off_source, simulator.environment.nodes[0])
 !!! warning
     `node.update(new_data=...)` *replaces* the whole `data` dictionary, including
     the program's state. To change one sensor, assign the key.
+
+## Ranges that adapt
+
+With a fixed radius, a swarm that gathers floods each device with messages, and one
+that spreads out breaks apart. `adaptive_range` gives each node its own range, which
+starts at the radius and adapts to keep about `neighbors` neighbors: a node with more
+than `neighbors + tolerance` shrinks its range by `step`, one with fewer than
+`neighbors - tolerance` grows it, within `min_range` and `max_range`. Two nodes are
+neighbors if each is in range of the other, as with Alchemist's `AdaptiveRange`.
+
+```python
+from phyelds.simulator.neighborhood import adaptive_range
+
+neighborhood = adaptive_range(3.0, neighbors=12, tolerance=6, min_range=0.5, max_range=10.0)
+simulator.environment.set_neighborhood_function(neighborhood)
+neighborhood.range_of(simulator.environment.nodes[0])   # the current range of a node
+```
+
+A range adapts once per round of its node, so drawing the edges changes nothing.
 
 ## Watching a run
 
