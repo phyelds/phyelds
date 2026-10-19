@@ -47,6 +47,10 @@ for node in simulator.environment.nodes.values():
     simulator.schedule_event(0.5, follow_velocity, simulator, 1.0, node, max_speed=0.2)
 ```
 
+A swarm that gathers and spreads out changes how many neighbors each drone has: with
+[`adaptive_range`](../simulator.md#ranges-that-adapt), each node adapts its range to
+keep about the same number, as the examples on this page do.
+
 On a robot, read the `velocity` output after each round, as from
 [Webots](../integration/webots.md) or [Mesa](../integration/mesa.md), and drive the
 motors with it.

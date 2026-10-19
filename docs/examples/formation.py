@@ -24,7 +24,7 @@ from phyelds.libraries.time import local_time
 from phyelds.simulator import Environment, Simulator
 from phyelds.simulator.actions import follow_velocity
 from phyelds.simulator.effects import DrawEdges, DrawNodes, Effect, RenderConfig, RenderMode
-from phyelds.simulator.neighborhood import radius_neighborhood
+from phyelds.simulator.neighborhood import adaptive_range
 from phyelds.simulator.render import RenderMonitor
 from phyelds.simulator.runner import schedule_program_for_all
 
@@ -32,7 +32,7 @@ ASSETS = Path(__file__).resolve().parent.parent / "assets"
 THEMES = {"": {}, "-dark": Path(__file__).resolve().parent / "dark.mplstyle"}
 SEED = 7
 DRONES = 40
-RANGE = 3.0  # the communication range
+RANGE = 3.0  # the communication range a drone starts with, adapted to keep about 12 neighbors
 SPEED = 0.6  # the top speed of a drone, per time unit
 LIMITS = (-10.0, 10.0)
 END = 300
@@ -80,7 +80,9 @@ def scene() -> Simulator:
     simulator = Simulator()
     for node_id in range(DRONES):
         simulator.create_node((random.uniform(*LIMITS), random.uniform(*LIMITS)), node_id=node_id)
-    simulator.environment.set_neighborhood_function(radius_neighborhood(RANGE))
+    simulator.environment.set_neighborhood_function(
+        adaptive_range(RANGE, neighbors=12, tolerance=6, step=0.1, min_range=1.0, max_range=6.0)
+    )
     simulator.environment.add_data_for_all_nodes({"color": "tab:orange"})
     schedule_program_for_all(simulator, 0.0, 1.0, drone)
     for node in simulator.environment.nodes.values():
@@ -92,7 +94,7 @@ def record(simulator: Simulator, name: str) -> None:
     """Save the run to ``docs/assets/<name>``."""
     config = RenderConfig(
         effects=[DrawShape(shape_at=shape_at), DrawEdges(alpha=0.2), DrawNodes(color_from="color")],
-        dt=3.0, mode=RenderMode.SAVE, save_as=str(ASSETS / name), xlim=LIMITS, ylim=LIMITS,
+        dt=3.0, fps=10, mode=RenderMode.SAVE, save_as=str(ASSETS / name), xlim=LIMITS, ylim=LIMITS,
         show_axis=False, title="Formation on a signed distance function",
     )
     RenderMonitor(simulator, config)

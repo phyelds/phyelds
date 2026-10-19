@@ -29,7 +29,7 @@ from phyelds.simulator import Simulator
 from phyelds.simulator.actions import follow_velocity
 from phyelds.simulator import Environment
 from phyelds.simulator.effects import DrawEdges, DrawNodes, Effect, RenderConfig, RenderMode
-from phyelds.simulator.neighborhood import radius_neighborhood
+from phyelds.simulator.neighborhood import adaptive_range
 from phyelds.simulator.render import RenderMonitor
 from phyelds.simulator.runner import schedule_program_for_all
 
@@ -38,7 +38,7 @@ THEMES = {"": {}, "-dark": Path(__file__).resolve().parent / "dark.mplstyle"}
 SEED = 3
 DRONES = 30
 LEADER = 0
-RANGE = 4.0  # the communication range
+RANGE = 4.0  # the communication range a drone starts with, adapted to keep about 12 neighbors
 SPACING = 1.2  # how far the drones keep from each other
 TARGET = (12.0, 12.0)  # where the leader heads
 SPEED = 0.25  # the top speed of a drone, per time unit
@@ -111,7 +111,9 @@ def scene() -> Simulator:
     simulator = Simulator()
     for node_id in range(DRONES):
         simulator.create_node((random.uniform(-6, 4), random.uniform(-6, 4)), node_id=node_id)
-    simulator.environment.set_neighborhood_function(radius_neighborhood(RANGE))
+    simulator.environment.set_neighborhood_function(
+        adaptive_range(RANGE, neighbors=12, tolerance=6, step=0.1, min_range=2.0, max_range=8.0)
+    )
     simulator.environment.add_data_for_all_nodes({"leader": False, "go": False, "circle": False})
     simulator.environment.nodes[LEADER].data["leader"] = True
     schedule_program_for_all(simulator, 0.0, 1.0, drone)
@@ -138,7 +140,7 @@ def record(simulator: Simulator, name: str) -> None:
         DrawNodes(color_from="result", cmap="tab10", vmin=0.0, vmax=9.0),
     ]
     config = RenderConfig(
-        effects=effects, dt=2.0, mode=RenderMode.SAVE, save_as=str(ASSETS / name),
+        effects=effects, dt=2.0, fps=10, mode=RenderMode.SAVE, save_as=str(ASSETS / name),
         xlim=LIMITS, ylim=LIMITS, show_axis=False, title="Swarm mission",
     )
     RenderMonitor(simulator, config)

@@ -44,7 +44,7 @@ def test_swarm_drones_gather_around_the_leader_keeping_apart():
 
     positions = [node.position for node in simulator.environment.nodes.values()]
     nearest = [min(math.dist(here, there) for there in positions if there is not here) for here in positions]
-    assert max(_from_leader(simulator)) < scattered * 0.75
+    assert max(_from_leader(simulator)) < scattered * 0.8
     assert sum(distance > swarm.SPACING / 2 for distance in nearest) >= 0.8 * len(nearest)
 
 

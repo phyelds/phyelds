@@ -110,7 +110,9 @@ to the shape: the swarm spreads evenly and keeps off the border. Outside, the sh
 pulls the robot in, and its neighbors push it aside, never back out. The speed adapts:
 the step shrinks when the direction reverses, and grows back while it holds, so that
 robots settle instead of oscillating. `reach` is half the communication range, so that
-the neighbors that shape the cell are in range.
+the neighbors that shape the cell are in range. In the simulator, an
+[`adaptive_range`](../simulator.md#ranges-that-adapt) keeps the swarm connected while it
+gathers or spreads, as in the example below.
 
 `formation` takes another `control(shape, position, offsets)` if you want one, and the
 pieces are public: positioning, `place_shape`, `lattice_velocity`, `aligned` or
