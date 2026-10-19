@@ -10,7 +10,12 @@ and *how* robots move to spread over it, the control.
 from phyelds.experimental.formation.actuation import aligned
 from phyelds.experimental.formation.control import lattice_velocity, voronoi_centroid
 from phyelds.experimental.formation.pipeline import formation
-from phyelds.experimental.formation.positioning import Frame, global_positioning
+from phyelds.experimental.formation.positioning import (
+    Frame,
+    global_positioning,
+    leader_positioning,
+    place_shape,
+)
 from phyelds.experimental.formation.shapes import (
     Shape,
     arc,
@@ -41,6 +46,8 @@ __all__ = [
     "half_plane",
     "hexagon",
     "lattice_velocity",
+    "leader_positioning",
+    "place_shape",
     "polygon",
     "rectangle",
     "regular_polygon",

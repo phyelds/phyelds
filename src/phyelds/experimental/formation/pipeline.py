@@ -4,7 +4,7 @@ from collections.abc import Callable, Sequence
 from phyelds.calculus import aggregate
 from phyelds.experimental.formation.actuation import aligned
 from phyelds.experimental.formation.control import lattice_velocity
-from phyelds.experimental.formation.positioning import Frame, global_positioning
+from phyelds.experimental.formation.positioning import Frame, global_positioning, place_shape
 from phyelds.experimental.formation.shapes import Shape
 from phyelds.experimental.swarm.vector import Vector
 
@@ -42,6 +42,8 @@ def formation(  # pylint: disable=too-many-arguments
         The velocity the robot moves by.
     """
     frame = positioning()
+    if frame.relative:
+        shape = place_shape(frame, shape)
     velocity = None
     if frame.position is not None:
         if control is None:
