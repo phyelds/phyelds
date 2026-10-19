@@ -17,6 +17,7 @@ from phyelds.experimental.swarm.flocking import (
 from phyelds.experimental.swarm.leader import (
     Team,
     align_with_leader,
+    cast_along,
     is_team_formed,
     sink_at,
     spin_around,
@@ -42,6 +43,7 @@ __all__ = [
     "alignment",
     "avoid_obstacles",
     "brownian",
+    "cast_along",
     "cohesion",
     "cucker_smale",
     "explore",

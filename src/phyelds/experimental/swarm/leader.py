@@ -22,19 +22,28 @@ _UNREACHABLE = float("inf")
 
 
 @aggregate
-def _cast(
+def cast_along(
     source: bool,
     value: object,
     step: Callable[[object, Vector], object],
-    offsets: NeighborhoodField[Vector],
+    offsets: NeighborhoodField[Vector] | None = None,
 ) -> tuple[float, object]:
     """
-    Spread ``value`` from the nearest source along the shortest paths, and the distance.
+    Spread ``value`` from the nearest source along the shortest paths, changing it on the
+    way by where each neighbor is, such as summing the vectors to the source.
 
-    Each device takes the value of the neighbor on its shortest path to the source, and
-    ``step(value, offset)`` it, ``offset`` being the vector to that neighbor; away from any
-    source, the distance is infinite and the value is ``value``.
+    Args:
+        source: Whether the device is a source.
+        value: The value of a source, and of a device away from any.
+        step: Given the value of the neighbor on the shortest path to the source and the
+            vector to that neighbor, the value of the device.
+        offsets: The vectors from the device to its neighbors, which also measure the
+            paths; ``neighbors_vectors()`` if ``None``.
+
+    Returns:
+        The distance to the nearest source, infinite away from any, and the value.
     """
+    offsets = neighbors_vectors() if offsets is None else offsets
     set_entry, entry = remember((_UNREACHABLE, value))
     entries = neighbors(entry.value)
     best = (_UNREACHABLE, value)
@@ -48,7 +57,7 @@ def _cast(
 
 def _broadcast(source: bool, value: object) -> tuple[float, object]:
     """The value of the nearest source, and its distance, along the network."""
-    return _cast(source, value, lambda there, _offset: there, neighbors_vectors())
+    return cast_along(source, value, lambda there, _offset: there)
 
 
 @aggregate
@@ -77,9 +86,7 @@ def sink_at(leader: bool) -> Vector:
     Returns:
         The heading to the leader; zero on the leader and away from any.
     """
-    _, to_leader = _cast(
-        leader, Vector(), lambda there, offset: there + offset, neighbors_vectors()
-    )
+    _, to_leader = cast_along(leader, Vector(), lambda there, offset: there + offset)
     return to_leader.normalize()
 
 
