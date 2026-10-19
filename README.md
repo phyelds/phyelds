@@ -96,6 +96,8 @@ builds the gradient beneath it step by step from `remember` and `neighbors`.
   [Webots](https://cyberbotics.com) simulation, talking over their simulated radios.
 * **MicroPython**: the same programs run on microcontrollers such as the ESP32
   (`python -m phyelds.micropython`), and talk with devices running CPython.
+* **Experimental** (`phyelds.experimental`): studies in progress, whose API will
+  probably change, such as collective state machines.
 
 Everything is explained in the [documentation](https://phyelds.github.io/phyelds/):
 [thinking in fields](https://phyelds.github.io/phyelds/concepts/aggregate-programs/),
@@ -104,6 +106,7 @@ Everything is explained in the [documentation](https://phyelds.github.io/phyelds
 [simulator](https://phyelds.github.io/phyelds/simulator/),
 [integration with other runtimes](https://phyelds.github.io/phyelds/integration/),
 [MicroPython and the ESP32](https://phyelds.github.io/phyelds/integration/micropython/),
+[experimental studies](https://phyelds.github.io/phyelds/experimental/),
 and [common pitfalls](https://phyelds.github.io/phyelds/pitfalls/).
 
 ## Heritage & Related Projects
