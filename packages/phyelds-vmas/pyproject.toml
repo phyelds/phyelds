@@ -29,7 +29,7 @@ numpy = ">=1.26"
 torch = ">=2.0"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.0.0"
+pytest = "^9.0.3"
 pylint = "^3.0.0"
 flake8 = "^7.0.0"
 
