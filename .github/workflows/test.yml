@@ -91,6 +91,40 @@ jobs:
       working-directory: packages/phyelds-vmas
       run: poetry build
 
+  mesa:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+
+    - name: Install Poetry
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 -
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - name: Configure Poetry to not create virtualenvs (CI-friendly)
+      run: poetry config virtualenvs.create false
+
+    - name: Install core and Mesa dependencies
+      run: |
+        poetry install
+        poetry run pip install "mesa[network]==3.5.1"
+
+    - name: Lint Mesa extension
+      run: PYTHONPATH="packages/phyelds-mesa/src" poetry run pylint packages/phyelds-mesa/src packages/phyelds-mesa/tests
+
+    - name: Test Mesa extension
+      run: PYTHONPATH="packages/phyelds-mesa/src" poetry run pytest packages/phyelds-mesa/tests
+
+    - name: Build Mesa extension
+      working-directory: packages/phyelds-mesa
+      run: poetry build
+
   micropython:
     runs-on: ubuntu-latest
     env:
