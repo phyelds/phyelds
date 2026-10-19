@@ -7,7 +7,8 @@ cite. A formation separates three concerns: *what* shape to take,
 a signed distance function; *where* each robot is with respect to it, the positioning;
 and *how* robots move to spread over it, the control.
 """
-from phyelds.experimental.formation.actuation import aligned
+from phyelds.experimental.formation.actuation import aligned, self_aligned
+from phyelds.experimental.formation.anchors import anchor_positioning
 from phyelds.experimental.formation.control import lattice_velocity, voronoi_centroid
 from phyelds.experimental.formation.pipeline import formation
 from phyelds.experimental.formation.positioning import (
@@ -37,6 +38,7 @@ __all__ = [
     "Frame",
     "Shape",
     "aligned",
+    "anchor_positioning",
     "arc",
     "box",
     "circle",
@@ -53,6 +55,7 @@ __all__ = [
     "regular_polygon",
     "rounded_rectangle",
     "segment",
+    "self_aligned",
     "square",
     "star",
     "voronoi_centroid",
