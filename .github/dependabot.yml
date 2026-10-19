@@ -1,0 +1,38 @@
+# Weekly version updates, grouped into one pull request per ecosystem so that they do
+# not flood the queue; security updates are opened as soon as an advisory is published.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directories:
+      - "/"
+      - "/packages/*"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      python:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      npm:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      actions:
+        patterns: ["*"]
