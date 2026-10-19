@@ -2,7 +2,7 @@
 How a robot turns the velocity it wants, in the frame of the formation, into a command
 (``Actuation.kt``).
 """
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 import math
 
 from phyelds.calculus import aggregate, remember
@@ -58,19 +58,22 @@ class _Alignment:
         self, position: Vector | None, travelled: Vector, forgetting: float, max_displacement: float
     ) -> "_Alignment":
         """Learn from the new estimate and the motion so far; a jump of the estimate is no move."""
-        learned = self
         known = None not in (position, self.last_position, self.last_travelled)
-        if known:
-            estimated, moved = position - self.last_position, travelled - self.last_travelled
-            if estimated.length() <= max_displacement:
-                learned = _Alignment(
-                    forgetting * self.xx + estimated.x * moved.x,
-                    forgetting * self.xy + estimated.x * moved.y,
-                    forgetting * self.yx + estimated.y * moved.x,
-                    forgetting * self.yy + estimated.y * moved.y,
-                    forgetting * self.energy + moved.x ** 2 + moved.y ** 2,
-                )
-        return replace(learned, last_position=position, last_travelled=travelled)
+        estimated = position - self.last_position if known else None
+        if estimated is None or estimated.length() > max_displacement:
+            return _Alignment(
+                self.xx, self.xy, self.yx, self.yy, self.energy, position, travelled
+            )
+        moved = travelled - self.last_travelled
+        return _Alignment(
+            forgetting * self.xx + estimated.x * moved.x,
+            forgetting * self.xy + estimated.x * moved.y,
+            forgetting * self.yx + estimated.y * moved.x,
+            forgetting * self.yy + estimated.y * moved.y,
+            forgetting * self.energy + moved.x ** 2 + moved.y ** 2,
+            position,
+            travelled,
+        )
 
     def to_body(self, direction: Vector) -> Vector:
         """``direction``, from the frame of the formation to the body frame."""

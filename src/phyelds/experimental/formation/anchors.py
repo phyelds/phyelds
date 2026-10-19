@@ -50,10 +50,12 @@ class _Reports:
         """Keep the best candidates of both, and all their anchors."""
         bases = [candidate for candidate in (self.base, other.base) if candidate is not None]
         tops = [candidate for candidate in (self.top, other.top) if candidate is not None]
+        anchors = dict(self.anchors)
+        anchors.update(other.anchors)
         return _Reports(
             min(bases, key=lambda candidate: candidate.base_error, default=None),
             min(tops, key=lambda candidate: candidate.top_error, default=None),
-            {**self.anchors, **other.anchors},
+            anchors,
         )
 
 

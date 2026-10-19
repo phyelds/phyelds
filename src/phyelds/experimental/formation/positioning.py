@@ -2,7 +2,8 @@
 Where each robot is with respect to the shape: the positioning (``Positioning.kt``),
 which builds the frame in which a robot evaluates the shape and sees its neighbors.
 """
-from dataclasses import dataclass, field
+from collections.abc import Sequence
+from dataclasses import dataclass
 
 from phyelds.calculus import aggregate
 from phyelds.data import NeighborhoodField
@@ -31,7 +32,7 @@ class Frame:
     """
 
     position: Vector | None
-    offsets: list[Vector] = field(default_factory=list)
+    offsets: Sequence[Vector] = ()
     center: Vector = Vector()
     is_leader: bool = False
     is_reference: bool | None = None
