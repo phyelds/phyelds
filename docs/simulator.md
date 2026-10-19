@@ -19,7 +19,7 @@ pip install phyelds-simulator
 | deployments | `phyelds.simulator.deployments` | place nodes: `grid_generation`, `deformed_lattice`, `random_in_circle`, `random_walk` |
 | neighborhoods | `phyelds.simulator.neighborhood` | who is a neighbor: `radius_neighborhood(r)`, `k_nearest_neighbors(k)`, `full_neighborhood` |
 | runner | `phyelds.simulator.runner` | `schedule_program_for_all(simulator, start, frequency, program)` |
-| actions | `phyelds.simulator.actions` | recurring movements: `move_with_velocity`, `gaussian_movement` |
+| actions | `phyelds.simulator.actions` | recurring movements: `follow_velocity` (the velocity the program stores), `move_with_velocity`, `gaussian_movement` |
 | monitors | `phyelds.simulator` / `.render` | observe the run: `Monitor`, `RenderMonitor` |
 | exporter | `phyelds.simulator.exporter` | `csv_exporter` writes aggregated outputs to CSV |
 
