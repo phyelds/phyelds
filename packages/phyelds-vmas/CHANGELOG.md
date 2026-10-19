@@ -1,3 +1,9 @@
+## [7.7.0](https://github.com/phyelds/phyelds/compare/7.6.6...7.7.0) (2026-10-19)
+
+### Features
+
+* support MicroPython on ESP32 ([#11](https://github.com/phyelds/phyelds/issues/11)) ([2a153e7](https://github.com/phyelds/phyelds/commit/2a153e77d778f71012baab46a0906f098804e968))
+
 ## [7.6.6](https://github.com/phyelds/phyelds/compare/7.6.5...7.6.6) (2026-10-18)
 
 ### Documentation
