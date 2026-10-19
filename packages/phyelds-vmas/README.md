@@ -8,7 +8,7 @@ VMAS integration for [phyelds](https://pypi.org/project/phyelds/).
 pip install phyelds-vmas
 ```
 
-`phyelds-vmas` installs a compatible `phyelds` release and VMAS.
+`phyelds-vmas` installs compatible `phyelds` and `phyelds-simulator` releases, and VMAS.
 
 ## Usage
 
