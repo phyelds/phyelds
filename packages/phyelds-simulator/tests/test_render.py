@@ -34,6 +34,14 @@ def test_make_writer_uses_pillow_for_gif():
     assert isinstance(make_writer(config), PillowWriter)
 
 
+def test_make_writer_plays_a_frame_per_time_unit_of_dt_by_default():
+    assert make_writer(RenderConfig(dt=2.0, save_as="run.gif")).fps == 0.5
+
+
+def test_make_writer_plays_at_the_frame_rate_of_the_config():
+    assert make_writer(RenderConfig(dt=2.0, fps=12, save_as="run.gif")).fps == 12
+
+
 def test_make_writer_uses_ffmpeg_for_mp4():
     config = RenderConfig(save_as="animation.mp4")
 

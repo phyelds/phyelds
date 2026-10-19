@@ -105,6 +105,7 @@ RenderMonitor(simulator, RenderConfig(
         DrawValues(value_from="result", precision=1),
     ],
     dt=1.0,                  # simulated time between two frames
+    fps=10,                  # frames per second of the recording; 1 / dt if omitted
     mode=RenderMode.SAVE,
     save_as="run.gif",
     show_axis=False,
