@@ -99,3 +99,16 @@ def test_team_inside_runs_a_behaviour_per_team():
 
     assert [results[node_id] for node_id in (1, 4, 6, 9)] == [Vector(), Vector(), Vector(5, 0), Vector(5, 0)]
     assert math.isclose(results[0].x, 0.0)
+
+
+def test_team_formation_forms_as_soon_as_the_leader_is_known_without_a_condition():
+    simulator = _two_clusters()
+
+    @aggregate
+    def program():
+        return team_formation(1.0, 30.0, leader=local_id() in (0, 5))
+
+    teams = _results(simulator, program)
+
+    assert all(team.formed for team in teams.values())
+    assert {team.leader for team in teams.values()} == {0, 5}

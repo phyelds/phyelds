@@ -133,3 +133,31 @@ def test_deepest_point_lies_inside_a_hollow_shape():
 
 def test_shapes_compose_with_vectors():
     assert circle((0, 0), 1)(Vector(1, 0)) == 0.0
+
+
+@pytest.mark.parametrize("build", [
+    lambda: circle((0, 0), 0),
+    lambda: circle((0, 0), 1).ring(-1),
+    lambda: circle((0, 0), 1).scale(0),
+    lambda: half_plane((1, 1), (1, 1)),
+    lambda: box((0, 0), (1, 0)),
+    lambda: rounded_rectangle((0, 0), 2, 2, radius=2),
+    lambda: polygon([(0, 0), (1, 0)]),
+    lambda: regular_polygon((0, 0), 1, 2),
+    lambda: star((0, 0), 1, 5, spikiness=6),
+    lambda: arc((0, 0), 1, 0, 0),
+    lambda: crescent((0, 0), 1, 2),
+])
+def test_shapes_reject_what_is_not_a_shape(build):
+    with pytest.raises(ValueError):
+        build()
+
+
+def test_segment_of_no_length_is_the_distance_from_its_point():
+    assert segment((1, 1), (1, 1))((4, 5)) == 5.0
+
+
+def test_crescent_beyond_its_tips_is_the_distance_from_the_nearest_tip():
+    moon = crescent((0, 0), 2, 2)  # tips at (1, ±√3)
+
+    assert moon((1.5, 1.8)) == pytest.approx(math.dist((1.5, 1.8), (1, math.sqrt(3))))

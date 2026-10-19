@@ -109,3 +109,20 @@ def test_formation_spreads_a_swarm_in_space():
 
     assert all(shape.inside(position) for position in positions)
     assert _jain(positions, shape, -2, 2, 0.4) > 0.95
+
+
+def test_voronoi_centroid_is_the_device_in_a_cell_too_small_to_sample_in_space():
+    crowd = [Vector(x, y, z) * 0.05 for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)]
+
+    centroid = voronoi_centroid(circle((0, 0, 0), 10), Vector(), crowd, reach=1.0, dimensions=3)
+
+    assert centroid == Vector()
+
+
+def test_formation_takes_another_control():
+    device = Device(0, lambda: formation(
+        circle((0, 0), 1), reach=1.0, control=lambda shape, position, offsets: Vector(shape(position), 0)
+    ))
+    device.run_round({"position": (3, 0)})
+
+    assert device.result == Vector(2, 0)
