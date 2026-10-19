@@ -46,6 +46,7 @@ pip install phyelds                         # core: the calculus and the librari
 pip install phyelds-simulator               # the simulator, with a compatible phyelds
 pip install "phyelds-simulator[jupyter]"    # live rendering inside Jupyter
 pip install phyelds-vmas                    # VMAS integration
+pip install phyelds-mesa                    # Mesa integration
 ```
 
 Requires Python 3.12+.
@@ -88,6 +89,8 @@ builds the gradient beneath it step by step from `remember` and `neighbors`.
 * **Simulator** (`phyelds-simulator`): a pluggable discrete-event simulator with live
   rendering, animation export, and [VMAS](https://github.com/proroklab/VectorizedMultiAgentSimulator)
   integration (`phyelds-vmas`).
+* **Mesa** (`phyelds-mesa`): phyelds programs on the agents of a
+  [Mesa](https://mesa.readthedocs.io) model.
 * **MicroPython**: the same programs run on microcontrollers such as the ESP32
   (`python -m phyelds.micropython`), and talk with devices running CPython.
 
