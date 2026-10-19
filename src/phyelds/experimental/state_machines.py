@@ -50,6 +50,17 @@ class _MachineHistory:
         return _MachineHistory(self.forgotten + dropped, self.entries[dropped:])
 
 
+def _extend(history: _MachineHistory, proposal: Next) -> _MachineHistory:
+    """
+    Extend ``history`` with the prioritised state a program produced (Definition 4):
+    a final self-loop is replaced, so that the history never loops but at its end.
+    """
+    entries = history.entries
+    if len(entries) >= 2 and entries[-1][1] == entries[-2][1]:
+        entries = entries[:-1]
+    return _MachineHistory(history.forgotten, entries + ((proposal.priority, proposal.state),))
+
+
 def _newer(first: _MachineHistory, second: _MachineHistory) -> _MachineHistory:
     """
     The more advanced of two histories, comparing them entry by entry from the first one
@@ -104,10 +115,7 @@ def collective_state_machine(
         proposal = transition(current)
     if not isinstance(proposal, Next):
         proposal = Next(proposal)
-    if proposal.state != current:
-        entries = agreed.entries + ((proposal.priority, proposal.state),)
-        agreed = _MachineHistory(agreed.forgotten, entries)
-    set_histories(agreed.remember_last(memory))
+    set_histories(_extend(agreed, proposal).remember_last(memory))
     return current
 
 

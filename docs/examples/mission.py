@@ -23,6 +23,7 @@ from phyelds.experimental.state_machines import StateMachine
 from phyelds.libraries.device import sense, store
 from phyelds.libraries.distances import neighbors_distances
 from phyelds.libraries.spreading import distance_to
+from phyelds.libraries.time import local_time
 from phyelds.simulator import Simulator
 from phyelds.simulator.deployments import deformed_lattice
 from phyelds.simulator.effects import DrawEdges, DrawNodes, RenderConfig, RenderMode
@@ -51,7 +52,10 @@ END = 42
 
 # --8<-- [start:mission]
 class Phase(IntEnum):
-    """The phases of the mission: in a conflict of equal priority, the later one wins."""
+    """
+    The phases of the mission. As in the paper, a transition has the priority of the
+    time it happens, negated, so that the earlier wins; defending the base wins over all.
+    """
 
     WAIT = 0
     EXPLORE = 1
@@ -68,7 +72,7 @@ def wait() -> float:
     if sense("attack"):
         mission.go(Phase.DEFEND, priority=math.inf)
     elif sense("alarm"):
-        mission.go(Phase.EXPLORE)
+        mission.go(Phase.EXPLORE, priority=-local_time())
     return distance_to(sense("base"), neighbors_distances())
 
 
@@ -78,14 +82,14 @@ def explore() -> None:
     if sense("attack"):
         mission.go(Phase.DEFEND, priority=math.inf)
     elif sense("found"):
-        mission.go(Phase.RESCUE)
+        mission.go(Phase.RESCUE, priority=-local_time())
 
 
 @mission.state(Phase.RESCUE, to=[Phase.WAIT])
 def rescue() -> float:
     """Head for the target, until it is rescued."""
     if sense("rescued"):
-        mission.go(Phase.WAIT)
+        mission.go(Phase.WAIT, priority=-local_time())
     return distance_to(sense("found"), neighbors_distances())
 
 
@@ -93,7 +97,7 @@ def rescue() -> float:
 def defend() -> float:
     """Head for the base, until it is safe."""
     if sense("safe"):
-        mission.go(Phase.WAIT)
+        mission.go(Phase.WAIT, priority=-local_time())
     return distance_to(sense("base"), neighbors_distances())
 
 
