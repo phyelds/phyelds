@@ -39,7 +39,7 @@ jobs:
 
     - name: Lint with pylint
       run: |
-        poetry run pylint src
+        poetry run pylint src packages/phyelds-simulator/src packages/phyelds-simulator/tests
 
     - name: Lint with flake8
       run: |
@@ -47,6 +47,10 @@ jobs:
 
     - name: Test with pytest
       run: poetry run pytest --cov=phyelds --cov-report=xml
+
+    - name: Build simulator package
+      working-directory: packages/phyelds-simulator
+      run: poetry build
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v5

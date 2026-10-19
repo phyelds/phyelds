@@ -5,6 +5,7 @@ var pypiPassword = process.env.PYPI_PASSWORD;
 
 var prepareCmd = [
     "poetry version -- \${nextRelease.version}",
+    "(cd packages/phyelds-simulator && poetry version -- \${nextRelease.version})",
     "cd packages/phyelds-vmas && poetry version -- \${nextRelease.version}",
 ].join(" && ");
 var publishOptions = "--build";
@@ -20,12 +21,16 @@ if (dryRun) {
 
 var publishCmd = [
     `poetry publish ${publishOptions} --username ${pypiUsername} --password ${pypiPassword}`,
+    `(cd packages/phyelds-simulator && poetry publish ${publishOptions} --username ${pypiUsername} --password ${pypiPassword})`,
     `cd packages/phyelds-vmas && poetry publish ${publishOptions} --username ${pypiUsername} --password ${pypiPassword}`,
 ].join(" && ");
 
 var config = require('semantic-release-preconfigured-conventional-commits');
 
 config.plugins.push(
+    ["@semantic-release/changelog", {
+        "changelogFile": "packages/phyelds-simulator/CHANGELOG.md",
+    }],
     ["@semantic-release/changelog", {
         "changelogFile": "packages/phyelds-vmas/CHANGELOG.md",
     }],
@@ -40,6 +45,7 @@ if (!dryRun) {
         ["@semantic-release/github", {
             "assets": [
                 { "path": "dist/*" },
+                { "path": "packages/phyelds-simulator/dist/*" },
                 { "path": "packages/phyelds-vmas/dist/*" },
             ]
         }],
@@ -47,6 +53,8 @@ if (!dryRun) {
             "assets": [
                 "CHANGELOG.md",
                 "pyproject.toml",
+                "packages/phyelds-simulator/CHANGELOG.md",
+                "packages/phyelds-simulator/pyproject.toml",
                 "packages/phyelds-vmas/CHANGELOG.md",
                 "packages/phyelds-vmas/pyproject.toml"
             ],
