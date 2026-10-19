@@ -1,3 +1,9 @@
+## [8.3.0](https://github.com/phyelds/phyelds/compare/8.2.0...8.3.0) (2026-10-19)
+
+### Features
+
+* **experimental:** collective state machines ([#15](https://github.com/phyelds/phyelds/issues/15)) ([a501bc1](https://github.com/phyelds/phyelds/commit/a501bc182f6257b19c8b534915df78cf48ce07a1))
+
 ## [8.2.0](https://github.com/phyelds/phyelds/compare/8.1.0...8.2.0) (2026-10-19)
 
 ### Features
