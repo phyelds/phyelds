@@ -72,10 +72,14 @@ def _box(points: Sequence[Vector]) -> tuple[Vector, Vector]:
 def _cell_box(
     offsets: Sequence[Vector], reach: float, dimensions: int
 ) -> tuple[Vector, Vector, list[Vector]] | None:
-    """The box of the cell, and the neighbors that cut it; ``None`` for an empty cell."""
+    """
+    The box of the cell, and the neighbors that cut it. A planar cell always holds the
+    disk around the device up to its nearest bisector; in space, ``None`` if the cell is
+    too small for any sample of the ball.
+    """
     if dimensions == 2:
         corners, cutting = _planar_cell([Vector(offset.x, offset.y) for offset in offsets], reach)
-        return (*_box(corners), cutting) if corners else None
+        return (*_box(corners), cutting)
     cutting = [offset for offset in offsets if 0 < offset.length() <= 2 * reach]
     coarse, pixel = _grid(Vector(-reach, -reach, -reach), Vector(reach, reach, reach), 3)
     inside = [point for point in coarse if _depth(point, cutting, reach) > -pixel / 2]
@@ -138,8 +142,6 @@ def voronoi_centroid(
         return Vector()
     low, high, cutting = cell
     samples, pixel = _grid(low, high, dimensions)
-    if pixel <= 0:
-        return Vector()
     # Outside the shape the whole cell counts: on its way in, the device still keeps apart.
     clip = None if shape(position) > 0 else (lambda point: -shape(position + point))
     return _weighted_centroid(samples, pixel, lambda point: _depth(point, cutting, reach), clip)
