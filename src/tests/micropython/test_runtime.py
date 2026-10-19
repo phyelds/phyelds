@@ -74,6 +74,7 @@ def _cpython(program: str, paths: str = "debug"):
     "timed",
     "spatial_logic",
     "processes",
+    "state_machine",
 ])
 def test_micropython_runs_programs_like_cpython(bundle, program):
     assert _micropython(bundle, program) == _cpython(program)

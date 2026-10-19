@@ -11,6 +11,7 @@ from phyelds import engine
 from phyelds.calculus import aggregate, exchange, neighbors, remember
 from phyelds.data import State
 from phyelds.data.codec import encode
+from phyelds.experimental.state_machines import Next, collective_state_machine
 from phyelds.libraries.collect import collect_with, point_to_point, sum_values
 from phyelds.libraries.device import local_id, sense
 from phyelds.libraries.distances import hops_distance
@@ -148,6 +149,13 @@ def area(origin, radius=1.0):
 @aggregate
 def processes():
     return area.spawn({local_id()} if sense("source") else set(), radius=2.0)
+
+
+@aggregate
+def state_machine():
+    def transition(state):
+        return Next("active", priority=1.0) if sense("source") and state == "idle" else state
+    return collective_state_machine("idle", transition, memory=2)
 
 
 @aggregate

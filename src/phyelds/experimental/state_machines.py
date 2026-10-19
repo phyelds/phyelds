@@ -11,7 +11,6 @@ Collective State Machines* (https://github.com/cric96/experiments-2025-collectiv
 """
 from collections.abc import Callable
 from dataclasses import dataclass
-from functools import reduce
 from typing import Any, TypeVar
 
 from phyelds.calculus import aggregate, align, exchange
@@ -103,6 +102,9 @@ def collective_state_machine(
         proposal = Next(proposal)
     if proposal.state != current:
         own = _MachineHistory(own.forgotten, own.entries + ((proposal.priority, proposal.state),))
-    agreed = reduce(_newer, histories, own).remember_last(memory)
+    agreed = own
+    for history in histories:
+        agreed = _newer(agreed, history)
+    agreed = agreed.remember_last(memory)
     set_histories(agreed)
     return agreed.entries[-1][1]
