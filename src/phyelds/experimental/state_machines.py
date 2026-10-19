@@ -249,7 +249,9 @@ class StateMachine:
         """
         Propose a transition to ``target``, from the function of the current state.
 
-        If the function proposes more than one, the one that would win a conflict is kept.
+        The state produces the greatest of staying, with the lowest priority, and the
+        transitions it proposes (Remark 1 of the paper): a transition to an earlier state
+        needs a higher priority, such as the negated time, to happen.
 
         Args:
             target: The next state.
@@ -288,11 +290,11 @@ class StateMachine:
                 proposals = self._proposals
             finally:
                 self._proposals = None
-            if not proposals:
-                return index
             for proposal in proposals:
                 self._check_target(name, self.states[proposal.state])
-            return max(proposals, key=lambda proposal: (proposal.priority, proposal.state))
+            # Remark 1: the program produces the greatest of staying and its transitions.
+            options = [Next(index), *proposals]
+            return max(options, key=lambda option: (option.priority, option.state))
 
         index = collective_state_machine(0, transition, window=self.window, clock=clock)
         return self.states[index], output

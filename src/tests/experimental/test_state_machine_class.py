@@ -160,3 +160,18 @@ def test_state_machine_takes_the_members_of_an_enum_as_states():
 
     assert _run(setup_up_simulator(2), machine) == [(Phase.ACTIVE, None)] * 2
     assert machine.to_mermaid().splitlines()[1:] == ["    [*] --> IDLE", "    IDLE --> ACTIVE"]
+
+
+def test_state_machine_stays_rather_than_going_to_an_earlier_state_with_the_lowest_priority():
+    # Remark 1: the program produces the maximum of staying and of its transitions.
+    machine = StateMachine("idle", "busy")
+
+    @machine.state("idle")
+    def idle():
+        machine.go("busy")
+
+    @machine.state("busy")
+    def busy():
+        machine.go("idle")
+
+    assert _run(setup_up_simulator(1), machine) == [("busy", None)]
