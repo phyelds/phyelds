@@ -1,3 +1,5 @@
+import pytest
+
 from phyelds.calculus import aggregate
 from phyelds.experimental.state_machines import Next, collective_state_machine
 from phyelds.libraries.device import sense
@@ -91,3 +93,41 @@ def test_collective_state_machine_agrees_over_messages_sent_as_bytes():
         devices[1].receive(0, payloads[0])
 
     assert [device.result for device in devices] == ["active", "active"]
+
+
+def _payload_sizes(memory, rounds: int = 40) -> list[int]:
+    device = Device(0, lambda: collective_state_machine(0, lambda state: state + 1, memory=memory))
+    return [len(device.run_round({})) for _ in range(rounds)]
+
+
+def test_collective_state_machine_keeps_its_messages_bounded_with_a_memory():
+    bounded = _payload_sizes(memory=2)
+    unbounded = _payload_sizes(memory=None)
+
+    # the states and the count of forgotten transitions take more digits, not more entries
+    assert max(bounded) <= min(bounded) + 4
+    assert unbounded[-1] > 2 * unbounded[9]
+
+
+def test_collective_state_machine_agrees_after_many_transitions_with_a_memory():
+    simulator = setup_up_simulator(5)
+    simulator.environment.nodes[0].data["source"] = True
+
+    def transition(state):
+        if sense("source") and state < 20 and counter() >= 2:
+            return state + 1
+        return state
+
+    @aggregate
+    def program():
+        return collective_state_machine(0, transition, memory=2)
+
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
+    simulator.run(60)
+
+    assert _states(simulator) == [20] * 5
+
+
+def test_collective_state_machine_rejects_a_memory_shorter_than_a_transition():
+    with pytest.raises(ValueError):
+        Device(0, lambda: collective_state_machine(0, lambda state: state, memory=0)).run_round({})

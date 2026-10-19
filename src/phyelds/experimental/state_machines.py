@@ -35,22 +35,38 @@ class Next:
 @register
 @dataclass(frozen=True)
 class _MachineHistory:
-    """The transitions of the machine, oldest first, each as ``(priority, state)``."""
+    """
+    The transitions of the machine, oldest first, each as ``(priority, state)``, after the
+    ``forgotten`` oldest ones.
+    """
 
+    forgotten: int
     entries: tuple
+
+    def remember_last(self, memory: int | None) -> "_MachineHistory":
+        """This history, with only its last ``memory`` transitions (all of them if ``None``)."""
+        if memory is None or len(self.entries) <= memory:
+            return self
+        dropped = len(self.entries) - memory
+        return _MachineHistory(self.forgotten + dropped, self.entries[dropped:])
 
 
 def _newer(first: _MachineHistory, second: _MachineHistory) -> _MachineHistory:
     """
-    The more advanced of two histories, comparing them entry by entry: a longer history
-    wins over its own prefix, and the first differing transition decides between two
-    that diverged.
+    The more advanced of two histories, comparing them entry by entry from the first one
+    both remember: a longer history wins over its own prefix, and the first differing
+    transition decides between two that diverged.
     """
-    return first if first.entries > second.entries else second
+    start = max(first.forgotten, second.forgotten)
+    first_entries = first.entries[start - first.forgotten:]
+    second_entries = second.entries[start - second.forgotten:]
+    return first if first_entries > second_entries else second
 
 
 @aggregate
-def collective_state_machine(initial: S, transition: Callable[[S], S | Next]) -> S:
+def collective_state_machine(
+    initial: S, transition: Callable[[S], S | Next], *, memory: int | None = None
+) -> S:
     """
     Run a state machine on the whole network, so that all the devices agree on its state.
 
@@ -63,11 +79,21 @@ def collective_state_machine(initial: S, transition: Callable[[S], S | Next]) ->
             ``Next`` with a priority; the current state itself to stay. It runs aligned on
             the current state, so the aggregate operations it calls in a state do not
             interact with those of the devices in other states.
+        memory: How many transitions each device remembers, and sends to its neighbors;
+            ``None`` remembers them all, and the messages grow with every transition.
+            Two histories that diverged before what both remember are told apart by
+            their last transitions only, so a short memory can settle a conflict
+            differently.
 
     Returns:
         The state the device is in after this round.
+
+    Raises:
+        ValueError: If ``memory`` is less than 1.
     """
-    start = _MachineHistory(((float("-inf"), initial),))
+    if memory is not None and memory < 1:
+        raise ValueError(f"memory must be at least 1, not {memory}")
+    start = _MachineHistory(0, ((float("-inf"), initial),))
     set_histories, histories = exchange(start)
     own = histories.local()
     current = own.entries[-1][1]
@@ -76,7 +102,7 @@ def collective_state_machine(initial: S, transition: Callable[[S], S | Next]) ->
     if not isinstance(proposal, Next):
         proposal = Next(proposal)
     if proposal.state != current:
-        own = _MachineHistory(own.entries + ((proposal.priority, proposal.state),))
-    agreed = reduce(_newer, histories, own)
+        own = _MachineHistory(own.forgotten, own.entries + ((proposal.priority, proposal.state),))
+    agreed = reduce(_newer, histories, own).remember_last(memory)
     set_histories(agreed)
     return agreed.entries[-1][1]
