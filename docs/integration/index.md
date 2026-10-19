@@ -51,7 +51,8 @@ The complete, runnable example, which drives a line of devices with plain Python
 
 ---
 
-## Two ways to integrate
+## Ways to integrate
 
 - **Reuse the phyelds simulator** with a custom `Environment`, when the host can be stepped from Python: the simulator's runner already implements the protocol (`phyelds.simulator.runner.aggregate_program_runner`), and you only map the host's state to nodes. This is how [VMAS](vmas.md) is integrated.
+- **Run rounds from another simulator**, when it owns the agents and the time: [Mesa](mesa.md) models do it with `phyelds-mesa`, which runs a round on every agent at each step of the model.
 - **Drive rounds yourself**, as in the example above, when the host owns the loop (a real device, ROS node, or an external simulator calling back into Python). Microcontrollers are hosts of this kind: see [MicroPython and the ESP32](micropython.md).

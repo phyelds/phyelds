@@ -3,7 +3,7 @@
 [VMAS](https://github.com/proroklab/VectorizedMultiAgentSimulator) is a vectorised
 multi-robot simulator. The `phyelds-vmas` package connects it to phyelds by reusing
 the phyelds simulator, so it is a compact example of the
-"[custom environment](index.md#two-ways-to-integrate)" approach.
+"[custom environment](index.md#ways-to-integrate)" approach.
 
 ```bash
 pip install phyelds-vmas
