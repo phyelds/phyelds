@@ -75,9 +75,11 @@ def collective_state_machine(
             ``IntEnum``. A state received from a device over a codec arrives as its plain
             value (an ``IntEnum`` as an ``int``).
         transition: Given the current state, the next one, as a bare state or as a
-            ``Next`` with a priority; the current state itself to stay. It runs aligned on
-            the current state, so the aggregate operations it calls in a state do not
-            interact with those of the devices in other states.
+            ``Next`` with a priority; the current state itself to stay. It runs on the
+            state the device agrees on with its neighbors in this round, and aligned on
+            it, so the aggregate operations it calls in a state do not interact with
+            those of the devices in other states. The next state is sent to the
+            neighbors, and the device moves to it from the next round, if it wins.
         memory: How many transitions each device remembers, and sends to its neighbors;
             ``None`` remembers them all, and the messages grow with every transition.
             Two histories that diverged before what both remember are told apart by
@@ -85,7 +87,7 @@ def collective_state_machine(
             differently.
 
     Returns:
-        The state the device is in after this round.
+        The state the device agreed on, and ran ``transition`` on, in this round.
 
     Raises:
         ValueError: If ``memory`` is less than 1.
@@ -94,17 +96,16 @@ def collective_state_machine(
         raise ValueError(f"memory must be at least 1, not {memory}")
     start = _MachineHistory(0, ((float("-inf"), initial),))
     set_histories, histories = exchange(start)
-    own = histories.local()
-    current = own.entries[-1][1]
+    agreed = histories.local()
+    for history in histories:
+        agreed = _newer(agreed, history)
+    current = agreed.entries[-1][1]
     with align(current):
         proposal = transition(current)
     if not isinstance(proposal, Next):
         proposal = Next(proposal)
     if proposal.state != current:
-        own = _MachineHistory(own.forgotten, own.entries + ((proposal.priority, proposal.state),))
-    agreed = own
-    for history in histories:
-        agreed = _newer(agreed, history)
-    agreed = agreed.remember_last(memory)
-    set_histories(agreed)
-    return agreed.entries[-1][1]
+        entries = agreed.entries + ((proposal.priority, proposal.state),)
+        agreed = _MachineHistory(agreed.forgotten, entries)
+    set_histories(agreed.remember_last(memory))
+    return current

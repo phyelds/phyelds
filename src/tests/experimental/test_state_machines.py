@@ -2,7 +2,7 @@ import pytest
 
 from phyelds.calculus import aggregate
 from phyelds.experimental.state_machines import Next, collective_state_machine
-from phyelds.libraries.device import sense
+from phyelds.libraries.device import local_id, sense
 from phyelds.libraries.time import counter
 from phyelds.vm.device import Device
 from phyelds.simulator.runner import schedule_program_for_all
@@ -79,7 +79,7 @@ def test_collective_state_machine_runs_each_state_on_its_own_alignment():
         device.run_round({})
         states.append(device.result)
 
-    assert states == ["idle", "idle", "busy", "busy", "busy", "idle", "idle", "idle", "busy"]
+    assert states == ["idle"] * 3 + ["busy"] * 3 + ["idle"] * 3
 
 
 def test_collective_state_machine_agrees_over_messages_sent_as_bytes():
@@ -131,3 +131,20 @@ def test_collective_state_machine_agrees_after_many_transitions_with_a_memory():
 def test_collective_state_machine_rejects_a_memory_shorter_than_a_transition():
     with pytest.raises(ValueError):
         Device(0, lambda: collective_state_machine(0, lambda state: state, memory=0)).run_round({})
+
+
+def test_collective_state_machine_returns_the_state_its_transition_ran_on():
+    ran_on = {}
+
+    def program():
+        def transition(state):
+            ran_on[local_id()] = state
+            return "active" if sense("source") else state
+        return collective_state_machine("idle", transition)
+
+    devices = [Device(0, program), Device(1, program)]
+    for _ in range(3):
+        payloads = [device.run_round({"source": device.device_id == 0}) for device in devices]
+        devices[0].receive(1, payloads[1])
+        devices[1].receive(0, payloads[0])
+        assert [device.result for device in devices] == [ran_on[0], ran_on[1]]
