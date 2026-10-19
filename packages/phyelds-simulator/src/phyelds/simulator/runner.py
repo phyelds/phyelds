@@ -40,13 +40,13 @@ def aggregate_program_runner(
     if node.id not in simulator.environment.nodes.keys():
         # If the node is not in the environment, do not run the program
         return
+    node.data["time"] = simulator.current_time  # prepare time sensor, the round of the node
     # get neighbors
     all_neighbors = simulator.environment.get_neighbors(node)
     # take the messages from the neighbors, create a dict like id -> messages (that is a dict)
     neighbors_messages = {
         neighbor.id: neighbor.data.get("messages", {}) for neighbor in all_neighbors
     }
-    node.data["time"] = simulator.current_time  # prepare time sensor
     engine.set(MutableEngine())
     engine.get().setup(
         SimulatorNodeContext.from_node(node),
