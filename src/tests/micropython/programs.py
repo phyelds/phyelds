@@ -11,7 +11,7 @@ from phyelds import engine
 from phyelds.calculus import aggregate, exchange, neighbors, remember
 from phyelds.data import State
 from phyelds.data.codec import encode
-from phyelds.experimental.state_machines import Next, collective_state_machine
+from phyelds.experimental.state_machines import Next, StateMachine, collective_state_machine
 from phyelds.libraries.collect import collect_with, point_to_point, sum_values
 from phyelds.libraries.device import local_id, sense
 from phyelds.libraries.distances import hops_distance
@@ -156,6 +156,29 @@ def state_machine():
     def transition(state):
         return Next("active", priority=1.0) if sense("source") and state == "idle" else state
     return collective_state_machine("idle", transition, memory=2)
+
+
+MISSION = StateMachine("wait", "explore", "defend", memory=2)
+
+
+@MISSION.state("wait", to=["explore", "defend"])
+@aggregate
+def wait():
+    if sense("source"):
+        MISSION.go("defend", priority=1.0)
+        return neighbors(1).sum()
+    MISSION.go("explore")
+    return neighbors(10).sum()
+
+
+@MISSION.state("explore")
+def explore():
+    return counter()
+
+
+@aggregate
+def described_state_machine():
+    return MISSION.run()
 
 
 @aggregate
