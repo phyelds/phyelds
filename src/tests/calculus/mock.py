@@ -36,8 +36,9 @@ class MockNode:
         return self.node_id
 
 class MockSimulator:
-    def __init__(self, how_many: int = 1):
+    def __init__(self, how_many: int = 1, engine_factory=MutableEngine):
         self.nodes = [MockNode((i, i), node_id=i) for i in range(how_many)]
+        self.engine_factory = engine_factory
 
     def cycle(self, program):
         for node in self.nodes:
@@ -46,7 +47,7 @@ class MockSimulator:
                 for neighbor in self.nodes if neighbor.node_id != node.node_id
             }
             engine.set(
-                MutableEngine().setup(node.context["node_context"], all_messages, node.context["state"])
+                self.engine_factory().setup(node.context["node_context"], all_messages, node.context["state"])
             )
             node.root = program()
             node.context["messages"] = engine.get().cooldown()

@@ -8,6 +8,7 @@ import sys
 from typing import Any, Generic, TypeVar
 
 from phyelds.data import NeighborhoodField
+from phyelds.data.codec import register
 
 T = TypeVar("T")
 
@@ -61,6 +62,7 @@ def accumulate_distance(
     return total
 
 
+@register
 @dataclass(frozen=True)
 class PathValue(Generic[T]):
     """

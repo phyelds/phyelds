@@ -87,6 +87,8 @@ builds the gradient beneath it step by step from `remember` and `neighbors`.
 * **Simulator**: a pluggable discrete-event simulator with live rendering, animation
   export, and [VMAS](https://github.com/proroklab/VectorizedMultiAgentSimulator)
   integration (`phyelds-vmas`).
+* **MicroPython**: the same programs run on microcontrollers such as the ESP32
+  (`python -m phyelds.micropython`), and talk with devices running CPython.
 
 Everything is explained in the [documentation](https://phyelds.github.io/phyelds/):
 [thinking in fields](https://phyelds.github.io/phyelds/concepts/aggregate-programs/),
@@ -94,6 +96,7 @@ Everything is explained in the [documentation](https://phyelds.github.io/phyelds
 [libraries](https://phyelds.github.io/phyelds/concepts/libraries/),
 [simulator](https://phyelds.github.io/phyelds/simulator/),
 [integration with other runtimes](https://phyelds.github.io/phyelds/integration/),
+[MicroPython and the ESP32](https://phyelds.github.io/phyelds/integration/micropython/),
 and [common pitfalls](https://phyelds.github.io/phyelds/pitfalls/).
 
 ## Heritage & Related Projects

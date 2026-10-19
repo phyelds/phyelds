@@ -15,19 +15,20 @@ Then, there is the core syntax of phyelds:
 - exchange: used to exchange values (or anisotropic fields) across iterations and neighbors.
 - neighbors_distances: used to get the distances to the neighbors.
 """
-import ast
 import functools
-import inspect
-import os
-import textwrap
 from typing import TypeVar, Callable, Tuple, Union, Any
 
 from phyelds import engine
 from phyelds.calculus.align import AlignContext
-from phyelds.calculus.internal import AggregateTransformer
 from phyelds.data import State, NeighborhoodField
 
-_DEBUG_AST = os.environ.get("PHYELDS_DEBUG_AST", "0").lower() in ("1", "true", "yes")
+try:
+    from phyelds.calculus.internal.transform import (  # noqa: F401 (str_transformed_code is public)
+        transform_code, str_transformed_code,
+    )
+except ImportError:
+    # The MicroPython bundle has no ``ast``: its code is rewritten when it is built.
+    transform_code = None
 
 
 # Generic type variable to preserve types through functions
@@ -48,7 +49,7 @@ def aggregate(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         engine.get().enter(func.__name__)
-        result = ___transform_code(func)(*args, **kwargs)
+        result = _transformed(func)(*args, **kwargs)
         engine.get().exit()
         return result
 
@@ -212,92 +213,11 @@ def _aligned_branch(condition: Any, if_true: Callable[[], T], if_false: Callable
         return if_false()
 
 
-_TRANSFORMATION_CACHE = {}
-
-
-def _is_aggregate_decorator(node: ast.expr) -> bool:
-    """True for ``@aggregate`` / ``@process`` and their qualified forms."""
-    if isinstance(node, ast.Name):
-        return node.id in ("aggregate", "process")
-    return isinstance(node, ast.Attribute) and node.attr in ("aggregate", "process")
-
-
-def _drop_applied_decorators(func_def: ast.AST) -> None:
-    """
-    Remove ``@aggregate`` and every decorator above it from the parsed definition.
-    Python has already applied those around the ``aggregate`` wrapper: keeping them would
-    apply them a second time on each call, re-evaluating their expressions in a scope
-    where the caller's locals do not exist. Decorators below ``@aggregate`` are kept,
-    since they are part of the function ``aggregate`` received.
-    """
-    decorators = getattr(func_def, "decorator_list", [])
-    for index, decorator in enumerate(decorators):
-        if _is_aggregate_decorator(decorator):
-            func_def.decorator_list = decorators[index + 1:]
-            return
-
-
-# pylint: disable=exec-used,broad-exception-caught
-def ___transform_code(func):
-    """
-    Transforms the code of the given function to include alignment contexts.
-    :param func: The function to transform.
-    :return: The transformed function.
-    """
-    if func.__code__ in _TRANSFORMATION_CACHE:
-        code_obj = _TRANSFORMATION_CACHE[func.__code__]
-    else:
-        try:
-            source = inspect.getsource(func)
-            source = textwrap.dedent(source)
-            tree = ast.parse(source)
-            func_def = tree.body[0]
-            _drop_applied_decorators(func_def)
-
-            transformer = AggregateTransformer()
-            tree = transformer.visit(tree)
-            ast.fix_missing_locations(tree)
-            if _DEBUG_AST:
-                print(f"--- Transformed code for {func.__name__} ---")
-                print(ast.unparse(tree))
-                print("--- End transformed code ---")
-            # Compiled at the lines of the original file, so that tracebacks point to the source.
-            ast.increment_lineno(tree, func.__code__.co_firstlineno - 1)
-            code_obj = compile(tree, filename=func.__code__.co_filename, mode="exec")
-            _TRANSFORMATION_CACHE[func.__code__] = code_obj
-        except Exception as e:
-            print(f"WARNING: AST transformation failed ({e}). Using original function.")
-            return func
-    scope = func.__globals__.copy()
-    scope['align_left'] = align_left
-    scope['align_right'] = align_right
-    scope['_aligned_branch'] = _aligned_branch
-    if func.__closure__ and func.__code__.co_freevars:
-        for name, cell in zip(func.__code__.co_freevars, func.__closure__):
-            try:
-                scope[name] = cell.cell_contents
-            except ValueError:
-                pass
-    local_scope = {}
-    exec(code_obj, scope, local_scope)
-    return local_scope[func.__name__]
-
-
-def str_transformed_code(func):
-    """
-    Utility to print the transformed AST source for a given function.
-    Useful for debugging how the AggregateTransformer rewrites ``if`` statements.
-    """
-    try:
-        source = inspect.getsource(func)
-    except TypeError:
-        print(f"Could not retrieve source for {func}")
-        return None
-    source = textwrap.dedent(source)
-    tree = ast.parse(source)
-    func_def = tree.body[0]
-    _drop_applied_decorators(func_def)
-    transformer = AggregateTransformer()
-    tree = transformer.visit(tree)
-    ast.fix_missing_locations(tree)
-    return ast.unparse(tree)
+def _transformed(func: Callable) -> Callable:
+    """``func`` with its branches aligned, unless it was already rewritten at build time."""
+    if transform_code is None:
+        return func
+    return transform_code(
+        func,
+        {"align_left": align_left, "align_right": align_right, "_aligned_branch": _aligned_branch},
+    )

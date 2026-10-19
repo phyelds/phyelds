@@ -8,15 +8,48 @@ from typing import Dict, List, Any, Optional
 
 from phyelds.vm import Engine, NodeContext, EngineState
 
+_FNV_OFFSET = 0x811C9DC5
+_FNV_PRIME = 0x01000193
+
+
+def _compact_key(path: List[str]) -> int:
+    """
+    FNV-1a hash of ``path``, the same on every runtime (unlike ``hash``, which is salted).
+
+    Cut to 30 bits so that it stays a small integer on 32-bit MicroPython boards, which
+    would otherwise allocate a big integer for each key.
+    """
+    # ponytail: 30-bit keys, ~1e-3 chance of a collision with 1000 paths; widen if needed
+    digest = _FNV_OFFSET
+    for segment in path:
+        for byte in segment.encode() + b"/":
+            digest = ((digest ^ byte) * _FNV_PRIME) & 0xFFFFFFFF
+    return digest & 0x3FFFFFFF
+
+
+_PATH_KEYS = {"debug": str, "compact": _compact_key}
+
 
 class MutableEngine(Engine):
     """
     MutableEngine is the responsible for managing the state and message passing
     in an aggregate computing system. It provides methods to enter and exit contexts,
     send messages, and manage the state of the system.
+
+    Args:
+        paths: How alignment paths become state and message keys. ``"debug"`` (the
+            default) keeps them readable, as strings; ``"compact"`` turns them into
+            small integers, lighter for microcontrollers and their radios. Devices that
+            talk to each other must use the same mode.
+
+    Raises:
+        ValueError: If ``paths`` is not ``"debug"`` or ``"compact"``.
     """
-    def __init__(self):
+    def __init__(self, paths: str = "debug"):
         super().__init__()
+        if paths not in _PATH_KEYS:
+            raise ValueError(f"paths must be one of {sorted(_PATH_KEYS)}, not {paths!r}")
+        self._key = _PATH_KEYS[paths]
         self.engine_state = EngineState()
 
     def setup(
@@ -45,8 +78,9 @@ class MutableEngine(Engine):
         self.engine_state.count_stack.append(0)
 
     def forget(self, stack: List[str]) -> None:
-        if str(stack) in self.engine_state.state_trace:
-            del self.engine_state.state_trace[str(stack)]
+        key = self._key(stack)
+        if key in self.engine_state.state_trace:
+            del self.engine_state.state_trace[key]
 
     def exit(self) -> None:
         if self.engine_state.stack:
@@ -57,33 +91,31 @@ class MutableEngine(Engine):
         return self.engine_state.stack.copy()
 
     def write_state(self, value: Any, stack: List[str]) -> None:
-        self.engine_state.state_trace[str(stack)] = value
+        self.engine_state.state_trace[self._key(stack)] = value
 
     def read_state(self, stack: List[str]) -> Optional[Any]:
-        self.engine_state.reads.add(str(stack))
-        return self.engine_state.state_trace.get(str(stack))
+        key = self._key(stack)
+        self.engine_state.reads.add(key)
+        return self.engine_state.state_trace.get(key)
 
     def send(self, data: Any, stack: Optional[List[str]] = None) -> None:
         target_stack = self.engine_state.stack if stack is None else stack
-        self.engine_state.to_send[str(target_stack)] = data
+        self.engine_state.to_send[self._key(target_stack)] = data
 
     def aligned(self) -> List[int]:
-        aligned: List[int] = []
-        for node_id in self.engine_state.messages:
-            if str(self.engine_state.stack) in self.engine_state.messages[node_id]:
-                aligned.append(node_id)
-
-        return aligned
+        key = self._key(self.engine_state.stack)
+        return [
+            node_id for node_id, messages in self.engine_state.messages.items() if key in messages
+        ]
 
     def aligned_values(self, path: List[str]) -> Dict[int, Any]:
-        aligned: List[int] = self.aligned()
-        path_str: str = str(path)
-        aligned_values: Dict[int, Any] = {}
-        # take the values of the given path
-        for node_id in aligned:
-            if path_str in self.engine_state.messages[node_id]:
-                aligned_values[node_id] = self.engine_state.messages[node_id][path_str]
-        return aligned_values
+        key = self._key(path)
+        messages = self.engine_state.messages
+        return {
+            node_id: messages[node_id][key]
+            for node_id in self.aligned()
+            if key in messages[node_id]
+        }
 
     def state_trace(self) -> Dict[str, Any]:
         """

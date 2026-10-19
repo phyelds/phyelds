@@ -63,3 +63,7 @@ mkdocs-material = "^9.7.7"
 mkdocstrings = {extras = ["python"], version = "^1.0.7"}
 mkdocs = ">=1.6,<2"
 
+[tool.coverage.report]
+# The tests build MicroPython bundles in temporary directories: they are copies of the
+# package, not code of their own.
+omit = ["*/pytest-of-*/*"]

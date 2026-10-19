@@ -10,6 +10,7 @@ from typing import Any, Optional, Tuple, TypeVar, Union
 
 from phyelds.calculus import aggregate, exchange, neighbors, remember
 from phyelds.data import NeighborhoodField, StateT
+from phyelds.data.codec import register
 from phyelds.libraries.device import local_id
 from phyelds.libraries.spreading import SpreadingStrategy, broadcast, distance_to
 
@@ -17,7 +18,7 @@ T = TypeVar("T")
 
 CollectStrategy = Callable[[StateT[float], Any, Callable[[Any, Any], Any]], Any]
 
-_NO_DATA = object()
+_NO_DATA = register(object(), "collect.no_data")
 
 
 @aggregate

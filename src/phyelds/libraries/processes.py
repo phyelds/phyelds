@@ -11,6 +11,7 @@ from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import Enum
+import functools
 import inspect
 from typing import Any, Generic, TypeVar
 
@@ -190,13 +191,27 @@ def process(func: Callable[..., R]) -> Any:
     bubble lifecycle with ``in_bubble(...)``, ``terminate_if(...)``, ``emit_if(...)``,
     or ``with bubble(...):``.
     """
-    agg_func: Any = aggregate(func)
+    return _Process(func)
 
-    def spawn_method(keys: Iterable[Any], *call_args: Any, **call_kwargs: Any) -> dict[Any, R]:
-        return spawn(agg_func, keys, *call_args, **call_kwargs)
 
-    agg_func.spawn = spawn_method
-    return agg_func
+class _Process:
+    """
+    A ``@process`` function: called, it runs as an ``@aggregate`` function.
+
+    An object rather than a function with a ``spawn`` attribute, which MicroPython
+    functions cannot have.
+    """
+
+    def __init__(self, func: Callable[..., R]) -> None:
+        self._aggregate = aggregate(func)
+        functools.update_wrapper(self, func)
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        return self._aggregate(*args, **kwargs)
+
+    def spawn(self, keys: Iterable[Any], *call_args: Any, **call_kwargs: Any) -> dict[Any, R]:
+        """Spawn this process for ``keys``; see ``spawn``."""
+        return spawn(self, keys, *call_args, **call_kwargs)
 
 
 def _call_process_fn(
