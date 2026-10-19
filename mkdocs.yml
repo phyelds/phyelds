@@ -115,6 +115,8 @@ nav:
   - Experimental:
       - What experimental means: experimental/index.md
       - Collective state machines: experimental/state-machines.md
+      - Swarm behaviours: experimental/swarm.md
+      - Formations: experimental/formations.md
   - API reference:
       - phyelds.calculus: reference/calculus.md
       - phyelds.data: reference/data.md

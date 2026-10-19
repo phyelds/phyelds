@@ -29,7 +29,7 @@ mission = StateMachine("wait", "explore", "defend")
 
 @mission.state("explore", to=["defend"])
 def explore():
-    velocity = flock()                                # what the drone does
+    velocity = sink_at(sense("leader"))               # what the drone does
     if sense("attack"):
         mission.go("defend", priority=math.inf)       # where the swarm should go
     return velocity
@@ -38,6 +38,9 @@ def explore():
 def drone():
     state, velocity = mission.run()
 ```
+
+Here the drone moves with a [swarm behaviour](swarm.md); the
+[example](swarm.md#example-a-mission) there is a mission whose phases are a machine.
 
 - **States**: strings, numbers, or the members of an enum. The machine starts in the
   first one. Devices send the position of a state, not the state, so a long name costs
