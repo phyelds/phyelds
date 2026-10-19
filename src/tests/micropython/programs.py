@@ -155,10 +155,10 @@ def processes():
 def state_machine():
     def transition(state):
         return Next("active", priority=1.0) if sense("source") and state == "idle" else state
-    return collective_state_machine("idle", transition, memory=2)
+    return collective_state_machine("idle", transition, window=3.0)
 
 
-MISSION = StateMachine("wait", "explore", "defend", memory=2)
+MISSION = StateMachine("wait", "explore", "defend", window=3.0)
 
 
 @MISSION.state("wait", to=["explore", "defend"])

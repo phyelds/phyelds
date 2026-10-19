@@ -109,21 +109,21 @@ def test_collective_state_machine_agrees_over_messages_sent_as_bytes():
     assert [device.result for device in devices] == [WANDER, WANDER]
 
 
-def _payload_sizes(memory, rounds: int = 40) -> list[int]:
-    device = Device(0, lambda: collective_state_machine(0, lambda state: state + 1, memory=memory))
-    return [len(device.run_round({})) for _ in range(rounds)]
+def _payload_sizes(window, rounds: int = 40) -> list[int]:
+    device = Device(0, lambda: collective_state_machine(0, lambda state: state + 1, window=window))
+    return [len(device.run_round({"time": float(time)})) for time in range(rounds)]
 
 
-def test_collective_state_machine_keeps_its_messages_bounded_with_a_memory():
-    bounded = _payload_sizes(memory=2)
-    unbounded = _payload_sizes(memory=None)
+def test_collective_state_machine_keeps_its_messages_bounded_with_a_window():
+    bounded = _payload_sizes(window=5.0)
+    unbounded = _payload_sizes(window=None)
 
-    # the states and the count of forgotten transitions take more digits, not more entries
-    assert max(bounded) <= min(bounded) + 4
+    # the states, the times and the count of forgotten ones take more digits, not more entries
+    assert max(bounded[10:]) <= min(bounded[10:]) + 16
     assert unbounded[-1] > 2 * unbounded[9]
 
 
-def test_collective_state_machine_agrees_after_many_transitions_with_a_memory():
+def test_collective_state_machine_agrees_after_many_transitions_with_a_window():
     simulator = setup_up_simulator(5)
     simulator.environment.nodes[0].data["source"] = True
 
@@ -134,7 +134,8 @@ def test_collective_state_machine_agrees_after_many_transitions_with_a_memory():
 
     @aggregate
     def program():
-        return collective_state_machine(0, transition, memory=2)
+        # longer than the time a message takes to cross the line
+        return collective_state_machine(0, transition, window=6.0)
 
     schedule_program_for_all(simulator, 0.0, 1.0, program)
     simulator.run(60)
@@ -142,9 +143,17 @@ def test_collective_state_machine_agrees_after_many_transitions_with_a_memory():
     assert _states(simulator) == [20] * 5
 
 
-def test_collective_state_machine_rejects_a_memory_shorter_than_a_transition():
+@pytest.mark.parametrize("window", [0.0, -1.0])
+def test_collective_state_machine_rejects_a_window_that_is_not_positive(window):
+    program = lambda: collective_state_machine(0, lambda state: state, window=window)  # noqa: E731
+
     with pytest.raises(ValueError):
-        Device(0, lambda: collective_state_machine(0, lambda state: state, memory=0)).run_round({})
+        Device(0, program).run_round({"time": 0.0})
+
+
+def test_collective_state_machine_needs_a_clock_for_a_window():
+    with pytest.raises(ValueError):
+        Device(0, lambda: collective_state_machine(0, lambda state: state, window=5.0)).run_round({})
 
 
 def test_collective_state_machine_returns_the_state_its_transition_ran_on():
