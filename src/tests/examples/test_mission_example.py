@@ -13,7 +13,8 @@ def _load_example():
 
 
 mission = _load_example()
-Mission = mission.Mission
+Phase = mission.Phase
+PAGE = Path(__file__).resolve().parents[3] / "docs" / "experimental" / "state-machines.md"
 
 
 def _states(simulator) -> set:
@@ -27,7 +28,7 @@ def test_mission_drones_agree_on_the_state_before_each_event():
         simulator.run(until)
         phases.append(_states(simulator))
 
-    assert phases == [{Mission.WAIT}, {Mission.EXPLORE}, {Mission.DEFEND}, {Mission.RESCUE}, {Mission.WAIT}]
+    assert phases == [{Phase.WAIT}, {Phase.EXPLORE}, {Phase.DEFEND}, {Phase.RESCUE}, {Phase.WAIT}]
 
 
 def test_mission_defends_the_base_although_the_target_is_found_at_the_same_time():
@@ -39,5 +40,20 @@ def test_mission_defends_the_base_although_the_target_is_found_at_the_same_time(
         simulator.run(until)
         seen |= _states(simulator)
 
-    assert Mission.RESCUE in seen
-    assert _states(simulator) == {Mission.DEFEND}
+    assert Phase.RESCUE in seen
+    assert _states(simulator) == {Phase.DEFEND}
+
+
+def test_mission_drones_head_for_the_base_while_they_defend_it():
+    simulator = mission.scene()
+    simulator.run(21)
+
+    distances = {node.id: node.data["outputs"]["distance"] for node in simulator.environment.nodes.values()}
+
+    assert _states(simulator) == {Phase.DEFEND}
+    assert distances[mission.BASE] == 0.0
+    assert distances[mission.TARGET] == max(distances.values())
+
+
+def test_mission_diagram_on_the_page_is_the_one_of_the_machine():
+    assert mission.mission.to_mermaid() in PAGE.read_text()
