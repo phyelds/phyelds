@@ -105,6 +105,6 @@ def anisotropic_counter():
 Any serializable value can be shared: numbers, strings, tuples, dictionaries, or dataclasses. Keep two rules in mind:
 
 - **Never pass a `NeighborhoodField` into `neighbors(...)`**: `neighbors` raises `TypeError` because a `NeighborhoodField` is only meaningful on the device that constructed it. Share a plain value computed from it instead (`field.min()`, `field.local()`, etc.).
-- **Never mutate a value received from a neighbor**: in the bundled simulator, messages are passed by reference for speed (see [Common pitfalls](../pitfalls.md#mutating-shared-values)).
+- **Never mutate a value received from a neighbor**: in the phyelds simulator, messages are passed by reference for speed (see [Common pitfalls](../pitfalls.md#mutating-shared-values)).
 
 Who counts as a physical neighbor is determined by the platform or simulator environment (for example, `radius_neighborhood(1.5)` or `k_nearest_neighbors(4)`). Among those physical neighbors, a device only sees the ones that executed the **same** `neighbors` / `exchange` call in their last round—a property known as [alignment](alignment.md).

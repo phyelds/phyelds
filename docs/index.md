@@ -25,12 +25,14 @@ only with its immediate neighbors.
 </div>
 
 ```bash
-pip install phyelds
+pip install phyelds-simulator
 ```
 
 <p class="ph-note">
-Python 3.12 or later. Optional: <code>pip install "phyelds[jupyter]"</code> for live rendering
-in Jupyter notebooks, <code>pip install phyelds-vmas</code> for the VMAS multi-robot simulator.
+Python 3.12 or later. This installs phyelds and its simulator; <code>pip install phyelds</code>
+alone is the core, to run programs on a runtime of your own. Optional:
+<code>pip install "phyelds-simulator[jupyter]"</code> for live rendering in Jupyter notebooks,
+<code>pip install phyelds-vmas</code> for the VMAS multi-robot simulator.
 </p>
 
 </div>

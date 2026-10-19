@@ -43,7 +43,7 @@ Read **locally**, these five lines compare a few numbers from neighboring nodes.
 ![A hop-count gradient spreading along a line of ten devices](assets/gradient-hops-dark.gif#only-dark){ width="640" }
 
 !!! note "Why does the wave move more than one hop per round?"
-    In the bundled simulator, the devices scheduled at the same timestamp run one after another and read the freshest outboxes of neighbors that already ran in that step. The final converged field does not depend on execution order—only the transient speed does.
+    In the phyelds simulator, the devices scheduled at the same timestamp run one after another and read the freshest outboxes of neighbors that already ran in that step. The final converged field does not depend on execution order—only the transient speed does.
 
 ---
 

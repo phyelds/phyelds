@@ -110,7 +110,7 @@ def pick(flag):
 
 ## Mutating shared values
 
-In the bundled simulator, values are delivered by reference: the list a neighbor shared *is* that neighbor's state object. Mutating it silently alters another device's memory:
+In the phyelds simulator, values are delivered by reference: the list a neighbor shared *is* that neighbor's state object. Mutating it silently alters another device's memory:
 
 ```python
 # ❌ appends directly to the neighbors' remembered lists

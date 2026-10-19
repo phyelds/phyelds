@@ -4,6 +4,12 @@
 programs on many devices in one process. It is enough for experiments and teaching;
 for physics or robotics, see [integration](integration/index.md).
 
+It is a package of its own, which also installs phyelds:
+
+```bash
+pip install phyelds-simulator
+```
+
 ## The pieces
 
 | Piece | Module | Role |
@@ -67,7 +73,7 @@ simulator.schedule_event(25.0, turn_off_source, simulator.environment.nodes[0])
 (`RenderMode.SHOW`), or saves an animation (`RenderMode.SAVE`) plus a final PNG.
 A `.gif` file name is enough to get an animated GIF; `.mp4` needs ffmpeg.
 Showing it live inside a Jupyter notebook needs the `jupyter` extra
-(`pip install "phyelds[jupyter]"`).
+(`pip install "phyelds-simulator[jupyter]"`).
 
 ```python
 from phyelds.simulator.effects import DrawEdges, DrawNodes, DrawValues, RenderConfig, RenderMode
