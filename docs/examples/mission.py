@@ -109,8 +109,8 @@ def drone() -> Phase:
 def sense_events(simulator: Simulator, events: dict[str, bool]) -> None:
     """The base or the target changes what it senses."""
     for sensor, value in events.items():
-        drone = TARGET if sensor in ("found", "rescued") else BASE
-        simulator.environment.nodes[drone].data[sensor] = value
+        sensing = TARGET if sensor in ("found", "rescued") else BASE
+        simulator.environment.nodes[sensing].data[sensor] = value
 
 
 def scene() -> Simulator:
