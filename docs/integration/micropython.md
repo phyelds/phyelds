@@ -18,7 +18,7 @@ mpremote cp -r dist/. :                                     # copy to the board
 mpremote reset                                              # MicroPython runs main.py
 ```
 
-The build writes into `dist` a copy of phyelds (without the simulator) and of the given
+The build writes into `dist` a copy of phyelds (the core: the simulator is a package of its own) and of the given
 modules, rewritten for MicroPython:
 
 - the branches of `@aggregate` functions are aligned ahead of time, exactly as

@@ -28,12 +28,11 @@ _SHIMMED = {
     "enum": "enum",
     "functools": "functools",
     "inspect": "inspect",
-    "pkgutil": "pkgutil",
     "typing": "typing",
     "wrapt": "wrapt",
 }
 _TYPING = ("typing", "collections.abc")
-_LEFT_OUT = ("simulator", "micropython", "calculus/internal/transform.py")
+_LEFT_OUT = ("micropython", "calculus/internal/transform.py")
 _HELPERS = ("_aligned_branch", "align_left", "align_right")
 
 
@@ -42,7 +41,7 @@ def build(sources: Sequence[Path], out_dir: Path) -> None:
     Write phyelds and ``sources``, rewritten for MicroPython, into ``out_dir``.
 
     Copy the content of ``out_dir`` to the root of the board (e.g. with
-    ``mpremote cp -r out_dir/. :``). The simulator is left out.
+    ``mpremote cp -r out_dir/. :``).
 
     Args:
         sources: The modules of the program, written next to the ``phyelds`` package.

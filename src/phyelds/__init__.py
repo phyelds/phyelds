@@ -12,10 +12,14 @@ In order to use it, you should:
 
 """
 from contextvars import ContextVar
-from pkgutil import extend_path
 
 from phyelds.vm import Engine
 
-__path__ = extend_path(__path__, __name__)
+# phyelds is a namespace shared with phyelds-simulator and phyelds-vmas. The idiom is the
+# one documentation tools recognise; MicroPython has no pkgutil, nor other portions.
+try:
+    __path__ = __import__("pkgutil").extend_path(__path__, __name__)
+except ImportError:
+    pass
 
 engine: ContextVar[Engine] = ContextVar("engine")

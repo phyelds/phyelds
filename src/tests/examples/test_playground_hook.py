@@ -46,6 +46,7 @@ def test_on_post_build_publishes_phyelds_as_an_importable_archive(tmp_path):
         names = archive.namelist()
     assert "phyelds/__init__.py" in names
     assert "phyelds/calculus/__init__.py" in names
+    assert "phyelds/simulator/__init__.py" in names
     assert not [name for name in names if "__pycache__" in name]
 
 

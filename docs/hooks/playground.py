@@ -2,7 +2,7 @@
 MkDocs hook: publish what the playground loads in the browser.
 
 After every build, ``site/playground/`` gets ``phyelds.zip`` (the package of
-this commit, which Pyodide unpacks into site-packages), the examples and a
+this commit and its simulator, which Pyodide unpacks into site-packages), the examples and a
 ``manifest.json`` that lists them for the menu. The full-screen pages, the
 walkthrough and the playground, replace their Markdown placeholders, and stay
 out of the previous and next links.
@@ -17,7 +17,8 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 DOCS = ROOT / "docs"
-PACKAGE = ROOT / "src" / "phyelds"
+# The core and the simulator, both under the phyelds namespace.
+PACKAGES = (ROOT / "src" / "phyelds", ROOT / "packages" / "phyelds-simulator" / "src" / "phyelds")
 EXAMPLES = DOCS / "examples" / "playground"
 # Pages that open full screen: docs/<name>/app.html, published in place of docs/<name>/index.md.
 FULL_SCREEN = ("walkthrough", "playground")
@@ -44,7 +45,7 @@ def on_post_build(config: Mapping[str, Any], **_: Any) -> None:
     site_dir = Path(config["site_dir"])
     playground = site_dir / "playground"
     playground.mkdir(parents=True, exist_ok=True)
-    _bundle_package(PACKAGE, playground / "phyelds.zip")
+    _bundle_packages(PACKAGES, playground / "phyelds.zip")
     examples = playground / "examples"
     shutil.rmtree(examples, ignore_errors=True)
     examples.mkdir()
@@ -67,12 +68,13 @@ def _publish_full_screen(page: Path, target: Path) -> None:
     shutil.copy(page, target / "index.html")
 
 
-def _bundle_package(package: Path, archive: Path) -> None:
-    """Zip ``package`` with its sources only, rooted at the package name."""
+def _bundle_packages(packages: Iterable[Path], archive: Path) -> None:
+    """Zip ``packages`` with their sources only, each rooted at the package name."""
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as bundle:
-        for path in sorted(package.rglob("*.py")):
-            if "__pycache__" not in path.parts:
-                bundle.write(path, path.relative_to(package.parent).as_posix())
+        for package in packages:
+            for path in sorted(package.rglob("*.py")):
+                if "__pycache__" not in path.parts:
+                    bundle.write(path, path.relative_to(package.parent).as_posix())
 
 
 def _tour_order(sources: Iterable[Path]) -> list[Path]:

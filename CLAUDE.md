@@ -1,18 +1,21 @@
 # CLAUDE.md
 
 phyelds is a lightweight Python library for aggregate computing. The core package
-lives in `src/phyelds/` (`calculus`, `data`, `libraries`, `simulator`, `vm`), its
-tests in `src/tests/`, and the VMAS extension is a separate package in
-`packages/phyelds-vmas/`. The documentation site (MkDocs Material) is in `docs/`,
+lives in `src/phyelds/` (`calculus`, `data`, `libraries`, `vm`), its tests in
+`src/tests/`. The simulator (`phyelds.simulator`) is a separate package in
+`packages/phyelds-simulator/`, and so is the VMAS extension in
+`packages/phyelds-vmas/`; all of them share the `phyelds` namespace. The core
+depends only on `wrapt`: the simulator is a development dependency, used by the
+tests, the examples and the playground. The documentation site (MkDocs Material) is in `docs/`,
 with runnable, tested examples in `docs/examples/`.
 
 ## Commands
 
 ```bash
 poetry install                     # set up the environment (Python 3.12–3.13)
-poetry run pytest                  # all core tests (testpaths = src/tests)
+poetry run pytest                  # core and simulator tests (see testpaths)
 poetry run pytest src/tests/libraries/test_gossip.py::test_name   # a single test
-poetry run pylint src              # lint, as in CI
+poetry run pylint src packages/phyelds-simulator/src packages/phyelds-simulator/tests  # lint, as in CI
 poetry run flake8                  # style, max line length 120, as in CI
 PYTHONPATH="packages/phyelds-vmas/src" poetry run pytest packages/phyelds-vmas/tests
 poetry install --with docs         # documentation dependencies
@@ -22,7 +25,7 @@ poetry run python docs/examples/animations.py # and those of the library pages
 npm install && node docs/examples/hero.mjs     # record the gifs of the home page (Chrome, ffmpeg, gifsicle)
 ```
 
-A change is done only when `pytest`, `pylint src` and `flake8` all pass: CI and the
+A change is done only when `pytest`, `pylint` and `flake8` all pass: CI and the
 pre-commit hooks run exactly these. When a change touches the public API, also
 update the docs and check `mkdocs build --strict`; documentation examples are code,
 and are tested in `src/tests/examples/`.

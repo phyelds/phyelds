@@ -75,7 +75,7 @@ plugins:
   - mkdocstrings:
       handlers:
         python:
-          paths: [src]
+          paths: [src, packages/phyelds-simulator/src]
           options:
             docstring_style: auto
             filters: ["!^_"]

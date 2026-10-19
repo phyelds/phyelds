@@ -42,9 +42,10 @@ communication, and the library stays small enough to read in an afternoon.
 ## Installation
 
 ```bash
-pip install phyelds                # core library and simulator
-pip install "phyelds[jupyter]"     # live rendering inside Jupyter
-pip install phyelds-vmas           # VMAS integration
+pip install phyelds                         # core: the calculus and the libraries
+pip install phyelds-simulator               # the simulator, with a compatible phyelds
+pip install "phyelds-simulator[jupyter]"    # live rendering inside Jupyter
+pip install phyelds-vmas                    # VMAS integration
 ```
 
 Requires Python 3.12+.
@@ -84,8 +85,8 @@ builds the gradient beneath it step by step from `remember` and `neighbors`.
 * **Standard libraries**: spreading, collection, gossip, leader election, time &
   reactive state, aggregate processes (`@process` / `spawn`), and spatial/temporal
   logic (SLCS & Past-CTL).
-* **Simulator**: a pluggable discrete-event simulator with live rendering, animation
-  export, and [VMAS](https://github.com/proroklab/VectorizedMultiAgentSimulator)
+* **Simulator** (`phyelds-simulator`): a pluggable discrete-event simulator with live
+  rendering, animation export, and [VMAS](https://github.com/proroklab/VectorizedMultiAgentSimulator)
   integration (`phyelds-vmas`).
 * **MicroPython**: the same programs run on microcontrollers such as the ESP32
   (`python -m phyelds.micropython`), and talk with devices running CPython.

@@ -39,14 +39,20 @@ jobs:
 
     - name: Lint with pylint
       run: |
-        poetry run pylint src
+        poetry run pylint src packages/phyelds-simulator/src packages/phyelds-simulator/tests
 
     - name: Lint with flake8
       run: |
         poetry run flake8
 
     - name: Test with pytest
-      run: poetry run pytest --cov=phyelds --cov-report=xml
+      # By folder: the simulator is in the phyelds namespace, and coverage would not look
+      # there for the modules no test imports.
+      run: poetry run pytest --cov=src/phyelds --cov=packages/phyelds-simulator/src/phyelds --cov-report=xml
+
+    - name: Build simulator package
+      working-directory: packages/phyelds-simulator
+      run: poetry build
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v5
