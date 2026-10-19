@@ -47,6 +47,7 @@ pip install phyelds-simulator               # the simulator, with a compatible p
 pip install "phyelds-simulator[jupyter]"    # live rendering inside Jupyter
 pip install phyelds-vmas                    # VMAS integration
 pip install phyelds-mesa                    # Mesa integration
+pip install phyelds-webots                  # Webots integration
 ```
 
 Requires Python 3.12+.
@@ -91,6 +92,8 @@ builds the gradient beneath it step by step from `remember` and `neighbors`.
   integration (`phyelds-vmas`).
 * **Mesa** (`phyelds-mesa`): phyelds programs on the agents of a
   [Mesa](https://mesa.readthedocs.io) model.
+* **Webots** (`phyelds-webots`): phyelds programs on the robots of a
+  [Webots](https://cyberbotics.com) simulation, talking over their simulated radios.
 * **MicroPython**: the same programs run on microcontrollers such as the ESP32
   (`python -m phyelds.micropython`), and talk with devices running CPython.
 

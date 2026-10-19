@@ -125,6 +125,34 @@ jobs:
       working-directory: packages/phyelds-mesa
       run: poetry build
 
+  webots:
+    runs-on: ubuntu-latest
+    # Webots and xvfb come with the image; its Python is too old for phyelds, so the
+    # controllers run on a Python 3.13 environment put first on the PATH by the test.
+    container: cyberbotics/webots:R2025a-ubuntu22.04
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v6
+
+    - name: Install core and test dependencies
+      run: |
+        uv venv --python 3.13 .venv
+        uv pip install --python .venv/bin/python -e . pytest pylint
+
+    - name: Lint Webots extension
+      run: PYTHONPATH="packages/phyelds-webots/src" .venv/bin/python -m pylint packages/phyelds-webots/src packages/phyelds-webots/tests docs/examples/webots/controllers
+
+    - name: Test Webots extension, in Webots
+      run: |
+        command -v webots  # the world test is skipped without it
+        PYTHONPATH="packages/phyelds-webots/src" xvfb-run -a .venv/bin/python -m pytest packages/phyelds-webots/tests
+
+    - name: Build Webots extension
+      run: uv build packages/phyelds-webots
+
   micropython:
     runs-on: ubuntu-latest
     env:

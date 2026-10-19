@@ -19,14 +19,14 @@ import json
 import main
 
 ids = (64, 1000, 17)
-devices = [main.Device(device_id) for device_id in ids]
+devices = [main.new_device(device_id) for device_id in ids]
 for _ in range(6):
     for index, device in enumerate(devices):
-        payload, outputs = device.run_round({"source": index == 0})
+        payload = device.run_round({"source": index == 0})
         for other in (index - 1, index + 1):
             if 0 <= other < len(devices):
                 devices[other].receive(device.device_id, payload)
-print(json.dumps([[device.result for device in devices], max(len(device.run_round({})[0]) for device in devices)]))
+print(json.dumps([[device.result for device in devices], max(len(device.run_round({})) for device in devices)]))
 """
 
 
@@ -41,10 +41,10 @@ esp32 = _load_example()
 
 
 def _line(rounds: int) -> list:
-    devices = [esp32.Device(device_id) for device_id in (64, 1000, 17)]
+    devices = [esp32.new_device(device_id) for device_id in (64, 1000, 17)]
     for _ in range(rounds):
         for index, device in enumerate(devices):
-            payload, _ = device.run_round({"source": index == 0})
+            payload = device.run_round({"source": index == 0})
             for other in (index - 1, index + 1):
                 if 0 <= other < len(devices):
                     devices[other].receive(device.device_id, payload)
@@ -60,7 +60,9 @@ def test_esp32_device_computes_a_gradient_over_bytes():
 def test_esp32_device_lights_the_led_near_the_source():
     devices = _line(rounds=6)
 
-    leds = [device.run_round({"source": index == 0})[1]["led"] for index, device in enumerate(devices)]
+    for index, device in enumerate(devices):
+        device.run_round({"source": index == 0})
+    leds = [device.outputs["led"] for device in devices]
 
     assert leds == [True, True, False]
 
@@ -68,13 +70,13 @@ def test_esp32_device_lights_the_led_near_the_source():
 def test_esp32_device_messages_fit_an_espnow_packet():
     devices = _line(rounds=6)
 
-    assert max(len(device.run_round({})[0]) for device in devices) <= esp32.ESPNOW_MAX_PAYLOAD
+    assert max(len(device.run_round({})) for device in devices) <= esp32.ESPNOW_MAX_PAYLOAD
 
 
 def test_esp32_device_forgets_neighbours_that_fell_silent():
-    source, device = esp32.Device(1), esp32.Device(2)
+    source, device = esp32.new_device(1), esp32.new_device(2)
     for _ in range(3):
-        device.receive(1, source.run_round({"source": True})[0])
+        device.receive(1, source.run_round({"source": True}))
         device.run_round({})
 
     for _ in range(esp32.SILENT_ROUNDS + 1):

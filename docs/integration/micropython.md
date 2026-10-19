@@ -37,8 +37,10 @@ The output is plain Python: you can check it, or run it on CPython.
 ## The device loop
 
 A board is a host like any other (see [the round protocol](index.md#the-round-protocol)):
-it runs rounds, and sends its messages to its neighbors. In this example the messages
-travel over ESP-NOW broadcast, as bytes:
+it runs rounds, and sends its messages to its neighbors. `phyelds.vm.device.Device` runs the
+rounds of a device whose messages are bytes: `receive(sender, payload)` keeps the last
+message of each neighbor for `lifetime` rounds, and `run_round(sensors)` runs the program
+and returns the bytes to send. In this example they travel over ESP-NOW broadcast:
 
 ```python
 --8<-- "esp32/main.py:device"

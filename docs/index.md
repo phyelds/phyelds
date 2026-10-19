@@ -33,7 +33,8 @@ Python 3.12 or later. This installs phyelds and its simulator; <code>pip install
 alone is the core, to run programs on a runtime of your own. Optional:
 <code>pip install "phyelds-simulator[jupyter]"</code> for live rendering in Jupyter notebooks,
 <code>pip install phyelds-vmas</code> for the VMAS multi-robot simulator,
-<code>pip install phyelds-mesa</code> for Mesa agent-based models.
+<code>pip install phyelds-mesa</code> for Mesa agent-based models,
+<code>pip install phyelds-webots</code> for the Webots robot simulator.
 </p>
 
 </div>

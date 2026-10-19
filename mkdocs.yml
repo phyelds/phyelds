@@ -106,6 +106,7 @@ nav:
       - Running phyelds anywhere: integration/index.md
       - "Case study: VMAS": integration/vmas.md
       - Mesa: integration/mesa.md
+      - Webots: integration/webots.md
       - MicroPython & ESP32: integration/micropython.md
   - API reference:
       - phyelds.calculus: reference/calculus.md
