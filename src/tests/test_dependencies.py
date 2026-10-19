@@ -27,7 +27,7 @@ def test_core_import_does_not_load_the_simulator_dependencies():
         [
             sys.executable,
             "-c",
-            f"import sys, phyelds.calculus, phyelds.vm.internal, {core}; "
+            f"import sys, phyelds.calculus, phyelds.data.codec, phyelds.vm.internal, {core}; "
             "heavy = {'matplotlib', 'pandas', 'pydantic', 'phyelds.simulator'}; "
             "assert not heavy & set(sys.modules), heavy & set(sys.modules)",
         ],
