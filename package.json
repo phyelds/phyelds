@@ -1,10 +1,13 @@
 {
     "devDependencies": {
-        "puppeteer-core": "^24.43.1",
+        "puppeteer-core": "^25.14.0",
         "semantic-release-preconfigured-conventional-commits": "^1.1.119"
     },
     "engines": {
-        "node": "20.17",
+        "node": "22.14",
         "npm": ">=3.0.0"
+    },
+    "overrides": {
+        "@semantic-release/npm": "^13.2.0"
     }
 }
