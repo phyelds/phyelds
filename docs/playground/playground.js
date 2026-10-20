@@ -4,7 +4,8 @@
  * how far they hear and what they sense. Python, in a worker (worker.js), runs the
  * program on it round after round and sends back what every device computed, which
  * the stage draws as a stack of layers: the result at the bottom, and above it every
- * expression of the program that the reader selects and watches.
+ * expression of the program that the reader selects and watches. A program that sends a
+ * velocity moves its devices: Python moves them, and the page draws them where they are.
  *
  * The URL hash selects what the editor opens with: #example=<name> for an example,
  * #code=<base64url> for a shared program.
@@ -14,19 +15,23 @@ import { FEWEST, MOST, PLACES, SPAN, createNetwork } from "../walkthrough/model.
 import { readPalette } from "../walkthrough/palette.js";
 import { bindPointer } from "../walkthrough/pointer.js";
 import { LIFT, PULSE_MS, createScene } from "../walkthrough/scene.js";
-import { MAPS, categoryOf, extendPalette, stopsOf, toneOf } from "./colours.js";
+import { MAPS, categoryOf, extendPalette, namedOf, stopsOf, toneOf } from "./colours.js";
 import { createEditor, shifted } from "./editor.js";
+import { createMenu } from "./menu.js";
 
 const ROUND_MS = 700; // how long a round lasts while playing: every device runs once in it
 const MAX_STEP = 0.5; // rounds asked of Python at once at most, so that the devices are seen to run in turn
 const EASE_MS = 140; // how fast heights follow a change of value
+const WORLD_MARGIN = 2.5; // how far beyond the arena devices move: WORLD in runner.py
+const GLIDE_MS = 90; // how fast a drawn device follows its device, which Python moves step by step
 const FEWEST_DEVICES = 2;
 // Where the first two sensors of a program start: by the source and the target of the walkthrough.
 const ANCHORS = [
   { x: SPAN - 1, y: SPAN - 1 },
   { x: 1, y: 1 },
 ];
-const SENSE = /\bsense\(\s*["']([A-Za-z_]\w*)["']\s*\)/g;
+// A sensor read with sense("name"), or named with Sensor("name").
+const SENSE = /\b(?:sense|Sensor)\(\s*["']([A-Za-z_]\w*)["']\s*\)/g;
 // What the simulator keeps in the data of a device besides its sensors: nothing to switch.
 const RESERVED = new Set(["position", "time", "state", "messages", "result", "outputs"]);
 const CONSOLE_LINES = 200; // pieces of output the console keeps: a program may print every round
@@ -59,13 +64,17 @@ function spread(places) {
 }
 
 const world = {
-  places: spread(PLACES), // where each device is, as the reader moved it
+  places: spread(PLACES), // where each device is, as the reader placed it
+  moved: [], // where each device is, as its program moved it: the places of the last step
+  ranges: [], // how far each device hears, as its range adapted: the ranges of the last step
   count: FEWEST,
   radius: null, // how far devices hear, if the reader chose it; else it follows their number
   sensors: new Map(), // each sensor, and the devices on which it is on
   dirty: false, // Python has not been told yet
 };
-const connect = () => createNetwork(world.count, world.places, world.radius ?? undefined);
+/** Where the devices are: where their program moved them, else where the reader placed them. */
+const placesNow = () => world.places.map((place, id) => world.moved[id] ?? place);
+const connect = () => createNetwork(world.count, placesNow(), world.radius ?? undefined, world.ranges);
 let network = connect();
 
 const app = {
@@ -78,6 +87,7 @@ const app = {
   look: { map: "plasma", height: 1, visible: true }, // how the result is drawn: colours, height, whether at all
   solo: false, // only the layer in front is shown
   flat: false, // the layer in front, from above and flat; the camera of the 3D view is kept in `turned`
+  moved: false, // the program of this run moved its devices: the view went flat and wide for it
   turned: null,
   dirty: true, // the views need drawing again
   panelDirty: true, // the layers, the inspected device and the rounds need writing again
@@ -85,18 +95,39 @@ const app = {
 
 // Python, in its worker: the program it runs and its code, the loads it was asked for, and
 // whether it is running a step, asked at `asked`.
-const python = { worker: null, program: null, code: null, loads: [], stepping: false, asked: 0 };
+const python = { worker: null, program: null, code: null, shape: null, loads: [], stepping: false, asked: 0 };
 let snapshot = null; // what the devices computed, as the last step left them
 let layers = []; // per layer of the snapshot, the look of every device and the scale
 // The watched expressions: where they are in the code Python runs, their label, how they are
 // drawn, and where the editor marks them, which edits move (null once an edit went through one).
 let watches = [];
-const display = { z: [], ranAt: new Float64Array(MOST).fill(-Infinity) };
+// Where the devices are drawn, and the heights of their layers: they follow the devices smoothly.
+const display = {
+  x: new Float64Array(MOST).fill(NaN),
+  y: new Float64Array(MOST).fill(NaN),
+  z: [],
+  ranAt: new Float64Array(MOST).fill(-Infinity),
+};
 let examples = [];
 
 const scene = createScene(element("wt-scene"));
 const map = createMap(element("wt-map"));
 const editor = createEditor(element("pg-code"), { onRun: run, onWatch: watch, onEdit, onComplete: complete });
+const menu = createMenu(
+  {
+    button: element("pg-example"),
+    title: element("pg-example-title"),
+    panel: element("pg-menu"),
+    search: element("pg-search"),
+    list: element("pg-menu-list"),
+  },
+  {
+    onPick: (name) => {
+      history.replaceState(null, "", `#example=${name}`);
+      openExample(name);
+    },
+  },
+);
 const completions = new Map(); // what the editor asked Python to complete, by id, waiting for the answer
 let questions = 0;
 
@@ -106,7 +137,7 @@ const changed = () => {
 const inspected = () => app.hovered ?? app.selected;
 const format = (number) => String(Number(number.toPrecision(3)));
 
-/** The sensors a program reads, in order: every sense("name") with a name written in it. */
+/** The sensors a program reads, in order: every sense("name") or Sensor("name") with a name written in it. */
 function sensorsOf(code) {
   const names = new Set(Array.from(code.matchAll(SENSE), (match) => match[1]));
   return [...names].filter((name) => !RESERVED.has(name));
@@ -134,7 +165,7 @@ function stop(text) {
   python.worker?.terminate();
   for (const answer of completions.values()) answer([]);
   completions.clear();
-  Object.assign(python, { worker: null, program: null, code: null, loads: [], stepping: false });
+  Object.assign(python, { worker: null, program: null, code: null, shape: null, loads: [], stepping: false });
   setPlaying(false);
   status(text);
 }
@@ -142,7 +173,7 @@ function stop(text) {
 function sendWorld() {
   post({
     type: "update",
-    positions: network.devices.map(({ x, y }) => [x, y]),
+    positions: world.places.slice(0, world.count).map(({ x, y }) => [x, y]),
     radius: network.range,
     sensors: Object.fromEntries([...world.sensors].map(([name, on]) => [name, [...on]])),
   });
@@ -176,7 +207,8 @@ const marked = () => kept().map(({ mark }) => [mark.start, mark.end]);
 
 /** The device nearest `point`, among the first `count`. */
 function nearest(point, count = world.count) {
-  const distance = (id) => Math.hypot(world.places[id].x - point.x, world.places[id].y - point.y);
+  const places = placesNow();
+  const distance = (id) => Math.hypot(places[id].x - point.x, places[id].y - point.y);
   let best = 0;
   for (let id = 1; id < count; id += 1) {
     if (distance(id) < distance(best)) best = id;
@@ -191,6 +223,7 @@ function run() {
     if (!world.sensors.has(name)) world.sensors.set(name, new Set(index < ANCHORS.length ? [nearest(ANCHORS[index])] : []));
   });
   clearConsole();
+  app.moved = false;
   sendWorld();
   load(code, marked(), true, "run", kept());
   status("Starting the program…");
@@ -334,7 +367,7 @@ function onMessage(message) {
   }
 }
 
-function onLoaded({ ok, program, watches: watched }, { code, restart, reason, previous }) {
+function onLoaded({ ok, program, watches: watched, shape }, { code, restart, reason, previous }) {
   if (!ok) {
     const what = reason === "watch" ? "That cannot be watched" : "The program has an error";
     const then = python.program ? "the network goes on as it was" : "fix it and run it again";
@@ -357,7 +390,8 @@ function onLoaded({ ok, program, watches: watched }, { code, restart, reason, pr
     if (each.look.rank === undefined) each.look.rank = Math.min(0, ...watches.map((other) => other.look.rank ?? 0)) - 1;
   }
   app.focus = reason === "watch" ? watches.length : Math.min(app.focus, watches.length);
-  Object.assign(python, { program, code });
+  // The shape the program defines, if any, drawn under the result as the ground the swarm takes.
+  Object.assign(python, { program, code, shape });
   if (snapshot) {
     // The values of the old watches are not those of the new ones: they come back as the devices run.
     snapshot.paused = false;
@@ -381,6 +415,7 @@ function onSnapshot(message) {
     if (Number.isFinite(time) && time !== snapshot?.ran[id]) display.ranAt[id] = now;
   });
   snapshot = message;
+  followDevices(message.positions, message.ranges);
   refreshLooks();
   if (snapshot.paused && app.playing) {
     setPlaying(false);
@@ -388,6 +423,27 @@ function onSnapshot(message) {
   }
   app.panelDirty = true;
   changed();
+}
+
+/** Draws the devices where their program moved them, linked as their ranges say, if either changed. */
+function followDevices(positions, ranges) {
+  const moved = positions.map(([x, y]) => ({ x, y }));
+  const same =
+    moved.length === world.moved.length &&
+    moved.every(({ x, y }, id) => x === world.moved[id].x && y === world.moved[id].y) &&
+    ranges.every((range, id) => range === world.ranges[id]);
+  if (same) return;
+  world.moved = moved;
+  world.ranges = ranges;
+  // A swarm moves in a wider world, seen from above unless layers are watched under it:
+  // once a run, when its devices start moving.
+  if (!app.moved && moved.some(({ x, y }, id) => x !== world.places[id].x || y !== world.places[id].y)) {
+    app.moved = true;
+    if (watches.length === 0) setFlat(true);
+    else changed();
+  }
+  network = connect();
+  app.panelDirty = true;
 }
 
 /** Asks Python for the rounds due since the last step, while playing. */
@@ -432,18 +488,29 @@ const stackOrder = () => [0, ...allLayers().slice(1).sort((a, b) => lookOf(a).ra
 function looksOf(layer, look) {
   const { palette } = app;
   const known = layer.numbers.filter(Number.isFinite);
-  const low = Math.min(...known);
-  const high = Math.max(...known);
+  // The scale Python keeps, which only widens in a run, so that a colour keeps its meaning.
+  const low = Number.isFinite(layer.low) ? layer.low : Math.min(...known);
+  const high = Number.isFinite(layer.high) ? layer.high : Math.max(...known);
   const share = (number) => (high > low ? (number - low) / (high - low) : 0.5);
   const looks = layer.numbers.map((number, id) => {
     const finite = Number.isFinite(number);
     if (layer.boolean) return finite ? { relief: number, colour: number ? palette.on : palette.off } : null;
+    // A value named after a colour, as Light.GREEN, is drawn in it, whatever the map.
+    const named = layer.colours?.[id] ? namedOf(palette, layer.colours[id]) : null;
+    if (named !== null) return { relief: finite ? share(number) : 0, colour: named };
+    // A heading, in degrees from east: a colour of the wheel, flat, as a swarm moves on a plane.
+    if (layer.direction) {
+      const heading = (number * Math.PI) / 180;
+      return finite ? { relief: 0, colour: toneOf(palette, "directions", (number + 180) / 360), heading } : null;
+    }
     if (look.map === "categories") {
       return layer.texts[id] ? { relief: finite ? share(number) : 0, colour: categoryOf(palette, number, layer.texts[id]) } : null;
     }
     return finite ? { relief: share(number), colour: toneOf(palette, look.map, share(number)) } : null;
   });
-  return { looks, texts: layer.texts, boolean: layer.boolean, known: known.length > 0, low, high, map: look.map };
+  const map = layer.direction ? "directions" : look.map;
+  const { texts, boolean, direction, colours, keys } = layer;
+  return { looks, texts, boolean, direction, colours, keys, known: known.length > 0, low, high, map };
 }
 
 /** The looks of the layers of the last step, as the reader set them. */
@@ -469,10 +536,28 @@ function stackOf() {
   });
 }
 
+/** Moves the drawn devices a step toward their devices; true while any still moves. */
+function glide(elapsed) {
+  const pull = calm.matches ? 1 : 1 - Math.exp(-elapsed / GLIDE_MS);
+  let moving = false;
+  for (const { id, x, y } of network.devices) {
+    const gaps = [x - display.x[id], y - display.y[id]];
+    if (gaps.some(Number.isNaN)) {
+      display.x[id] = x;
+      display.y[id] = y;
+    } else if (Math.abs(gaps[0]) + Math.abs(gaps[1]) > 1e-4) {
+      moving = true;
+      display.x[id] += gaps[0] * pull;
+      display.y[id] += gaps[1] * pull;
+    }
+  }
+  return moving;
+}
+
 /** Moves the heights a step toward the values of the layers; true while anything still moves. */
 function ease(elapsed) {
   const pull = calm.matches ? 1 : 1 - Math.exp(-elapsed / EASE_MS);
-  let moving = false;
+  let moving = glide(elapsed);
   display.z.length = layerCount();
   for (const { k, base, relief } of stackOf()) {
     display.z[k] ??= new Float32Array(MOST).fill(base);
@@ -506,15 +591,17 @@ function draw(now) {
     focused: k === focused,
     devices: network.devices.map((device) => ({
       id: device.id,
-      x: device.x,
-      y: device.y,
+      x: display.x[device.id],
+      y: display.y[device.id],
       z: display.z[k][device.id],
       color: layers[k]?.looks[device.id]?.colour ?? null,
+      heading: layers[k]?.looks[device.id]?.heading ?? null, // drawn as an arrow, when the value is a heading
       off: false,
       role: rolesOf(device.id).join(", ") || null,
       ranAt: display.ranAt[device.id],
     })),
     links: network.links.map(({ a, b }) => ({ a, b, style: k === focused ? "plain" : "faint" })),
+    shape: k === 0 ? python.shape : null,
     highlights:
       k === focused && hovered !== null
         ? network.inRange[hovered].map((neighbor) => ({ a: hovered, b: neighbor.id, style: "neighbor" }))
@@ -522,6 +609,8 @@ function draw(now) {
   }));
   const highest = stack[stack.length - 1];
   const frame = {
+    // A swarm moves in a world wider than the arena, which the views show whole.
+    margin: app.moved ? WORLD_MARGIN : 0,
     palette: app.palette,
     network,
     layers: drawn,
@@ -535,7 +624,7 @@ function draw(now) {
   };
   scene.drawLayers(frame);
   const front = drawn.find((layer) => layer.focused) ?? drawn[drawn.length - 1];
-  map.draw({ ...frame, devices: front.devices, links: front.links, highlights: front.highlights, cloud: null, camera: scene.camera });
+  map.draw({ ...frame, devices: front.devices, links: front.links, highlights: front.highlights, cloud: null, camera: scene.camera, shape: python.shape });
   app.dirty = false;
 }
 
@@ -548,6 +637,21 @@ function scaleOf(layer) {
     `<span class="wt-key"><span class="wt-key-swatch" style="background:${colour}"></span>${label}</span>`;
   if (layer.boolean) {
     return `<div class="wt-legend-keys">${swatch(palette.css[palette.on], "True")}${swatch(palette.css[palette.off], "False")}</div>`;
+  }
+  // An enum: a key for each of its members, shown by the devices or not, in the colour it is
+  // named after or else in its tone of the map.
+  if (layer.keys?.length > 0) {
+    const share = (number) => (layer.high > layer.low ? (number - layer.low) / (layer.high - layer.low) : 0.5);
+    const toned = (text, number) =>
+      layer.map === "categories" ? categoryOf(palette, number, text) : toneOf(palette, layer.map, share(number));
+    const colourOf = ([text, name, number]) => namedOf(palette, name) ?? toned(text, number);
+    return `<div class="wt-legend-keys">${layer.keys.map((key) => swatch(palette.css[colourOf(key)], key[0])).join("")}</div>`;
+  }
+  if (layer.direction) {
+    return (
+      `<div class="wt-legend-bar" style="background:linear-gradient(90deg, ${stopsOf(palette, "directions").join(", ")})"></div>` +
+      `<div class="wt-legend-ends"><span>W</span><span>S</span><span>E</span><span>N</span><span>W</span></div>`
+    );
   }
   if (layer.map === "categories") {
     return `<div class="pg-categories">${stopsOf(palette, "categories").map((colour) => swatch(colour)).join("")}</div>`;
@@ -566,12 +670,18 @@ function setLook(k, change) {
   changed();
 }
 
+/** Whether some value of the layer is drawn in the colour it is named after. */
+const hasNamedColours = (layer) => Boolean(layer?.colours?.some((name) => name && namedOf(app.palette, name) !== null));
+
 /** The colour map and the height of layer `k`, which the reader sets on its row, when it is in front. */
 function lookControls(k) {
   const look = lookOf(k);
   const controls = document.createElement("div");
   controls.className = "pg-look";
-  if (!layers[k]?.boolean) {
+  // Headings have a wheel of their own, and stay flat.
+  if (layers[k]?.direction) return controls;
+  // Booleans and values named after colours have colours of their own: no map to pick.
+  if (!layers[k]?.boolean && !hasNamedColours(layers[k])) {
     const colours = document.createElement("select");
     colours.title = "Colours of this layer";
     colours.setAttribute("aria-label", `Colours of ${labelOf(k)}`);
@@ -609,7 +719,8 @@ const EYE_SHUT =
 function renderLayers() {
   const focused = focusedLayer();
   const labels = stackOrder().map((k) => `${isShown(k)}:${labelOf(k)}`);
-  const key = [focused, oneAtATime(), Boolean(layers[focused]?.boolean), ...labels].join("\n");
+  const kind = [layers[focused]?.boolean, layers[focused]?.direction, hasNamedColours(layers[focused])].map(Boolean);
+  const key = [focused, oneAtATime(), ...kind, ...labels].join("\n");
   // Rebuilt only when the layers change, not at every step: a click must find its button.
   if (layerRows?.key !== key) layerRows = { key, rows: buildLayerRows(focused) };
   const id = inspected();
@@ -737,11 +848,16 @@ function setDeviceCount(count) {
     for (const id of [...on]) {
       if (id >= count) {
         on.delete(id);
-        on.add(nearest(world.places[id], count));
+        on.add(nearest(placesNow()[id], count));
       }
     }
   }
   world.count = count;
+  // A device added back starts where the reader placed it, not where its program had moved it.
+  world.moved = world.moved.slice(0, count);
+  world.ranges = [];
+  display.x.fill(NaN, count);
+  display.y.fill(NaN, count);
   world.radius = null;
   element("pg-devices-value").textContent = count;
   if (app.hovered !== null && app.hovered >= count) app.hovered = null;
@@ -752,8 +868,10 @@ function setDeviceCount(count) {
 /** Moves device `id` to `point`, kept inside the arena; null when the pointer is off the plane. */
 function move(id, point) {
   if (!point) return;
-  const inside = (value) => Math.max(0, Math.min(SPAN, value));
+  const margin = app.moved ? WORLD_MARGIN : 0;
+  const inside = (value) => Math.max(-margin, Math.min(SPAN + margin, value));
   world.places[id] = { x: inside(point.x), y: inside(point.y) };
+  world.moved[id] = world.places[id];
   worldChanged();
 }
 
@@ -860,7 +978,7 @@ async function share() {
 
 async function openExample(name) {
   const example = examples.find((candidate) => candidate.name === name) ?? examples[0];
-  element("pg-example").value = example.name;
+  menu.show(example.title);
   element("pg-summary").textContent = example.summary.replace(/^./, (first) => first.toUpperCase());
   const response = await fetch(new URL(`examples/${example.name}.py`, base));
   watches = [];
@@ -874,7 +992,7 @@ async function openFromHash() {
     await openExample(hash.get("example"));
     return;
   }
-  element("pg-example").value = "";
+  menu.show("Shared program");
   element("pg-summary").textContent = "A shared program.";
   watches = [];
   editor.setCode(decode(hash.get("code")));
@@ -952,6 +1070,8 @@ element("pg-flat").addEventListener("click", () => setFlat(!app.flat));
 element("pg-devices").addEventListener("input", (event) => setDeviceCount(Number(event.target.value)));
 element("pg-radius").addEventListener("input", (event) => {
   world.radius = Number(event.target.value);
+  // Every range starts over from the radius, in Python too.
+  world.ranges = [];
   worldChanged();
 });
 element("pg-speed").addEventListener("change", (event) => {
@@ -1017,14 +1137,10 @@ function frame(now) {
 async function start() {
   const response = await fetch(new URL("manifest.json", base));
   examples = (await response.json()).examples;
-  for (const example of examples) element("pg-example").add(new Option(example.title, example.name));
+  menu.setExamples(examples);
   await openFromHash();
   // A link to another example or program, followed from this page, changes only the hash.
   window.addEventListener("hashchange", openFromHash);
-  element("pg-example").addEventListener("change", (event) => {
-    history.replaceState(null, "", `#example=${event.target.value}`);
-    openExample(event.target.value);
-  });
 }
 
 Object.assign(element("pg-devices"), { min: FEWEST_DEVICES, max: MOST, value: world.count });

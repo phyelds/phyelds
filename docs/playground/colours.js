@@ -1,8 +1,10 @@
 /*
  * The colour maps a layer of the playground can take: plasma, as in the walkthrough
- * and the GIFs of the docs; viridis; a diverging map, from blue to red; and
- * categories, for ids. They extend the palette of the walkthrough, whose colours the
- * stage draws by their index.
+ * and the GIFs of the docs; viridis; a diverging map, from blue to red;
+ * categories, for ids; directions, a wheel for headings, the same colour at both
+ * ends; and colours by name, for the members of an enum named after one, such as
+ * Light.GREEN. They extend the palette of the walkthrough, whose colours the stage draws
+ * by their index.
  */
 import { rgba, toneIndex } from "../walkthrough/palette.js";
 
@@ -26,6 +28,26 @@ const DIVERGING = [
   [150, 150, 150],
   [180, 4, 38],
 ];
+// A wheel of hues: west, south, east, north and west again, so that a heading has one colour.
+const DIRECTIONS = [
+  [214, 76, 129],
+  [235, 150, 60],
+  [96, 178, 92],
+  [62, 146, 204],
+  [145, 104, 205],
+  [214, 76, 129],
+];
+// The colours a value may be named after: COLOURS in runner.py. Yellow is amber, to show on white.
+const NAMED = {
+  red: [211, 47, 47],
+  orange: [245, 124, 0],
+  yellow: [240, 180, 0],
+  green: [56, 162, 74],
+  blue: [30, 136, 229],
+  purple: [142, 36, 170],
+  pink: [216, 27, 96],
+  grey: [140, 140, 140],
+};
 // Tableau 10: ten categories that tell apart on both themes.
 const CATEGORIES = [
   [78, 121, 167],
@@ -58,7 +80,9 @@ export function extendPalette(palette) {
   for (const [map, colours] of [
     ["viridis", levels(VIRIDIS, low, high)],
     ["diverging", levels(DIVERGING)],
+    ["directions", levels(DIRECTIONS)],
     ["categories", CATEGORIES],
+    ["named", Object.values(NAMED)],
   ]) {
     starts[map] = rgb.length;
     rgb.push(...colours);
@@ -80,6 +104,12 @@ export function categoryOf(palette, number, text) {
     for (const char of text) key = (key * 31 + char.codePointAt(0)) | 0;
   }
   return palette.starts.categories + (((key % CATEGORIES.length) + CATEGORIES.length) % CATEGORIES.length);
+}
+
+/** The colour index of a colour by name, such as "green"; null for a name it does not know. */
+export function namedOf(palette, name) {
+  const index = Object.keys(NAMED).indexOf(name);
+  return index < 0 ? null : palette.starts.named + index;
 }
 
 /** Nine colours along `map`, for its scale in the legend. */

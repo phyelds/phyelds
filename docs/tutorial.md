@@ -109,7 +109,7 @@ Nothing in the program refers to *when* the source appeared or *where* it is loc
 ![The gradient re-converging after the source moves](assets/gradient-self-healing.gif#only-light){ width="480" }
 ![The gradient re-converging after the source moves](assets/gradient-self-healing-dark.gif#only-dark){ width="480" }
 
-[Move the source yourself in the playground](playground/index.md#example=self_healing){ .md-button }
+[Move the source yourself in the playground](playground/index.md#example=gradient){ .md-button }
 
 Look closely at the animation: the region around the *new* source settles rapidly, whereas the region around the *old* source takes longer to clear. When the old source turns off, its former neighbors still see each other's low estimates and mutually increment them little by little. This is the classic **rising-value problem** (see [Common pitfalls](pitfalls.md#expecting-instant-answers)).
 
@@ -167,7 +167,6 @@ def my_channel(width: float = 1.6) -> float:
 ![A self-organizing channel between bottom-left and top-right corners](assets/channel.gif#only-light){ width="480" }
 ![A self-organizing channel between bottom-left and top-right corners](assets/channel-dark.gif#only-dark){ width="480" }
 
-[Run the corridor in the playground](playground/index.md#example=corridor){ .md-button }
 
 !!! note "The library `channel` is built differently"
     `phyelds.libraries.spreading.channel(source, target, width)` needs no collection: a device belongs to it when the shortest route from the source to the target *through that device* is at most `width` longer than the shortest route overall (`to_source + to_target <= between + width`). Its `width` is a slack on the length of the path, not a distance from it: the channel is an ellipse with foci in the source and the target rather than a band, as the [3D walkthrough](walkthrough/index.md) shows step by step. The [playground](playground/index.md#example=channel) runs it with one line per term, ready to watch.

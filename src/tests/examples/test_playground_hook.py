@@ -50,17 +50,32 @@ def test_on_post_build_publishes_phyelds_as_an_importable_archive(tmp_path):
     assert not [name for name in names if "__pycache__" in name]
 
 
-def test_on_post_build_publishes_the_examples_in_the_order_of_the_tour(tmp_path):
+def test_on_post_build_publishes_the_examples_group_by_group(tmp_path):
     hook.on_post_build({"site_dir": str(tmp_path)})
 
     playground = tmp_path / "playground"
-    manifest = json.loads((playground / "manifest.json").read_text())
-    names = [example["name"] for example in manifest["examples"]]
-    assert names == ["neighbours", "gradient", "self_healing", "channel", "corridor", "leaders", "bubbles"]
-    assert manifest["examples"][1]["title"] == "Gradient"
-    assert manifest["examples"][1]["summary"].startswith("every device estimates its distance")
-    for name in names:
-        assert (playground / "examples" / f"{name}.py").exists()
+    examples = json.loads((playground / "manifest.json").read_text())["examples"]
+    assert [(example["group"], example["name"]) for example in examples] == [
+        (group, name) for group, names in hook.GROUPS.items() for name in names
+    ]
+    for example in examples:
+        assert (playground / "examples" / f"{example['name']}.py").exists()
+
+
+def test_on_post_build_describes_an_example_by_its_docstring_and_the_names_it_imports(tmp_path):
+    hook.on_post_build({"site_dir": str(tmp_path)})
+
+    examples = json.loads((tmp_path / "playground" / "manifest.json").read_text())["examples"]
+    gradient = next(example for example in examples if example["name"] == "gradient")
+    assert gradient["title"] == "Gradient"
+    assert gradient["summary"].startswith("every device estimates its distance")
+    assert gradient["uses"] == ["aggregate", "sense", "neighbors_distances", "distance_to"]
+
+
+def test_groups_hold_every_example_once():
+    grouped = [name for names in hook.GROUPS.values() for name in names]
+
+    assert sorted(grouped) == sorted(path.stem for path in hook.EXAMPLES.glob("*.py"))
 
 
 @pytest.mark.parametrize("page, title", [

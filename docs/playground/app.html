@@ -21,10 +21,17 @@
       </a>
       <span class="pg-title">Playground</span>
       <div class="pg-bar-end">
-        <label class="pg-examples">
-          <span>Example</span>
-          <select id="pg-example"></select>
-        </label>
+        <div class="pg-examples">
+          <button class="pg-examples-button" id="pg-example" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="pg-menu" title="Open an example">
+            <span class="pg-examples-label">Example</span>
+            <strong id="pg-example-title"></strong>
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="pg-menu" id="pg-menu" hidden>
+            <input class="pg-search" id="pg-search" type="search" placeholder="Search the examples, or an API such as gossip" aria-label="Search the examples" aria-controls="pg-menu-list" autocomplete="off" spellcheck="false" />
+            <div class="pg-menu-list" id="pg-menu-list" role="listbox" aria-label="Examples"></div>
+          </div>
+        </div>
         <button class="wt-button" id="pg-share" type="button">Share</button>
       </div>
     </header>
@@ -62,7 +69,7 @@
               <input id="pg-devices" type="range" step="1" />
               <output id="pg-devices-value" for="pg-devices"></output>
             </label>
-            <label class="wt-chip wt-devices" title="How far a device hears: it follows the number of devices until you move it">
+            <label class="wt-chip wt-devices" title="How far a device hears at first: then each range adapts to keep about 8 neighbours. It follows the number of devices until you move it">
               <span>radius</span>
               <input id="pg-radius" type="range" min="0.3" max="5" step="0.05" />
               <output id="pg-radius-value" for="pg-radius"></output>

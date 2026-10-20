@@ -5,7 +5,7 @@
 import { RESOLUTION } from "./continuum.js";
 import { SPAN } from "./model.js";
 import { rgba } from "./palette.js";
-import { HIDDEN } from "./scene.js";
+import { HIDDEN, insideOf, traceArrow } from "./scene.js";
 
 const PAD = 14;
 const LINK_ALPHA = { plain: 0.16, faint: 0.1, outside: 0.12, inside: 0.34, cut: 0.4 };
@@ -34,9 +34,28 @@ export function createMap(canvas) {
     return { left: (size.width - side) / 2, top: (size.height - side) / 2, side };
   }
 
+  // How far the world goes beyond the arena, on every side: the map shows it all.
+  let margin = 0;
+  const width = () => SPAN + 2 * margin;
+
   function toScreen(x, y) {
     const { left, top, side } = frameOfArena();
-    return { x: left + (x / SPAN) * side, y: top + (1 - y / SPAN) * side };
+    return { x: left + ((x + margin) / width()) * side, y: top + (1 - (y + margin) / width()) * side };
+  }
+
+  /** The inside of `shape`, filled: the shape a swarm takes. */
+  function drawShape(shape, palette) {
+    context.beginPath();
+    for (const piece of insideOf(shape)) {
+      piece.forEach(({ x, y }, k) => {
+        const point = toScreen(x, y);
+        if (k === 0) context.moveTo(point.x, point.y);
+        else context.lineTo(point.x, point.y);
+      });
+      context.closePath();
+    }
+    context.fillStyle = rgba(palette.rgb[palette.on], palette.dark ? 0.22 : 0.16);
+    context.fill();
   }
 
   /** The cloud as an image, one pixel per grid point, north up. */
@@ -85,6 +104,7 @@ export function createMap(canvas) {
 
   function draw(frame) {
     const { palette, network } = frame;
+    margin = frame.margin ?? 0;
     context.clearRect(0, 0, size.width, size.height);
     const { left, top, side } = frameOfArena();
     if (frame.cloud) {
@@ -95,8 +115,10 @@ export function createMap(canvas) {
     context.strokeStyle = rgba(palette.ink, 0.18);
     context.lineWidth = 1;
     context.strokeRect(left, top, side, side);
+    if (frame.shape) drawShape(frame.shape, palette);
 
-    const points = network.devices.map((device) => toScreen(device.x, device.y));
+    // Where the frame draws the devices, which may glide behind the network.
+    const points = frame.devices.map((device) => toScreen(device.x, device.y));
     for (const link of frame.links) {
       const alpha = LINK_ALPHA[link.style] * (link.style === "cut" ? 1 : frame.density);
       line(points[link.a], points[link.b], rgba(palette.ink, alpha), 1, link.style === "cut" ? [2, 3] : []);
@@ -131,7 +153,7 @@ export function createMap(canvas) {
     if (frame.focus && frame.focus.range) {
       const center = points[frame.focus.id];
       context.beginPath();
-      context.arc(center.x, center.y, (network.range / SPAN) * side, 0, 2 * Math.PI);
+      context.arc(center.x, center.y, (network.range / width()) * side, 0, 2 * Math.PI);
       context.setLineDash([3, 3]);
       context.strokeStyle = rgba(palette.ink, 0.55);
       context.stroke();
@@ -155,7 +177,9 @@ export function createMap(canvas) {
         context.stroke();
         continue;
       }
-      context.arc(x, y, dot, 0, 2 * Math.PI);
+      // North is up on the map: a heading turns the other way on the screen.
+      if (Number.isFinite(device.heading)) traceArrow(context, x, y, dot * 1.8, -device.heading);
+      else context.arc(x, y, dot, 0, 2 * Math.PI);
       context.fillStyle = device.color === null ? rgba(palette.stage) : palette.css[device.color];
       context.fill();
       context.strokeStyle = device.color === null ? rgba(palette.muted) : rgba(palette.stage, 0.9);
@@ -178,7 +202,7 @@ export function createMap(canvas) {
   /** The point of the arena under the pixel (px, py). */
   function worldAt(px, py) {
     const { left, top, side } = frameOfArena();
-    return { x: ((px - left) / side) * SPAN, y: (1 - (py - top) / side) * SPAN };
+    return { x: ((px - left) / side) * width() - margin, y: (1 - (py - top) / side) * width() - margin };
   }
 
   /** The device drawn under the pixel (px, py), if any. */
