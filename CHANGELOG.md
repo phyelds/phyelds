@@ -1,3 +1,9 @@
+## [8.5.0](https://github.com/phyelds/phyelds/compare/8.4.2...8.5.0) (2026-10-20)
+
+### Features
+
+* **experimental:** swarm movement and formations ([#21](https://github.com/phyelds/phyelds/issues/21)) ([324deea](https://github.com/phyelds/phyelds/commit/324deea0eed7af66cd2776c4cce9309a3494fa3a))
+
 ## [8.4.2](https://github.com/phyelds/phyelds/compare/8.4.1...8.4.2) (2026-10-20)
 
 ### Documentation
