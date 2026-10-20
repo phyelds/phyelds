@@ -88,6 +88,7 @@ const app = {
   solo: false, // only the layer in front is shown
   flat: false, // the layer in front, from above and flat; the camera of the 3D view is kept in `turned`
   moved: false, // the program of this run moved its devices: the view went flat and wide for it
+  layout: "both", // what the page shows: the program ("code"), the network ("network"), or both
   turned: null,
   dirty: true, // the views need drawing again
   panelDirty: true, // the layers, the inspected device and the rounds need writing again
@@ -321,6 +322,17 @@ function setSolo(solo) {
 }
 
 /** Looks at the layer in front from above, flat, or back at the stack in 3D, as the camera left it. */
+const LAYOUTS = ["code", "both", "network"];
+
+function setLayout(layout) {
+  if (!LAYOUTS.includes(layout)) return;
+  app.layout = layout;
+  element("pg-layout").closest(".pg").dataset.layout = layout;
+  for (const button of element("pg-layout").querySelectorAll("button")) {
+    button.setAttribute("aria-checked", String(button.dataset.show === layout));
+  }
+}
+
 function setFlat(flat) {
   if (flat === app.flat) return;
   app.flat = flat;
@@ -945,6 +957,7 @@ function viewOf() {
     focus: app.focus,
     solo: app.solo,
     flat: app.flat,
+    layout: app.layout,
   };
 }
 
@@ -962,6 +975,7 @@ function openView(view) {
   renderMarks();
   setSolo(Boolean(view.solo));
   setFlat(Boolean(view.flat));
+  setLayout(view.layout);
 }
 
 async function share() {
@@ -1058,6 +1072,10 @@ element("pg-watch").addEventListener("click", watch);
 element("pg-solo").addEventListener("click", () => setSolo(!app.solo));
 element("pg-stop").addEventListener("click", () => stop("Stopped. Python starts again at the next run."));
 element("pg-share").addEventListener("click", share);
+element("pg-layout").addEventListener("click", (event) => {
+  const button = event.target.closest("button");
+  if (button) setLayout(button.dataset.show);
+});
 element("wt-play").addEventListener("click", () => setPlaying(!app.playing));
 element("wt-round-step").addEventListener("click", stepOnce);
 element("wt-restart").addEventListener("click", restart);
@@ -1090,6 +1108,8 @@ document.addEventListener("keydown", (event) => {
     restart();
   } else if (event.key === "s" || event.key === "S") {
     setSolo(!app.solo);
+  } else if (["1", "2", "3"].includes(event.key)) {
+    setLayout(LAYOUTS[Number(event.key) - 1]);
   } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
     // The arrows walk the stack; with Shift, they carry the layer in front along.
     event.preventDefault();
@@ -1106,10 +1126,12 @@ window.addEventListener("themechange", () => {
   changed();
 });
 
+// Resizing clears the canvases after this frame was drawn: draw them again before the page is painted.
 const resize = () => {
   scene.resize();
   map.resize();
-  changed();
+  ease(0); // a layer that appeared since the last frame gets its heights
+  draw(performance.now());
 };
 new ResizeObserver(resize).observe(element("wt-stage"));
 
