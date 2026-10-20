@@ -19,8 +19,8 @@ from phyelds.libraries.time import local_time
 INTRA = 0.4  # how far the members of a team keep from each other
 EXTRA = 3.0  # the leaders are elected about half this far apart
 SETTLE = 10  # rounds the election takes to settle, while the swarm stands still
-ROAM = 1.0  # how far from where its team formed a leader roams
-LOWEST, HIGHEST = 0.3, 4.7  # the arena of the playground, a little inside its walls
+ROAM = 1.5  # how far from where its team formed a leader roams
+LOWEST, HIGHEST = -2.2, 7.2  # the world of the playground, a little inside its walls
 
 
 def roam(leader: int) -> Vector:

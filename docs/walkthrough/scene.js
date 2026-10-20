@@ -57,6 +57,7 @@ export function createScene(canvas) {
   let lens = null;
   let pivot = PIVOT; // what the camera looks at, and how far it backs away to fit a stack of layers
   let reach = 1;
+  let margin = 0; // how far the world goes beyond the arena, on every side, where devices may move
   let projected = []; // every device drawn, as {id, x, y, z}, the topmost first
   let buckets = { colors: null, lists: [] };
 
@@ -125,10 +126,10 @@ export function createScene(canvas) {
   /** The arena as a plane at height z, its edge as opaque as `edge`; returns its corners on screen. */
   function drawGround(palette, z = 0, edge = 0.14) {
     const corners = [
-      project(-PAD, -PAD, z),
-      project(SPAN + PAD, -PAD, z),
-      project(SPAN + PAD, SPAN + PAD, z),
-      project(-PAD, SPAN + PAD, z),
+      project(-PAD - margin, -PAD - margin, z),
+      project(SPAN + PAD + margin, -PAD - margin, z),
+      project(SPAN + PAD + margin, SPAN + PAD + margin, z),
+      project(-PAD - margin, SPAN + PAD + margin, z),
     ];
     context.beginPath();
     polygon(corners);
@@ -377,6 +378,7 @@ export function createScene(canvas) {
   function draw(frame) {
     pivot = PIVOT;
     reach = 1;
+    margin = 0;
     aim();
     context.clearRect(0, 0, size.width, size.height);
     const points = frame.devices.map((device) => project(device.x, device.y, device.z));
@@ -427,7 +429,8 @@ export function createScene(canvas) {
   function drawLayers(frame) {
     const { layers, palette, top } = frame;
     pivot = { ...PIVOT, z: top / 2 };
-    reach = Math.max(1, (SPAN + top) / (SPAN + LIFT));
+    margin = frame.margin ?? 0;
+    reach = Math.max(1, (SPAN + 2 * margin + top) / (SPAN + LIFT));
     aim();
     context.clearRect(0, 0, size.width, size.height);
     const highest = layers[layers.length - 1];

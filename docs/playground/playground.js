@@ -22,6 +22,7 @@ import { createMenu } from "./menu.js";
 const ROUND_MS = 700; // how long a round lasts while playing: every device runs once in it
 const MAX_STEP = 0.5; // rounds asked of Python at once at most, so that the devices are seen to run in turn
 const EASE_MS = 140; // how fast heights follow a change of value
+const WORLD_MARGIN = 2.5; // how far beyond the arena devices move: WORLD in runner.py
 const GLIDE_MS = 90; // how fast a drawn device follows its device, which Python moves step by step
 const FEWEST_DEVICES = 2;
 // Where the first two sensors of a program start: by the source and the target of the walkthrough.
@@ -86,7 +87,7 @@ const app = {
   look: { map: "plasma", height: 1, visible: true }, // how the result is drawn: colours, height, whether at all
   solo: false, // only the layer in front is shown
   flat: false, // the layer in front, from above and flat; the camera of the 3D view is kept in `turned`
-  moved: false, // the program of this run moved its devices, and the view went flat for it
+  moved: false, // the program of this run moved its devices: the view went flat and wide for it
   turned: null,
   dirty: true, // the views need drawing again
   panelDirty: true, // the layers, the inspected device and the rounds need writing again
@@ -600,6 +601,8 @@ function draw(now) {
   }));
   const highest = stack[stack.length - 1];
   const frame = {
+    // A swarm moves in a world wider than the arena, which the views show whole.
+    margin: app.moved ? WORLD_MARGIN : 0,
     palette: app.palette,
     network,
     layers: drawn,
@@ -843,7 +846,8 @@ function setDeviceCount(count) {
 /** Moves device `id` to `point`, kept inside the arena; null when the pointer is off the plane. */
 function move(id, point) {
   if (!point) return;
-  const inside = (value) => Math.max(0, Math.min(SPAN, value));
+  const margin = app.moved ? WORLD_MARGIN : 0;
+  const inside = (value) => Math.max(-margin, Math.min(SPAN + margin, value));
   world.places[id] = { x: inside(point.x), y: inside(point.y) };
   world.moved[id] = world.places[id];
   worldChanged();

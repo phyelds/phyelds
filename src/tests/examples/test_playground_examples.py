@@ -1,6 +1,7 @@
 """Keeps the examples of the playground running, through the same runner as the browser."""
 import importlib.util
 import math
+import random
 from pathlib import Path
 
 import pytest
@@ -133,9 +134,9 @@ def test_playground_spread_example_gathers_then_spreads_the_swarm(tmp_path):
 def test_playground_mission_example_takes_the_swarm_across_the_arena_with_its_leader(tmp_path):
     playground, _ = _running("mission", {"leader": [35]}, tmp_path, rounds=0.0)
 
-    positions = playground.advance(70.0).positions
+    positions = playground.advance(100.0).positions
 
-    assert max(positions[35]) < 2.0
+    assert max(positions[35]) < 1.0
     assert sum(math.dist(position, positions[35]) for position in positions) / len(positions) < 1.5
 
 
@@ -145,12 +146,23 @@ def _order(headings):
     return math.hypot(sum(map(math.cos, angles)), sum(map(math.sin, angles))) / len(angles)
 
 
-def test_playground_flock_example_agrees_on_a_heading(tmp_path):
+def _local_order(snapshot, near=1.0):
+    """How much each device heads as the devices within ``near`` of it, on average."""
+    headings, positions = snapshot.layers[0].numbers, snapshot.positions
+    orders = []
+    for position in positions:
+        close = [heading for heading, other in zip(headings, positions) if math.dist(position, other) < near]
+        orders.append(_order(close))
+    return sum(orders) / len(orders)
+
+
+def test_playground_flock_example_heads_as_one_with_the_boids_around(tmp_path):
+    random.seed(1)
     playground, _ = _running("flock", {}, tmp_path, rounds=30.0)
 
-    orders = [_order(playground.advance(5.0).layers[0].numbers) for _ in range(6)]
+    orders = [_local_order(playground.advance(5.0)) for _ in range(6)]
 
-    assert sum(orders) / len(orders) > 0.6
+    assert sum(orders) / len(orders) > 0.8
 
 
 def test_playground_teams_example_splits_the_swarm_in_teams_that_stay(tmp_path):

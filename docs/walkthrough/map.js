@@ -34,9 +34,13 @@ export function createMap(canvas) {
     return { left: (size.width - side) / 2, top: (size.height - side) / 2, side };
   }
 
+  // How far the world goes beyond the arena, on every side: the map shows it all.
+  let margin = 0;
+  const width = () => SPAN + 2 * margin;
+
   function toScreen(x, y) {
     const { left, top, side } = frameOfArena();
-    return { x: left + (x / SPAN) * side, y: top + (1 - y / SPAN) * side };
+    return { x: left + ((x + margin) / width()) * side, y: top + (1 - (y + margin) / width()) * side };
   }
 
   /** The cloud as an image, one pixel per grid point, north up. */
@@ -85,6 +89,7 @@ export function createMap(canvas) {
 
   function draw(frame) {
     const { palette, network } = frame;
+    margin = frame.margin ?? 0;
     context.clearRect(0, 0, size.width, size.height);
     const { left, top, side } = frameOfArena();
     if (frame.cloud) {
@@ -96,7 +101,8 @@ export function createMap(canvas) {
     context.lineWidth = 1;
     context.strokeRect(left, top, side, side);
 
-    const points = network.devices.map((device) => toScreen(device.x, device.y));
+    // Where the frame draws the devices, which may glide behind the network.
+    const points = frame.devices.map((device) => toScreen(device.x, device.y));
     for (const link of frame.links) {
       const alpha = LINK_ALPHA[link.style] * (link.style === "cut" ? 1 : frame.density);
       line(points[link.a], points[link.b], rgba(palette.ink, alpha), 1, link.style === "cut" ? [2, 3] : []);
@@ -131,7 +137,7 @@ export function createMap(canvas) {
     if (frame.focus && frame.focus.range) {
       const center = points[frame.focus.id];
       context.beginPath();
-      context.arc(center.x, center.y, (network.range / SPAN) * side, 0, 2 * Math.PI);
+      context.arc(center.x, center.y, (network.range / width()) * side, 0, 2 * Math.PI);
       context.setLineDash([3, 3]);
       context.strokeStyle = rgba(palette.ink, 0.55);
       context.stroke();
@@ -180,7 +186,7 @@ export function createMap(canvas) {
   /** The point of the arena under the pixel (px, py). */
   function worldAt(px, py) {
     const { left, top, side } = frameOfArena();
-    return { x: ((px - left) / side) * SPAN, y: (1 - (py - top) / side) * SPAN };
+    return { x: ((px - left) / side) * width() - margin, y: (1 - (py - top) / side) * width() - margin };
   }
 
   /** The device drawn under the pixel (px, py), if any. */

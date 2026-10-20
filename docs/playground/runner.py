@@ -48,12 +48,14 @@ MAX_SUGGESTIONS = 40  # names the completion of the editor offers at once
 MAX_SPEED = 0.15  # how far a device moves in a round at most
 GLIDE = 0.1  # the time between two moves of a device: it moves smoothly, not once a round
 STILL = 0.01  # a velocity slower than this on the plane has no heading: the device stands still
-ARENA = 5.0  # the side of the square in which the devices move: SPAN in walkthrough/model.js
+# Where the devices move: the arena of the page (SPAN in walkthrough/model.js, 5), and as much
+# again around it, so that a swarm has room. The page draws the same world.
+WORLD = (-2.5, 7.5)
 NEIGHBOURS = 8  # how many neighbours the range of a device adapts to keep
 TOLERANCE = 4  # how many more or fewer are fine
 RANGE_STEP = 0.05  # how much a range changes in a round
 SHORTEST_RANGE = 0.3  # the ranges of the slider of the page
-LONGEST_RANGE = ARENA
+LONGEST_RANGE = 5.0
 NOT_WATCHABLE = "Select an expression inside a function, or a line that assigns, returns or tests one."
 
 
@@ -316,7 +318,7 @@ class Playground:
 
     @staticmethod
     def _move(node: Node, heading: Sequence[float] | None, duration: float) -> None:
-        """Move ``node`` by ``heading`` for ``duration``, at MAX_SPEED at most, and inside the arena."""
+        """Move ``node`` by ``heading`` for ``duration``, at MAX_SPEED at most, and inside the world."""
         if heading is None:
             return
         step = [component * duration for component in tuple(heading)[:len(node.position)]]
@@ -324,7 +326,8 @@ class Playground:
         longest = MAX_SPEED * duration / ROUND
         scale = longest / length if length > longest else 1.0
         node.position = tuple(
-            min(ARENA, max(0.0, coordinate + component * scale)) for coordinate, component in zip(node.position, step)
+            min(WORLD[1], max(WORLD[0], coordinate + component * scale))
+            for coordinate, component in zip(node.position, step)
         )
 
     def _widened(self, k: int, known: Sequence[Value]) -> tuple[float, float]:

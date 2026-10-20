@@ -586,12 +586,13 @@ def test_playground_moves_a_device_between_its_rounds_not_in_jumps(tmp_path):
     assert steps == pytest.approx([runner.MAX_SPEED / 4] * 4, abs=0.01)
 
 
-def test_playground_keeps_the_devices_that_move_in_the_arena(tmp_path):
+def test_playground_keeps_the_devices_that_move_in_a_world_wider_than_the_arena(tmp_path):
     playground = _deployed(tmp_path, EAST)
 
     snapshot = playground.advance(100.0)
 
-    assert _xs(snapshot) == pytest.approx([runner.ARENA] * 3)
+    assert runner.WORLD == (-2.5, 7.5)
+    assert _xs(snapshot) == pytest.approx([7.5] * 3)
 
 
 def test_playground_keeps_where_the_devices_moved_when_the_page_changes_something_else(tmp_path):
