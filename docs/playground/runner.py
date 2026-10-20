@@ -23,6 +23,7 @@ import linecache
 import math
 import numbers
 import random
+import re
 import reprlib
 import runpy
 import sys
@@ -76,7 +77,9 @@ class Value:
     What a device computed, as the page shows it: a number on a scale, NaN if it has none,
     and a text. A direction is a vector, its number the angle from east, in degrees. A
     value whose type has a known range, as the members of an enum, has ``low`` and ``high``;
-    one named after a colour, such as ``Light.GREEN``, has that ``colour``.
+    one named after a colour, such as ``Light.GREEN``, has that ``colour``. A member of an enum
+    has the ``keys`` of its enum, for the legend: the name, the colour (if it is named after
+    one) and the number of every member.
     """
 
     number: float
@@ -86,6 +89,7 @@ class Value:
     low: float = math.nan
     high: float = math.nan
     colour: str = ""
+    keys: list[list[str | float]] = field(default_factory=list)
 
 
 NO_VALUE = Value(math.nan, "")
@@ -97,7 +101,7 @@ class Layer:
     A field over the devices, the result of the program or a watched expression: a number
     and a text each, whether all its values are booleans, or all directions, and the scale
     of its numbers: from ``low`` to ``high``, which only widens in a run. A value named after a
-    colour has it in ``colours``.
+    colour has it in ``colours``, and the ``keys`` of all the values its type may take.
     """
 
     numbers: list[float]
@@ -107,6 +111,7 @@ class Layer:
     low: float = math.nan
     high: float = math.nan
     colours: list[str] = field(default_factory=list)
+    keys: list[list[str | float]] = field(default_factory=list)
 
 
 @dataclass
@@ -183,7 +188,8 @@ class Playground:
 
         Args:
             code: the module that defines the program.
-            selections: the expressions to watch, as ``instrument`` takes them.
+            selections: the expressions to watch, as ``instrument`` takes them. When the
+                devices start over, the lines marked ``# watch`` are watched too.
             restart: start every device over, rather than swap the program of the running ones.
 
         Returns:
@@ -193,6 +199,9 @@ class Playground:
         try:
             # Compiled first as it is, so that its own errors are not blamed on the watches.
             compile(code, str(self._main), "exec")
+            if restart:
+                chosen = [tuple(selection) for selection in selections]
+                selections = [*chosen, *(mark for mark in marked(code) if mark not in chosen)]
             source, watches = instrument(code, selections)
             self._write(source)
             namespace = runpy.run_path(str(self._main), init_globals={WATCH: self._recorder}, run_name="playground")
@@ -358,7 +367,8 @@ class Playground:
             low, high = self._widened(k, known)
             figures, texts = [value.number for value in values], [value.text for value in values]
             colours = [value.colour for value in values]
-            layers.append(Layer(figures, texts, boolean, direction, low, high, colours))
+            keys = next((value.keys for value in known if value.keys), [])
+            layers.append(Layer(figures, texts, boolean, direction, low, high, colours, keys))
         nodes = self._simulator.environment.nodes
         ran = [nodes[node_id].data.get("time", math.nan) for node_id in range(count)]
         stable = self._clock - self._changed >= ROUND
@@ -398,8 +408,9 @@ def _value(value: Any) -> Value:
         if isinstance(value, enum.Enum) and isinstance(value, numbers.Real):
             # A member of an IntEnum: its name, on the scale of all the members.
             members = [float(member) for member in type(value)]
-            colour = value.name.lower() if value.name.lower() in COLOURS else ""
-            return Value(float(value), value.name, low=min(members), high=max(members), colour=colour)
+            keys = [[member.name, _colour(member), float(member)] for member in type(value)]
+            low, high = min(members), max(members)
+            return Value(float(value), value.name, low=low, high=high, colour=_colour(value), keys=keys)
         if isinstance(value, bool):
             return Value(float(value), str(value), boolean=True)
         if isinstance(value, numbers.Real):
@@ -417,6 +428,11 @@ def _value(value: Any) -> Value:
     # The program may print values whose __repr__ fails: that must not stop its round.
     except Exception:  # pylint: disable=broad-exception-caught
         return Value(math.nan, "?")
+
+
+def _colour(member: enum.Enum) -> str:
+    """The colour ``member`` is named after, if any."""
+    return member.name.lower() if member.name.lower() in COLOURS else ""
 
 
 def _program(namespace: Mapping[str, Any], tree: ast.Module) -> Callable[[], Any]:
@@ -520,6 +536,20 @@ class _Source:
         """The index in the code of a line and a column of ast, which counts UTF-8 bytes."""
         line = self.lines[lineno - 1]
         return self.starts[lineno - 1] + len(line.encode()[:column].decode())
+
+
+_MARK = re.compile(r"^([ \t]*)(\S.*?)[ \t]*#[ \t]*watch[ \t]*$", re.MULTILINE)
+
+
+def marked(code: str) -> list[tuple[int, int]]:
+    """
+    The lines of the code marked ``# watch``: what an example watches when it opens.
+
+    Returns:
+        The selection of each, from its first character to its comment, in UTF-16 units.
+    """
+    source = _Source(code)
+    return [(source.utf16(match.start(2)), source.utf16(match.end(2))) for match in _MARK.finditer(code)]
 
 
 def complete(code: str, offset: int) -> list[Suggestion]:

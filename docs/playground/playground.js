@@ -434,10 +434,12 @@ function followDevices(positions, ranges) {
   if (same) return;
   world.moved = moved;
   world.ranges = ranges;
-  // A swarm is seen from above: once a run, when its devices start moving.
+  // A swarm moves in a wider world, seen from above unless layers are watched under it:
+  // once a run, when its devices start moving.
   if (!app.moved && moved.some(({ x, y }, id) => x !== world.places[id].x || y !== world.places[id].y)) {
     app.moved = true;
-    setFlat(true);
+    if (watches.length === 0) setFlat(true);
+    else changed();
   }
   network = connect();
   app.panelDirty = true;
@@ -506,8 +508,8 @@ function looksOf(layer, look) {
     return finite ? { relief: share(number), colour: toneOf(palette, look.map, share(number)) } : null;
   });
   const map = layer.direction ? "directions" : look.map;
-  const { numbers, texts, boolean, direction, colours } = layer;
-  return { looks, numbers, texts, boolean, direction, colours, known: known.length > 0, low, high, map };
+  const { texts, boolean, direction, colours, keys } = layer;
+  return { looks, texts, boolean, direction, colours, keys, known: known.length > 0, low, high, map };
 }
 
 /** The looks of the layers of the last step, as the reader set them. */
@@ -634,15 +636,14 @@ function scaleOf(layer) {
   if (layer.boolean) {
     return `<div class="wt-legend-keys">${swatch(palette.css[palette.on], "True")}${swatch(palette.css[palette.off], "False")}</div>`;
   }
-  // Values named after colours: one key each, in the order of their values.
-  const named = new Map();
-  layer.colours?.forEach((name, id) => {
-    const colour = name ? namedOf(palette, name) : null;
-    if (colour !== null) named.set(layer.texts[id], { colour, number: layer.numbers[id] });
-  });
-  if (named.size > 0) {
-    const keys = [...named].sort(([, a], [, b]) => a.number - b.number);
-    return `<div class="wt-legend-keys">${keys.map(([text, { colour }]) => swatch(palette.css[colour], text)).join("")}</div>`;
+  // An enum: a key for each of its members, shown by the devices or not, in the colour it is
+  // named after or else in its tone of the map.
+  if (layer.keys?.length > 0) {
+    const share = (number) => (layer.high > layer.low ? (number - layer.low) / (layer.high - layer.low) : 0.5);
+    const toned = (text, number) =>
+      layer.map === "categories" ? categoryOf(palette, number, text) : toneOf(palette, layer.map, share(number));
+    const colourOf = ([text, name, number]) => namedOf(palette, name) ?? toned(text, number);
+    return `<div class="wt-legend-keys">${layer.keys.map((key) => swatch(palette.css[colourOf(key)], key[0])).join("")}</div>`;
   }
   if (layer.direction) {
     return (
@@ -667,6 +668,9 @@ function setLook(k, change) {
   changed();
 }
 
+/** Whether some value of the layer is drawn in the colour it is named after. */
+const hasNamedColours = (layer) => Boolean(layer?.colours?.some((name) => name && namedOf(app.palette, name) !== null));
+
 /** The colour map and the height of layer `k`, which the reader sets on its row, when it is in front. */
 function lookControls(k) {
   const look = lookOf(k);
@@ -674,7 +678,8 @@ function lookControls(k) {
   controls.className = "pg-look";
   // Headings have a wheel of their own, and stay flat.
   if (layers[k]?.direction) return controls;
-  if (!layers[k]?.boolean) {
+  // Booleans and values named after colours have colours of their own: no map to pick.
+  if (!layers[k]?.boolean && !hasNamedColours(layers[k])) {
     const colours = document.createElement("select");
     colours.title = "Colours of this layer";
     colours.setAttribute("aria-label", `Colours of ${labelOf(k)}`);
@@ -712,7 +717,8 @@ const EYE_SHUT =
 function renderLayers() {
   const focused = focusedLayer();
   const labels = stackOrder().map((k) => `${isShown(k)}:${labelOf(k)}`);
-  const key = [focused, oneAtATime(), Boolean(layers[focused]?.boolean), Boolean(layers[focused]?.direction), ...labels].join("\n");
+  const kind = [layers[focused]?.boolean, layers[focused]?.direction, hasNamedColours(layers[focused])].map(Boolean);
+  const key = [focused, oneAtATime(), ...kind, ...labels].join("\n");
   // Rebuilt only when the layers change, not at every step: a click must find its button.
   if (layerRows?.key !== key) layerRows = { key, rows: buildLayerRows(focused) };
   const id = inspected();

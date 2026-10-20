@@ -724,6 +724,7 @@ def test_playground_scales_an_enum_on_all_its_members_and_names_them(tmp_path):
 
     assert (layer.low, layer.high) == (0.0, 2.0)
     assert layer.numbers == [1.0, 1.0, 1.0]
+    assert [key[0] for key in layer.keys] == ["GREEN", "YELLOW", "RED"]
     assert layer.texts == ["YELLOW"] * 3
 
 
@@ -746,6 +747,7 @@ def test_playground_colours_the_members_of_an_enum_named_after_colours(tmp_path)
     layer = playground.advance(1.0).layers[0]
 
     assert layer.colours == ["yellow"] * 3
+    assert layer.keys == [["GREEN", "green", 0.0], ["YELLOW", "yellow", 1.0], ["RED", "red", 2.0]]
 
 
 def test_playground_colours_nothing_by_name_when_a_value_names_no_colour(tmp_path):
@@ -754,3 +756,44 @@ def test_playground_colours_nothing_by_name_when_a_value_names_no_colour(tmp_pat
     layer = playground.advance(1.0).layers[0]
 
     assert layer.colours == [""] * 3
+    assert layer.keys == []
+
+
+MARKED = """
+from phyelds.calculus import aggregate
+from phyelds.libraries.device import local_id
+
+@aggregate
+def program():
+    double = local_id() * 2  # watch
+    return double + 1
+"""
+
+
+def test_playground_watches_the_lines_marked_watch_when_it_runs_the_code(tmp_path):
+    playground = runner.Playground(tmp_path / "run")
+    playground.update(LINE, 1.5, {})
+
+    loaded = playground.load(MARKED, [], restart=True)
+    snapshot = playground.advance(1.0)
+
+    assert [watch.label for watch in loaded.watches] == ["double"]
+    assert snapshot.layers[1].numbers == [0.0, 2.0, 4.0]
+
+
+def test_playground_watches_a_marked_line_once_when_it_is_also_selected(tmp_path):
+    playground = runner.Playground(tmp_path / "run")
+    playground.update(LINE, 1.5, {})
+
+    # As the page sends it: a list, not a tuple.
+    loaded = playground.load(MARKED, [list(_span(MARKED, "double = local_id() * 2"))], restart=True)
+
+    assert [watch.label for watch in loaded.watches] == ["double"]
+
+
+def test_playground_leaves_the_marks_alone_when_the_watches_change_on_the_running_devices(tmp_path):
+    playground = _deployed(tmp_path, MARKED)
+
+    loaded = playground.load(MARKED, [], restart=False)
+
+    assert loaded.watches == []

@@ -4,9 +4,11 @@ Teams: the swarm splits into teams around elected leaders, and every team roams 
 Leaders are elected about EXTRA / 2 apart while the swarm stands still; after SETTLE
 rounds they are kept, and the devices gather around the nearest one, INTRA apart. Once
 gathered, the team is formed: its leader roams around where the team formed, and the
-team moves as it does, apart from the others. The colour is the heading, the same in a
-team; watch `team` for its leader.
+team moves as it does, apart from the others. The arrows are the headings, the same in a
+team; the layer under them is the stage of each device: settling, gathering or formed.
 """
+from enum import IntEnum
+
 from phyelds.calculus import aggregate, remember
 from phyelds.experimental.swarm import (
     Vector, align_with_leader, explore, is_team_formed, separation, sink_at, team_formation,
@@ -21,6 +23,14 @@ EXTRA = 3.0  # the leaders are elected about half this far apart
 SETTLE = 10  # rounds the election takes to settle, while the swarm stands still
 ROAM = 1.5  # how far from where its team formed a leader roams
 LOWEST, HIGHEST = -2.2, 7.2  # the world of the playground, a little inside its walls
+
+
+class Stage(IntEnum):
+    """Where a device is in forming its team."""
+
+    SETTLING = 0
+    GATHERING = 1
+    FORMED = 2
 
 
 def roam(leader: int) -> Vector:
@@ -50,4 +60,5 @@ def teams() -> Vector:
 
     team = team_formation(INTRA, EXTRA, leader=is_leader.value, condition=formed)
     moving = team.inside(roam)
-    return velocity.send(Vector() if settling else moving)
+    stage = Stage.SETTLING if settling else Stage.FORMED if team.formed else Stage.GATHERING  # watch
+    return velocity.send(Vector() if stage is Stage.SETTLING else moving)
