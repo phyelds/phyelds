@@ -30,6 +30,9 @@ jobs:
     - name: Install documentation dependencies
       run: poetry install --with docs
 
+    - name: Test the hooks of the site
+      run: poetry run pytest src/tests/examples/test_drafts_hook.py
+
     - name: Build the site
       run: poetry run mkdocs build --strict
 

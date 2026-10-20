@@ -3,7 +3,11 @@ import importlib.util
 from pathlib import Path
 from types import SimpleNamespace
 
-from mkdocs.structure.files import File, Files, InclusionLevel
+import pytest
+
+# The hook runs inside MkDocs, installed with the docs group: the docs workflow tests it.
+mkdocs_files = pytest.importorskip("mkdocs.structure.files")
+File, Files, InclusionLevel = mkdocs_files.File, mkdocs_files.Files, mkdocs_files.InclusionLevel
 
 DOCS = Path(__file__).resolve().parents[3] / "docs"
 
