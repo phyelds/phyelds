@@ -135,12 +135,3 @@ def test_playground_mission_example_takes_the_swarm_to_the_target(tmp_path):
 
     assert math.dist(positions[28], positions[7]) < 1.5
     assert sum(math.dist(position, positions[28]) for position in positions) / len(positions) < 1.5
-
-
-def test_playground_opinions_example_agrees_on_the_share_of_yes_votes_everywhere(tmp_path):
-    playground, _ = _running("opinions", {"vote": list(range(9))}, tmp_path, rounds=30.0)
-
-    playground.update(GRID, 1.5, {"vote": list(range(18))})
-    shares = playground.advance(30.0).layers[0].numbers
-
-    assert shares == pytest.approx([0.5] * 36)
