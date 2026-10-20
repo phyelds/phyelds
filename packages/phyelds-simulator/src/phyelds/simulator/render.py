@@ -22,7 +22,7 @@ def make_writer(config: RenderConfig) -> AbstractMovieWriter:
     Returns:
         A ``PillowWriter`` for ``.gif`` files, an ``FFMpegWriter`` otherwise.
     """
-    fps = 1 / config.dt if config.dt > 0 else 15
+    fps = config.fps or (1 / config.dt if config.dt > 0 else 15)
     if Path(config.save_as).suffix.lower() == ".gif":
         return PillowWriter(fps=fps)
     metadata = {"title": "Simulation", "artist": "Phyelds"}

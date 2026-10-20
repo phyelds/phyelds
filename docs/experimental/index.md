@@ -14,3 +14,5 @@ understand how they fit phyelds and what their API should look like.
 | Study | Module | What it does |
 | --- | --- | --- |
 | [Collective state machines](state-machines.md) | `phyelds.experimental.state_machines` | A finite state machine run by the whole network, whose transitions are collective agreements |
+| [Swarm behaviours](swarm.md) | `phyelds.experimental.swarm` | Blocks that compute where a robot moves, to sum and weigh: flocking, following a leader, teams |
+| [Formations](formations.md) | `phyelds.experimental.formation` | A swarm spreads evenly over a shape, a signed distance function, with or without positions |

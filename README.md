@@ -97,7 +97,7 @@ builds the gradient beneath it step by step from `remember` and `neighbors`.
 * **MicroPython**: the same programs run on microcontrollers such as the ESP32
   (`python -m phyelds.micropython`), and talk with devices running CPython.
 * **Experimental** (`phyelds.experimental`): studies in progress, whose API will
-  probably change, such as collective state machines.
+  probably change, such as collective state machines and swarm behaviours.
 
 Everything is explained in the [documentation](https://phyelds.github.io/phyelds/):
 [thinking in fields](https://phyelds.github.io/phyelds/concepts/aggregate-programs/),

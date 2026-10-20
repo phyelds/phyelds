@@ -11,7 +11,9 @@ from phyelds import engine
 from phyelds.calculus import aggregate, exchange, neighbors, remember
 from phyelds.data import State
 from phyelds.data.codec import encode
+from phyelds.experimental.formation import circle, formation, leader_positioning, star
 from phyelds.experimental.state_machines import Next, StateMachine, collective_state_machine
+from phyelds.experimental.swarm import Vector, cohesion, go_to, separation, sink_at
 from phyelds.libraries.collect import collect_with, point_to_point, sum_values
 from phyelds.libraries.device import local_id, sense
 from phyelds.libraries.distances import hops_distance
@@ -185,6 +187,23 @@ def described_state_machine():
 def state_type():
     _, count = remember(3)
     return isinstance(count, int)
+
+
+def _rounded(vector):
+    # sines and square roots may differ in their last digits across runtimes
+    return tuple(round(component, 6) for component in vector)
+
+
+@aggregate
+def swarm_blocks():
+    velocity = go_to((10, 0)) + separation(Vector(), within=1.5) + cohesion(Vector()) + sink_at(sense("source"))
+    return _rounded(velocity)
+
+
+@aggregate
+def formed():
+    shape = circle((0, 0), 3) - star((0, 0), 1, 5)
+    return _rounded(formation(shape, reach=1.5, positioning=leader_positioning))
 
 
 def run(program, paths="debug"):

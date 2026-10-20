@@ -113,8 +113,8 @@ class Engine(ABC):
             node_context: The context of the device running the round.
             messages: The messages received from the neighbors, mapping each neighbor
                 ID to the values it sent, keyed by alignment path.
-            state (dict[str, Any] | None): The state left by the previous round (see ``state_trace``), or
-                ``None`` on the first round.
+            state (dict[str, Any] | None): The state left by the previous round (see
+                ``state_trace``), or ``None`` on the first round.
 
         Returns:
             The engine itself.

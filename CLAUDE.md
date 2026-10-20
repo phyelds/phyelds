@@ -33,7 +33,10 @@ npm install && node docs/examples/hero.mjs     # record the gifs of the home pag
 A change is done only when `pytest`, `pylint` and `flake8` all pass: CI and the
 pre-commit hooks run exactly these. When a change touches the public API, also
 update the docs and check `mkdocs build --strict`; documentation examples are code,
-and are tested in `src/tests/examples/`.
+and are tested in `src/tests/examples/`. A page with `draft: true` in its front matter is
+a draft (`docs/hooks/drafts.py`): `mkdocs serve` shows it, the published site leaves it
+out, with the lines of other pages that link to it, so write such links on lines of
+their own.
 
 ## Workflow: test-driven development
 
