@@ -15,7 +15,7 @@ import { FEWEST, MOST, PLACES, SPAN, createNetwork } from "../walkthrough/model.
 import { readPalette } from "../walkthrough/palette.js";
 import { bindPointer } from "../walkthrough/pointer.js";
 import { LIFT, PULSE_MS, createScene } from "../walkthrough/scene.js";
-import { MAPS, categoryOf, extendPalette, stopsOf, toneOf } from "./colours.js";
+import { MAPS, categoryOf, extendPalette, namedOf, stopsOf, toneOf } from "./colours.js";
 import { createEditor, shifted } from "./editor.js";
 import { createMenu } from "./menu.js";
 
@@ -492,6 +492,9 @@ function looksOf(layer, look) {
   const looks = layer.numbers.map((number, id) => {
     const finite = Number.isFinite(number);
     if (layer.boolean) return finite ? { relief: number, colour: number ? palette.on : palette.off } : null;
+    // A value named after a colour, as Light.GREEN, is drawn in it, whatever the map.
+    const named = layer.colours?.[id] ? namedOf(palette, layer.colours[id]) : null;
+    if (named !== null) return { relief: finite ? share(number) : 0, colour: named };
     // A heading, in degrees from east: a colour of the wheel, flat, as a swarm moves on a plane.
     if (layer.direction) {
       const heading = (number * Math.PI) / 180;
@@ -503,7 +506,8 @@ function looksOf(layer, look) {
     return finite ? { relief: share(number), colour: toneOf(palette, look.map, share(number)) } : null;
   });
   const map = layer.direction ? "directions" : look.map;
-  return { looks, texts: layer.texts, boolean: layer.boolean, direction: layer.direction, known: known.length > 0, low, high, map };
+  const { numbers, texts, boolean, direction, colours } = layer;
+  return { looks, numbers, texts, boolean, direction, colours, known: known.length > 0, low, high, map };
 }
 
 /** The looks of the layers of the last step, as the reader set them. */
@@ -629,6 +633,16 @@ function scaleOf(layer) {
     `<span class="wt-key"><span class="wt-key-swatch" style="background:${colour}"></span>${label}</span>`;
   if (layer.boolean) {
     return `<div class="wt-legend-keys">${swatch(palette.css[palette.on], "True")}${swatch(palette.css[palette.off], "False")}</div>`;
+  }
+  // Values named after colours: one key each, in the order of their values.
+  const named = new Map();
+  layer.colours?.forEach((name, id) => {
+    const colour = name ? namedOf(palette, name) : null;
+    if (colour !== null) named.set(layer.texts[id], { colour, number: layer.numbers[id] });
+  });
+  if (named.size > 0) {
+    const keys = [...named].sort(([, a], [, b]) => a.number - b.number);
+    return `<div class="wt-legend-keys">${keys.map(([text, { colour }]) => swatch(palette.css[colour], text)).join("")}</div>`;
   }
   if (layer.direction) {
     return (

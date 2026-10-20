@@ -47,6 +47,8 @@ ROUND = 1.0  # simulated time between two runs of a device
 MAX_SUGGESTIONS = 40  # names the completion of the editor offers at once
 MAX_SPEED = 0.15  # how far a device moves in a round at most
 GLIDE = 0.1  # the time between two moves of a device: it moves smoothly, not once a round
+# The colours the page knows by name: a member of an enum named after one is drawn in it.
+COLOURS = {"red", "orange", "yellow", "green", "blue", "purple", "pink", "grey"}
 STILL = 0.01  # a velocity slower than this on the plane has no heading: the device stands still
 # Where the devices move: the arena of the page (SPAN in walkthrough/model.js, 5), and as much
 # again around it, so that a swarm has room. The page draws the same world.
@@ -73,7 +75,8 @@ class Value:
     """
     What a device computed, as the page shows it: a number on a scale, NaN if it has none,
     and a text. A direction is a vector, its number the angle from east, in degrees. A
-    value whose type has a known range, as the members of an enum, has ``low`` and ``high``.
+    value whose type has a known range, as the members of an enum, has ``low`` and ``high``;
+    one named after a colour, such as ``Light.GREEN``, has that ``colour``.
     """
 
     number: float
@@ -82,6 +85,7 @@ class Value:
     direction: bool = False
     low: float = math.nan
     high: float = math.nan
+    colour: str = ""
 
 
 NO_VALUE = Value(math.nan, "")
@@ -92,7 +96,8 @@ class Layer:
     """
     A field over the devices, the result of the program or a watched expression: a number
     and a text each, whether all its values are booleans, or all directions, and the scale
-    of its numbers: from ``low`` to ``high``, which only widens in a run.
+    of its numbers: from ``low`` to ``high``, which only widens in a run. A value named after a
+    colour has it in ``colours``.
     """
 
     numbers: list[float]
@@ -101,6 +106,7 @@ class Layer:
     direction: bool = False
     low: float = math.nan
     high: float = math.nan
+    colours: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -351,7 +357,8 @@ class Playground:
             direction = bool(known) and all(value.direction for value in known)
             low, high = self._widened(k, known)
             figures, texts = [value.number for value in values], [value.text for value in values]
-            layers.append(Layer(figures, texts, boolean, direction, low, high))
+            colours = [value.colour for value in values]
+            layers.append(Layer(figures, texts, boolean, direction, low, high, colours))
         nodes = self._simulator.environment.nodes
         ran = [nodes[node_id].data.get("time", math.nan) for node_id in range(count)]
         stable = self._clock - self._changed >= ROUND
@@ -391,7 +398,8 @@ def _value(value: Any) -> Value:
         if isinstance(value, enum.Enum) and isinstance(value, numbers.Real):
             # A member of an IntEnum: its name, on the scale of all the members.
             members = [float(member) for member in type(value)]
-            return Value(float(value), value.name, low=min(members), high=max(members))
+            colour = value.name.lower() if value.name.lower() in COLOURS else ""
+            return Value(float(value), value.name, low=min(members), high=max(members), colour=colour)
         if isinstance(value, bool):
             return Value(float(value), str(value), boolean=True)
         if isinstance(value, numbers.Real):

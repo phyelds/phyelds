@@ -738,3 +738,19 @@ def test_playground_widens_the_scale_of_a_layer_but_never_narrows_it_in_a_run(tm
     assert (first.low, first.high) == (1.0, 1.0)
     assert (later.low, later.high) == (1.0, 4.0)
     assert (restarted.low, restarted.high) == (1.0, 1.0)
+
+
+def test_playground_colours_the_members_of_an_enum_named_after_colours(tmp_path):
+    playground = _deployed(tmp_path, PHASES)
+
+    layer = playground.advance(1.0).layers[0]
+
+    assert layer.colours == ["yellow"] * 3
+
+
+def test_playground_colours_nothing_by_name_when_a_value_names_no_colour(tmp_path):
+    playground = _deployed(tmp_path, COUNTER)
+
+    layer = playground.advance(1.0).layers[0]
+
+    assert layer.colours == [""] * 3

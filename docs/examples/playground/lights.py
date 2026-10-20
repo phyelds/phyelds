@@ -2,8 +2,8 @@
 Lights: the network goes from green to yellow to red together, as one traffic light.
 
 The phases are a collective state machine: the first device whose timer runs out moves
-the whole network to the next phase, and the change spreads from it. Change DURATION,
-or add devices while it runs.
+the whole network to the next phase, and the change spreads from it. The phases are
+named after colours, and drawn in them. Change DURATION, or add devices while it runs.
 """
 from enum import IntEnum
 
