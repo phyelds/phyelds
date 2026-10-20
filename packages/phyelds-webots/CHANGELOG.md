@@ -1,3 +1,9 @@
+## [8.6.0](https://github.com/phyelds/phyelds/compare/8.5.0...8.6.0) (2026-10-20)
+
+### Features
+
+* **libraries:** typed sensors and actuators ([#23](https://github.com/phyelds/phyelds/issues/23)) ([4296e0a](https://github.com/phyelds/phyelds/commit/4296e0abca51fad9b971e9b004de0ca33f90154e))
+
 ## [8.5.0](https://github.com/phyelds/phyelds/compare/8.4.2...8.5.0) (2026-10-20)
 
 ### Features
