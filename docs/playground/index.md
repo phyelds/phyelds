@@ -36,9 +36,13 @@ and your code is not sent anywhere.
   in range of the other. The rounds run at the speed you pick, and the bar
   under the network says when a whole round changed nothing: the program is stable.
 - A program that sends a velocity (`velocity.send(v)`, from
-  `phyelds.libraries.device`) moves its devices after each round, at a top speed,
-  inside the arena: the [swarm behaviours](../experimental/swarm.md) are ready to use.
-  **Restart** (R) puts them back where you placed them.
+  `phyelds.libraries.device`) moves its devices smoothly, at a top speed, in a world
+  twice as wide as the arena, which the views then show from above; a velocity it
+  returns is drawn as an arrow. The [swarm behaviours](../experimental/swarm.md) are
+  ready to use. **Restart** (R) puts the devices back where you placed them.
+- A line that ends with `# watch` is watched when the program runs, and `# watch name`
+  watches that name of the line. A shape the program defines at the top of its module
+  is drawn under the result, as the ground a swarm takes.
 - **Run** (Ctrl+Enter) applies the code and starts every device over;
   **Stop** ends a program that never returns.
 - **Share** copies a link that opens the playground with your program, its watches

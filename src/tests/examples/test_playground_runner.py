@@ -814,3 +814,39 @@ def test_playground_leaves_the_marks_alone_when_the_watches_change_on_the_runnin
     loaded = playground.load(MARKED, [], restart=False)
 
     assert loaded.watches == []
+
+
+SHAPED = """
+from phyelds.calculus import aggregate
+from phyelds.experimental.formation import circle
+
+SHAPE = circle((2.5, 2.5), 1.0)
+
+@aggregate
+def program():
+    return 0
+"""
+
+
+def test_playground_samples_the_shape_of_the_program_on_the_world(tmp_path):
+    playground = runner.Playground(tmp_path / "run")
+    playground.update(LINE, 1.5, {})
+
+    shape = playground.load(SHAPED, [], restart=True).shape
+
+    low, high = runner.WORLD
+    cells = runner.SHAPE_CELLS
+    step = (high - low) / cells
+    centre = round((2.5 - low) / step)
+    assert (shape.low, shape.high, shape.cells) == (low, high, cells)
+    assert len(shape.distances) == (cells + 1) ** 2
+    assert shape.distances[centre * (cells + 1) + centre] == pytest.approx(-1.0)
+    assert shape.distances[0] > 0
+    assert sum(distance <= 0 for distance in shape.distances) * step * step == pytest.approx(3.14, abs=0.3)
+
+
+def test_playground_samples_no_shape_when_the_program_has_none(tmp_path):
+    playground = runner.Playground(tmp_path / "run")
+    playground.update(LINE, 1.5, {})
+
+    assert playground.load(COUNTER, [], restart=True).shape is None

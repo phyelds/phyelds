@@ -95,7 +95,7 @@ const app = {
 
 // Python, in its worker: the program it runs and its code, the loads it was asked for, and
 // whether it is running a step, asked at `asked`.
-const python = { worker: null, program: null, code: null, loads: [], stepping: false, asked: 0 };
+const python = { worker: null, program: null, code: null, shape: null, loads: [], stepping: false, asked: 0 };
 let snapshot = null; // what the devices computed, as the last step left them
 let layers = []; // per layer of the snapshot, the look of every device and the scale
 // The watched expressions: where they are in the code Python runs, their label, how they are
@@ -165,7 +165,7 @@ function stop(text) {
   python.worker?.terminate();
   for (const answer of completions.values()) answer([]);
   completions.clear();
-  Object.assign(python, { worker: null, program: null, code: null, loads: [], stepping: false });
+  Object.assign(python, { worker: null, program: null, code: null, shape: null, loads: [], stepping: false });
   setPlaying(false);
   status(text);
 }
@@ -367,7 +367,7 @@ function onMessage(message) {
   }
 }
 
-function onLoaded({ ok, program, watches: watched }, { code, restart, reason, previous }) {
+function onLoaded({ ok, program, watches: watched, shape }, { code, restart, reason, previous }) {
   if (!ok) {
     const what = reason === "watch" ? "That cannot be watched" : "The program has an error";
     const then = python.program ? "the network goes on as it was" : "fix it and run it again";
@@ -390,7 +390,8 @@ function onLoaded({ ok, program, watches: watched }, { code, restart, reason, pr
     if (each.look.rank === undefined) each.look.rank = Math.min(0, ...watches.map((other) => other.look.rank ?? 0)) - 1;
   }
   app.focus = reason === "watch" ? watches.length : Math.min(app.focus, watches.length);
-  Object.assign(python, { program, code });
+  // The shape the program defines, if any, drawn under the result as the ground the swarm takes.
+  Object.assign(python, { program, code, shape });
   if (snapshot) {
     // The values of the old watches are not those of the new ones: they come back as the devices run.
     snapshot.paused = false;
@@ -600,6 +601,7 @@ function draw(now) {
       ranAt: display.ranAt[device.id],
     })),
     links: network.links.map(({ a, b }) => ({ a, b, style: k === focused ? "plain" : "faint" })),
+    shape: k === 0 ? python.shape : null,
     highlights:
       k === focused && hovered !== null
         ? network.inRange[hovered].map((neighbor) => ({ a: hovered, b: neighbor.id, style: "neighbor" }))
@@ -622,7 +624,7 @@ function draw(now) {
   };
   scene.drawLayers(frame);
   const front = drawn.find((layer) => layer.focused) ?? drawn[drawn.length - 1];
-  map.draw({ ...frame, devices: front.devices, links: front.links, highlights: front.highlights, cloud: null, camera: scene.camera });
+  map.draw({ ...frame, devices: front.devices, links: front.links, highlights: front.highlights, cloud: null, camera: scene.camera, shape: python.shape });
   app.dirty = false;
 }
 

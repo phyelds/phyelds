@@ -20,6 +20,38 @@ export function traceArrow(context, x, y, size, angle) {
   context.lineTo(...at(size * 0.85, -2.45));
   context.closePath();
 }
+const insides = new WeakMap(); // the polygons of each shape, worked out once
+
+/**
+ * The inside of a shape given by its signed distance at the corners of a grid (`low`,
+ * `high`, `cells`, `distances`): in each cell, the polygon where the distance is negative,
+ * its border where the distance, interpolated along the sides, crosses zero.
+ */
+export function insideOf(shape) {
+  if (insides.has(shape)) return insides.get(shape);
+  const { low, high, cells, distances } = shape;
+  const step = (high - low) / cells;
+  const at = (i, j) => ({ x: low + i * step, y: low + j * step, d: distances[j * (cells + 1) + i] });
+  const polygons = [];
+  for (let j = 0; j < cells; j += 1) {
+    for (let i = 0; i < cells; i += 1) {
+      const corners = [at(i, j), at(i + 1, j), at(i + 1, j + 1), at(i, j + 1)];
+      const polygon = [];
+      corners.forEach((corner, k) => {
+        const next = corners[(k + 1) % 4];
+        if (corner.d <= 0) polygon.push(corner);
+        if (corner.d <= 0 !== next.d <= 0) {
+          const t = corner.d / (corner.d - next.d);
+          polygon.push({ x: corner.x + t * (next.x - corner.x), y: corner.y + t * (next.y - corner.y) });
+        }
+      });
+      if (polygon.length >= 3) polygons.push(polygon);
+    }
+  }
+  insides.set(shape, polygons);
+  return polygons;
+}
+
 export const HIDDEN = 255; // colour index of a cloud point without a value
 export const PULSE_MS = 320; // how long the ring of a device that just ran lasts
 const DISTANCE = 15; // from the camera to the pivot
@@ -121,6 +153,15 @@ export function createScene(canvas) {
       const angle = (k / 48) * 2 * Math.PI;
       return project(x + radius * Math.cos(angle), y + radius * Math.sin(angle), z);
     });
+  }
+
+  /** The inside of `shape`, filled on the plane at height z: the shape a swarm takes. */
+  function drawShape(shape, z, palette) {
+    context.beginPath();
+    for (const piece of insideOf(shape)) polygon(piece.map(({ x, y }) => project(x, y, z)));
+    // One fill for every piece, so that their shared edges leave no seams.
+    context.fillStyle = rgba(palette.rgb[palette.on], palette.dark ? 0.22 : 0.16);
+    context.fill("nonzero");
   }
 
   /** The arena as a plane at height z, its edge as opaque as `edge`; returns its corners on screen. */
@@ -449,6 +490,7 @@ export function createScene(canvas) {
       const layer = layers[k];
       const points = layer.devices.map((device) => project(device.x, device.y, device.z));
       label(layer.label, drawGround(palette, layer.base, layer.focused ? 0.4 : 0.14), palette, layer.focused);
+      if (layer.shape) drawShape(layer.shape, layer.base, palette);
       drawLinks(frame, layer.links, points);
       drawLinks(frame, layer.highlights, points);
       // The rings of the neighbors and of the devices that just ran belong to the focused layer only.

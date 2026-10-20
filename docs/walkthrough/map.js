@@ -5,7 +5,7 @@
 import { RESOLUTION } from "./continuum.js";
 import { SPAN } from "./model.js";
 import { rgba } from "./palette.js";
-import { HIDDEN, traceArrow } from "./scene.js";
+import { HIDDEN, insideOf, traceArrow } from "./scene.js";
 
 const PAD = 14;
 const LINK_ALPHA = { plain: 0.16, faint: 0.1, outside: 0.12, inside: 0.34, cut: 0.4 };
@@ -41,6 +41,21 @@ export function createMap(canvas) {
   function toScreen(x, y) {
     const { left, top, side } = frameOfArena();
     return { x: left + ((x + margin) / width()) * side, y: top + (1 - (y + margin) / width()) * side };
+  }
+
+  /** The inside of `shape`, filled: the shape a swarm takes. */
+  function drawShape(shape, palette) {
+    context.beginPath();
+    for (const piece of insideOf(shape)) {
+      piece.forEach(({ x, y }, k) => {
+        const point = toScreen(x, y);
+        if (k === 0) context.moveTo(point.x, point.y);
+        else context.lineTo(point.x, point.y);
+      });
+      context.closePath();
+    }
+    context.fillStyle = rgba(palette.rgb[palette.on], palette.dark ? 0.22 : 0.16);
+    context.fill();
   }
 
   /** The cloud as an image, one pixel per grid point, north up. */
@@ -100,6 +115,7 @@ export function createMap(canvas) {
     context.strokeStyle = rgba(palette.ink, 0.18);
     context.lineWidth = 1;
     context.strokeRect(left, top, side, side);
+    if (frame.shape) drawShape(frame.shape, palette);
 
     // Where the frame draws the devices, which may glide behind the network.
     const points = frame.devices.map((device) => toScreen(device.x, device.y));

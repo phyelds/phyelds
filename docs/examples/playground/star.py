@@ -3,7 +3,8 @@ Star: the swarm spreads evenly over a star, every device taking an equal share o
 
 The star is a signed distance function: negative inside, zero on its border. Each device
 heads to the centroid of the part of the star closer to it than to its neighbours, and
-the swarm covers the star evenly. Change POINTS, or add devices.
+the swarm covers the star evenly. The playground draws SHAPE under the swarm. Change
+POINTS, or add devices.
 """
 from phyelds.calculus import aggregate
 from phyelds.experimental.formation import formation, star

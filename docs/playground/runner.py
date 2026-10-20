@@ -35,6 +35,7 @@ from typing import Any
 
 from phyelds import engine
 from phyelds.data import NeighborhoodField, State
+from phyelds.experimental.formation import Shape
 from phyelds.experimental.swarm import Vector
 from phyelds.libraries.device import velocity
 from phyelds.simulator import Node, Simulator
@@ -50,6 +51,7 @@ MAX_SPEED = 0.15  # how far a device moves in a round at most
 GLIDE = 0.1  # the time between two moves of a device: it moves smoothly, not once a round
 # The colours the page knows by name: a member of an enum named after one is drawn in it.
 COLOURS = {"red", "orange", "yellow", "green", "blue", "purple", "pink", "grey"}
+SHAPE_CELLS = 60  # cells on each side of the grid on which the shape of a program is drawn
 STILL = 0.01  # a velocity slower than this on the plane has no heading: the device stands still
 # Where the devices move: the arena of the page (SPAN in walkthrough/model.js, 5), and as much
 # again around it, so that a swarm has room. The page draws the same world.
@@ -140,12 +142,30 @@ class Suggestion:
 
 
 @dataclass
+class Ground:
+    """
+    A shape on the world, as the page draws it: its signed distance at the corners of
+    ``cells`` by ``cells`` cells, from ``low`` to ``high`` on each axis, row by row from the
+    lowest. The page fills the part of each cell where the distance is negative.
+    """
+
+    low: float
+    high: float
+    cells: int
+    distances: list[float]
+
+
+@dataclass
 class Loaded:
-    """Whether the code was loaded, the name of the function that runs, and what it watches."""
+    """
+    Whether the code was loaded, the name of the function that runs, what it watches, and
+    the shape it defines, a Shape at the top of the module, if any.
+    """
 
     ok: bool
     program: str = ""
     watches: list[Watch] = field(default_factory=list)
+    shape: Ground | None = None
 
 
 class Playground:
@@ -206,6 +226,7 @@ class Playground:
             self._write(source)
             namespace = runpy.run_path(str(self._main), init_globals={WATCH: self._recorder}, run_name="playground")
             program = _program(namespace, ast.parse(code))
+            shape = next((value for value in namespace.values() if isinstance(value, Shape)), None)
         # The errors of the code are reported to its author, like Python would.
         except Exception as error:  # pylint: disable=broad-exception-caught
             _print_traceback(error, self._main)
@@ -219,7 +240,7 @@ class Playground:
         else:
             # The k-th watch may now be another expression: its values come back as the devices run.
             self._rows = {node_id: row[:1] for node_id, row in self._rows.items()}
-        return Loaded(True, program.__name__, watches)
+        return Loaded(True, program.__name__, watches, None if shape is None else _ground(shape))
 
     def update(
         self, positions: Sequence[Sequence[float]], radius: float, sensors: Mapping[str, Collection[int]]
@@ -428,6 +449,14 @@ def _value(value: Any) -> Value:
     # The program may print values whose __repr__ fails: that must not stop its round.
     except Exception:  # pylint: disable=broad-exception-caught
         return Value(math.nan, "?")
+
+
+def _ground(shape: Shape) -> Ground:
+    """``shape`` sampled at the corners of the cells of the world."""
+    low, high = WORLD
+    step = (high - low) / SHAPE_CELLS
+    corners = [low + corner * step for corner in range(SHAPE_CELLS + 1)]
+    return Ground(low, high, SHAPE_CELLS, [float(shape(Vector(x, y))) for y in corners for x in corners])
 
 
 def _colour(member: enum.Enum) -> str:
