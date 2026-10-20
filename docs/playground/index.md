@@ -43,6 +43,8 @@ and your code is not sent anywhere.
 - A line that ends with `# watch` is watched when the program runs, and `# watch name`
   watches that name of the line. A shape the program defines at the top of its module
   is drawn under the result, as the ground a swarm takes.
+- **Code**, **Both** and **Network** (1, 2, 3) choose what the page shows: the program
+  alone, to write it, the network alone, to watch it, or the two side by side.
 - **Run** (Ctrl+Enter) applies the code and starts every device over;
   **Stop** ends a program that never returns.
 - **Share** copies a link that opens the playground with your program, its watches
