@@ -10,6 +10,8 @@
  * computes; a `warm` step opens with its program already stable.
  */
 
+import { CAP, HOT } from "./model.js";
+
 const number = (value) => (Number.isFinite(value) ? value.toFixed(2) : "inf");
 const python = (flag) => (flag ? "True" : "False");
 
@@ -42,11 +44,11 @@ function betweenDetail(between) {
 export const STEPS = [
   {
     name: "Field",
-    title: "A field: one value per device",
+    title: "A field, sampled by the devices",
     fields: ["temperature"],
     text: [
-      "Every device runs the same program and gets its own value: together, the values form a <strong>field</strong>. Here, every device reads its <code>temperature</code> sensor.",
-      "The cloud is the same field at <strong>infinite density</strong>, with a device at every point. A sensor needs no neighbors, so the devices sit right on it.",
+      "Think of a <strong>field</strong> as something continuous: a value at every point of space, like the temperature of a room. The cloud is that field, as if there were a device at every point.",
+      "The devices <strong>sample</strong> it: each one runs the same program where it stands and gets its own value. Here, every device reads its <code>temperature</code> sensor, and a sensor needs no neighbors, so the samples sit right on the cloud.",
     ],
     hint: "Hover a device: the program shows what it computed.",
     view: "temperature",
@@ -58,11 +60,29 @@ export const STEPS = [
     ],
   },
   {
+    name: "Operators",
+    title: "Operators: fields in, fields out",
+    fields: ["temperature"],
+    text: [
+      `A field is a value like any other: an operator applied to a field gives a new field, point by point. <code>temperature &gt; ${HOT}</code> compares the reading of every device with ${HOT}, and the result is a field of booleans: where it is hot.`,
+      `In the cloud, the plane at ${HOT} °C cuts the temperature: what rose above it is <code>True</code>, and lies flat on the cut.`,
+    ],
+    hint: "Click a line of the program to see the field it computes.",
+    view: "hot",
+    roles: [],
+    code: [
+      { code: "@aggregate" },
+      { code: "def hot() -> bool:" },
+      { code: '    temperature = sense("temperature")', view: "temperature", value: ({ state }) => state.temperature.toFixed(1) },
+      { code: `    return temperature > ${HOT}`, view: "hot", value: ({ state }) => python(state.temperature > HOT) },
+    ],
+  },
+  {
     name: "Neighbors",
     title: "Neighbors: what a device sees",
     fields: ["heard"],
     text: [
-      "<code>neighbors(1)</code> shares a value with the devices in range and returns what they shared, a <code>NeighborhoodField</code>. Its size is how many neighbors a device has: fewer along the border.",
+      "<code>neighbors</code> is the <strong>spatial</strong> side of a program: it builds fields that take the neighborhood into account. <code>neighbors(1)</code> shares a value with the devices in range and returns what they shared, a <code>NeighborhoodField</code>. Its size is how many neighbors a device has: fewer along the border.",
       "At infinite density, everybody would hear infinitely many. The cloud shows what stays finite: the share of the range inside the space.",
     ],
     hint: "Hover a device to see its range, or switch it off from the panel.",
@@ -81,12 +101,36 @@ export const STEPS = [
     ],
   },
   {
+    name: "Time",
+    title: "Time: from round to round",
+    fields: ["rounds"],
+    text: [
+      "<code>remember</code> is the <strong>temporal</strong> side: a device keeps a value from one round to the next. Here, each device counts its own rounds, so the field changes in time.",
+      `Capped at ${CAP}, the count stops growing: the field reaches a <strong>fixpoint</strong>, the flat cloud, and stays there. A device switched off forgets what it kept: switched on again, it starts over from 0.`,
+    ],
+    hint: "Restart to watch the field rise and stop at the cap. Switch a device off and on again.",
+    view: "rounds",
+    roles: [],
+    code: [
+      { code: "@aggregate" },
+      { code: "def rounds() -> int:" },
+      { code: "    set_count, count = remember(0)" },
+      { code: `    set_count(min(count + 1, ${CAP}))` },
+      {
+        code: "    return count",
+        view: "rounds",
+        value: ({ state }) => String(state.rounds),
+        detail: ({ state }) => (state.rounds === CAP ? `min(${CAP} + 1, ${CAP}): capped` : null),
+      },
+    ],
+  },
+  {
     name: "Gradient",
     title: "Gradient: hop by hop",
     fields: ["toTarget"],
     text: [
-      "Each round, a device remembers its estimate (<code>remember</code>), shares it (<code>neighbors</code>), and takes the smallest neighbor estimate plus the distance to that neighbor. Round after round, the field spreads from the target.",
-      "It settles just above the cloud: the network measures along its links, the cloud is the exact distance.",
+      "The gradient puts space and time together. Each round, a device remembers its estimate (<code>remember</code>, time), shares it (<code>neighbors</code>, space), and takes the smallest neighbor estimate plus the distance to that neighbor. Round after round, the field spreads from the target, and settles just above the cloud: the network measures along its links, the cloud is the exact distance.",
+      "It is <strong>self-stabilizing</strong>: from any state, it reaches the same field in a finite number of rounds, and stays there while nothing changes. So it is also <strong>self-healing</strong>: after any change, such as a moved target or a broken device, it repairs itself, with nobody in charge.",
     ],
     hint: "Restart to watch it spread. Drag the target, or switch devices off: the field repairs itself.",
     view: "toTarget",
@@ -108,8 +152,9 @@ export const STEPS = [
     title: "Compose: a channel",
     fields: ["toSource", "toTarget", "between"],
     text: [
-      "Fields add and compare point by point. The gradients from the source and from the target add up to a valley, whose floor runs along the shortest path at <code>between</code>, the length of that path.",
-      "Flood the valley up to <code>between + width</code>: the channel is what goes under water. At infinite density, it is an ellipse with foci in the source and the target.",
+      "Fields add and compare point by point. The gradients from the source and from the target add up to <code>between</code>, the length of the shortest path, along that path, and to more away from it.",
+      "Where the sum stays within <code>between + width</code>, the comparison is <code>True</code>: the channel, a plateau in the middle, while the devices outside stay on the ground. At infinite density, it is an ellipse with foci in the source and the target.",
+      "Combining self-stabilizing fields gives a self-stabilizing field: the gradients settle, and the channel built on them settles too. Move the source or the target, and it heals by itself.",
     ],
     hint: "Change the width, or drag the source and the target. Restart to watch it settle: while the distances are still infinite, inf <= inf holds.",
     view: "channel",

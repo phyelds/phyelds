@@ -1,3 +1,20 @@
+## [8.4.1](https://github.com/phyelds/phyelds/compare/8.4.0...8.4.1) (2026-10-20)
+
+### Documentation
+
+* better visual for wlakthrough ([a08a52f](https://github.com/phyelds/phyelds/commit/a08a52fb6d8803d191cb364c05e9e68f7008314d))
+
+## [8.4.0](https://github.com/phyelds/phyelds/compare/8.3.0...8.4.0) (2026-10-19)
+
+### Features
+
+* **simulator:** neighborhoods whose ranges adapt to the crowd ([#22](https://github.com/phyelds/phyelds/issues/22)) ([2e0ea04](https://github.com/phyelds/phyelds/commit/2e0ea046ce353b53b5315a82b76bdfdf8abc121b))
+
+### Build and continuous integration
+
+* **deps-dev:** bump handlebars from 4.7.8 to 4.7.10 ([#17](https://github.com/phyelds/phyelds/issues/17)) ([23d7b4b](https://github.com/phyelds/phyelds/commit/23d7b4be51be6bc66fe09f9a264022d5b748b199))
+* fix the dependabot alerts and let dependabot check weekly ([#16](https://github.com/phyelds/phyelds/issues/16)) ([bd42ce0](https://github.com/phyelds/phyelds/commit/bd42ce0ebfca326c011365a86568542237a1c9c0))
+
 ## [8.3.0](https://github.com/phyelds/phyelds/compare/8.2.0...8.3.0) (2026-10-19)
 
 ### Features

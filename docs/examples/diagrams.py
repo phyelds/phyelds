@@ -430,6 +430,54 @@ def draw_state_evolution(theme: Theme = LIGHT) -> None:
     _save(fig, theme, "state-evolution")
 
 
+def draw_branch_reset(theme: Theme = LIGHT) -> None:
+    """Generate ``branch-reset.png`` showing a counter inside an if starting over after the else branch."""
+    fig, ax = _canvas(theme, 5.3)
+    # (round, inside, what counter() does, the value returned, whether the state starts over)
+    rounds = [
+        (1, True, "no state yet: starts from 0", "1", True),
+        (2, True, "loads 1, stores 2", "2", False),
+        (3, False, "counter() not run: state dropped", "0", False),
+        (4, True, "no state again: starts from 0", "1", True),
+    ]
+    centers = [4.765, 3.365, 1.965, 0.565]
+
+    for (number, inside, note, value, fresh), cy in zip(rounds, centers):
+        branch = theme.magenta if inside else theme.muted
+        _draw_card(ax, theme, (0.06, cy - 0.475), (6.88, 0.95))
+        ax.text(0.62, cy, f"Round {number}", ha="center", va="center", fontsize=TITLE, fontweight="bold",
+                color=theme.orange if fresh else theme.magenta)
+
+        _box(ax, (1.2, cy - 0.33), (1.75, 0.66), theme.background, branch, lw=1.5)
+        ax.text(2.075, cy + 0.13, 'sense("inside")', ha="center", va="center",
+                fontsize=SMALL, fontweight="bold", family="monospace", color=theme.text)
+        ax.text(2.075, cy - 0.14, f"{inside}: {'if' if inside else 'else'} branch", ha="center", va="center",
+                fontsize=SMALL, fontweight="bold", color=branch)
+
+        _arrow(ax, (2.95, cy), (3.35, cy), theme.text, shrink_a=0, shrink_b=0, lw=1.6)
+
+        color = (theme.orange if fresh else theme.magenta) if inside else theme.warning
+        _box(ax, (3.35, cy - 0.33), (3.1, 0.66), theme.magenta_tint if inside else theme.warning_tint, color,
+             lw=1.5)
+        ax.text(4.9, cy + 0.13, "counter()" if inside else "return 0", ha="center", va="center",
+                fontsize=TEXT, fontweight="bold", family="monospace", color=color)
+        ax.text(4.9, cy - 0.14, note, ha="center", va="center", fontsize=SMALL, fontweight="bold", color=color)
+        _node(ax, (6.65, cy), 0.2, ORANGE if fresh else (MAGENTA if inside else GREY_EDGE), theme.rim, value,
+              "#ffffff", lw=1.6)
+
+    # What a round keeps reaches the next one; the else branch keeps nothing of the counter.
+    for (_, inside, _, value, _), cy, next_cy in zip(rounds, centers, centers[1:]):
+        kept = inside
+        color = theme.purple if kept else theme.warning
+        style = "-" if kept else "--"
+        ax.plot([6.65, 6.65, 4.9], [cy, cy - 0.7, cy - 0.7], color=color, lw=2.3, linestyle=style,
+                solid_joinstyle="round", zorder=3)
+        _arrow(ax, (4.9, cy - 0.7), (4.9, next_cy + 0.33), color, shrink_a=0, shrink_b=1, lw=2.3)
+        _tag(ax, (5.8, cy - 0.7), f"state = {value}" if kept else "no state", color, theme.background)
+
+    _save(fig, theme, "branch-reset")
+
+
 def draw_alignment_tree(theme: Theme = LIGHT) -> None:
     """Generate ``alignment-tree.png`` showing the call-path hierarchy."""
     fig, ax = _canvas(theme, 2.7)
@@ -517,6 +565,7 @@ def main() -> None:
         draw_neighbors_vs_exchange(theme)
         draw_alignment_tree(theme)
         draw_alignment_split(theme)
+        draw_branch_reset(theme)
         draw_misaligned_loop(theme)
         draw_gradient_steps(theme)
         draw_collect_strategies(theme)

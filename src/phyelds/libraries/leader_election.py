@@ -254,8 +254,11 @@ def elect_leaders(
 @aggregate
 def random_uuid() -> Tuple[StateT[float], int]:
     """
-    Generate a random UUID for the node.
-    :return: the random UUID
+    Draw a random identifier for the current device, kept across rounds.
+
+    Returns:
+        A tuple ``(random_value, device_id)``: the random number in ``[0, 1)`` is drawn
+            on the first round, and the device ID breaks ties.
     """
     _, value = remember(random.random())
     return value, local_id()
@@ -268,11 +271,15 @@ def breaking_using_uids(
     distances: NeighborhoodField[float],
 ) -> StateT[tuple[float, int]]:
     """
-    Break the symmetry using the UUID of the node.
-    :param uid: the UUID of the node
-    :param area: the area of the network
-    :param distances: the distances to the neighbors
-    :return: the current id of the leader
+    Elect leaders by competition on ``uid``: the lowest one wins within its area.
+
+    Args:
+        uid: The identifier of the current device, as returned by ``random_uuid``.
+        area: The size of a leader's area, in the units of ``distances``.
+        distances: Field of edge distances to neighbors.
+
+    Returns:
+        The identifier of the leader the current device follows after this round.
     """
     set_lead, lead = remember(uid)
     potential: float = distance_to(lead == uid, distances)
@@ -290,14 +297,24 @@ def distance_competition(
     distances: NeighborhoodField[float],
 ) -> StateT[Tuple[float, int]]:
     """
-    Compare the distance of the current node with the distance of the neighbors.
-    It leverages the fact that the tuple is a symmetric breaker.
-    :param current_distance: current distance to the lead
-    :param area: the maximum distance to the lead
-    :param uid: the local id of the node
-    :param lead: the current lead
-    :param distances: the distances to the neighbors
-    :return: the new lead
+    Choose the next leader of the current device from those of its neighbors.
+
+    Identifiers are tuples, so they compare by random value and then by device ID,
+    which breaks ties.
+
+    Args:
+        current_distance: The distance of the current device from its leader.
+        area: The size of a leader's area, in the units of ``distances``.
+        uid: The identifier of the current device.
+        lead: The identifier of the current leader.
+        distances: Field of edge distances to neighbors.
+
+    Returns:
+        ``uid`` if the device is farther than ``area`` from its leader; an identifier
+            with an infinite value, which loses every competition, if it is farther than
+            half of ``area``; otherwise the lowest leader among the neighbors (itself
+            included) that are less than half of ``area`` from their leader, through the
+            edge to them (``uid`` if there are none).
     """
     inf: Tuple[float, int] = (float("inf"), uid[1])
     neighbors_lead: NeighborhoodField[Tuple[float, int]] = neighbors(lead)

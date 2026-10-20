@@ -52,14 +52,14 @@ All collective behaviors in **phyelds** come from combining just four mechanisms
 
 ## The building blocks at a glance
 
-| Construct | Field calculus | What it does |
-| --- | --- | --- |
-| [`@aggregate`](alignment.md) | function application | Marks a function as part of the aggregate computation and aligns its branches |
-| [`remember`](state.md) | `rep` | Keeps local state that survives from one round to the next |
-| [`neighbors`](neighborhood-field.md) | `nbr` | Shares a value with neighbors and returns their values as a `NeighborhoodField` |
-| [`exchange`](neighborhood-field.md#exchange) | `exchange` | Evolves state and sends (possibly distinct, per-neighbor) values in one step |
-| [`if` / `align`](alignment.md) | branching | Isolates branches into separate, non-interfering communication domains |
-| `sense`, `store`, `local_id` | sensors / actuators | Reads device sensors and writes actuation/metric outputs ([`phyelds.libraries.device`](libraries.md#device-sensors-actuators-phyeldslibrariesdevice)) |
+| Construct | What it does |
+| --- | --- |
+| [`@aggregate`](alignment.md) | Marks a function as part of the aggregate computation and aligns its branches |
+| [`remember`](state.md) | Keeps local state that survives from one round to the next |
+| [`neighbors`](neighborhood-field.md) | Shares a value with neighbors and returns their values as a `NeighborhoodField` |
+| [`exchange`](neighborhood-field.md#exchange) | Evolves state and sends (possibly distinct, per-neighbor) values in one step |
+| [`if` / `align`](alignment.md) | Isolates branches into separate, non-interfering communication domains |
+| `sense`, `store`, `local_id` | Reads device sensors and writes actuation/metric outputs ([`phyelds.libraries.device`](libraries.md#device-sensors-actuators-phyeldslibrariesdevice)) |
 
 ---
 

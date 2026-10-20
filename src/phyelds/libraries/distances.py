@@ -25,7 +25,7 @@ def neighbors_distances(
 
     Returns:
         A ``NeighborhoodField[float]`` with the distance to each neighbor
-        (0.0 for the local node).
+            (0.0 for the local node).
     """
     my_position = tuple(local_position() if position is None else position)
     positions: NeighborhoodField[tuple[float, ...]] = neighbors(my_position)
@@ -35,8 +35,10 @@ def neighbors_distances(
 @aggregate
 def hops_distance() -> NeighborhoodField[int]:
     """
-    Get the hops distance to the neighbors from the current node.
-    :return: the neighborhood representing the hops distance to the neighbors
+    Return the distance to each neighbor in hops.
+
+    Returns:
+        A field that is ``1`` for every neighbor and ``0`` for the current device.
     """
     distances: NeighborhoodField[int] = neighbors(1)
     distances.data[local_id()] = 0

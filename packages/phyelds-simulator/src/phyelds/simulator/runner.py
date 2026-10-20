@@ -20,9 +20,10 @@ class SimulatorNodeContext(NodeContext, ABC):
     @staticmethod
     def from_node(node: Node):
         """
-        Create a SimulatorNodeContext from a Node.
-        :param node: The node to create the context from.
-        :return: The SimulatorNodeContext.
+        Create the context of a simulated node: its sensors are the node's data and position.
+
+        Args:
+            node: The node to create the context from.
         """
         sensors = {
             "position": node.position,
@@ -72,11 +73,18 @@ def schedule_program_for_all(
     program: callable, **kwargs
 ):
     """
-    Schedule the program for all nodes in the simulator.
-    :param simulator: The simulator to schedule the program for.
-    :param start: The time to start the program.
-    :param frequency: The frequency to run the program.
-    :param program: The program to run.
+    Run an aggregate program on every node of the simulator, round after round.
+
+    Each node runs its first round ``start`` time units from now and then one every
+    ``frequency`` time units; its result, outgoing messages, state and outputs are
+    kept in its ``data``.
+
+    Args:
+        simulator: The simulator whose nodes run the program.
+        start: The delay before the first round.
+        frequency: The time between two rounds of a node (a period, not a rate).
+        program: The aggregate program to run.
+        **kwargs (Any): Keyword arguments passed to ``program`` at each round.
     """
     for node in simulator.environment.nodes.values():
         simulator.schedule_event(

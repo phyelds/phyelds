@@ -293,13 +293,19 @@ def stabilizing_gossip(
     callback: Callable[..., T],
 ) -> StateT[T]:
     """
-    Gossip a value in the network using a callable function to choose the value to gossip.
-    This function will stabilize the gossip value by applying the callback function until
-    no changes are made.
-    :param value: The value to gossip.
-    :param max_diameter: The maximum diameter to consider for gossiping.
-    :param callback: The callback function to apply on the value.
-    :return: The stabilized gossiped value.
+    Combine ``value`` with the values of the devices within ``max_diameter`` hops.
+
+    Each device broadcasts its own value, and the result is recomputed every round
+    from the values received, so it follows the values as they change.
+
+    Args:
+        value: Local value contributed by the current device.
+        max_diameter: The maximum number of hops a value travels.
+        callback: Function called as ``callback(value, *values)``, with the values of
+            the devices within ``max_diameter`` hops (the current one included).
+
+    Returns:
+        The result of ``callback``.
     """
     all_ids: Set[int] = gossip({local_id()}, set.union)
     all_data: Dict[int, Any] = {}

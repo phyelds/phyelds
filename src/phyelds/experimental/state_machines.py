@@ -177,8 +177,8 @@ class StateMachine:
     A collective state machine described state by state: each state is a function that
     does what the device does in that state and, from what happens, proposes where to go.
 
-    Example::
-
+    Example:
+        ```python
         mission = StateMachine("wait", "explore", "defend")
 
         @mission.state("wait", to=["explore", "defend"])
@@ -190,6 +190,7 @@ class StateMachine:
             return distance_to(sense("base"), neighbors_distances())
 
         state, distance = mission.run()
+        ```
 
     Args:
         *states: The states, such as strings or the members of an enum. The machine

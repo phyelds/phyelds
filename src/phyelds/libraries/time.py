@@ -25,8 +25,10 @@ class _ReplicaTimer:
 
 def local_time() -> float:
     """
-    Get the local time of the node.
-    :return: the local time of the node.
+    Return the time of the current round, as perceived by the device.
+
+    Returns:
+        The value of the device's ``"time"`` sensor.
     """
     return engine.get().node_context.time()
 
@@ -34,8 +36,10 @@ def local_time() -> float:
 @aggregate
 def counter() -> StateT[int]:
     """
-    Simple counter function that counts the number of times it is called.
-    :return: a counter that counts the number of times it is called.
+    Count the consecutive rounds in which this call runs on the current device.
+
+    Returns:
+        The number of rounds so far, this one included: ``1`` on the first round.
     """
     return remember_and_evolve(0, lambda x: x + 1)
 
@@ -43,10 +47,15 @@ def counter() -> StateT[int]:
 @aggregate
 def decay(value: float | int, rate: float | int) -> StateT[float | int]:
     """
-    Apply a decay function to a value
-    :param value: the initial value
-    :param rate: the decay rate
-    :return: the decayed value
+    Decrease a value by ``rate`` each round, down to ``0``.
+
+    Args:
+        value: The starting value; later changes to it are ignored.
+        rate: The amount subtracted each round.
+
+    Returns:
+        The decayed value, never below ``0``: ``max(0, value - rate)`` on the first
+            round when ``value`` is positive, and ``value`` itself when it is not.
     """
     set_value, decay_value = remember(value)
     if decay_value > 0:

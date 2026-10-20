@@ -5,10 +5,12 @@ This library provides a set of tools for building and running aggregate computin
 
 A global engine is used to manage the state and message passing between different contexts.
 In order to use it, you should:
-1. Call `engine.setup(messages, id, state)` to initialize the engine with the current context.
-2. Call an aggregate script
-3. Call `engine.cooldown()` to reset the engine state and get the messages to send.
-4. Store the state for the next iteration.
+
+1. Call `engine.get().setup(node_context, messages, state)` to initialize the engine
+   with the current context.
+2. Call an aggregate program.
+3. Call `engine.get().cooldown()` to reset the engine state and get the messages to send.
+4. Store `engine.get().state_trace()` for the next round.
 
 """
 from contextvars import ContextVar

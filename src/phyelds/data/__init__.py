@@ -37,7 +37,7 @@ _Sorted = OrderedDict if sys.implementation.name == "micropython" else dict
 
 class NeighborhoodField(Generic[T], Iterator[T]):
     """
-    NeighborhoodField class used to manage the interactions of between nodes
+    NeighborhoodField class used to manage the interactions between nodes
     (namely `nbr` of neighborhood calculus).
     It provides methods to perform operations on the neighborhood, such as addition,
     subtraction, multiplication, and division.
@@ -74,8 +74,10 @@ class NeighborhoodField(Generic[T], Iterator[T]):
 
     def exclude_self(self) -> Dict[int, T]:
         """
-        Exclude the current node from the neighborhood.
-        :return:  A dictionary with the current node excluded.
+        Return the values of the neighbors, without the current node.
+
+        Returns:
+            A new dictionary mapping each neighbor ID to its value; the field is unchanged.
         """
         to_return = self.data.copy()
         to_return.pop(self.node_id, None)
@@ -97,8 +99,10 @@ class NeighborhoodField(Generic[T], Iterator[T]):
 
     def local(self) -> Optional[T]:
         """
-        Get the local value of the current node.
-        :return: The local value or None if not present.
+        Return the value of the current node.
+
+        Returns:
+            The value of the current node, or ``None`` if the field has none.
         """
         return self.data.get(self.node_id, None)
 
@@ -116,11 +120,14 @@ class NeighborhoodField(Generic[T], Iterator[T]):
 
     def select(self, neighborhood: "NeighborhoodField[Any]") -> List[T]:
         """
-        Select the values from the neighborhood that are present
-        in the current neighborhood.
-        :param neighborhood: The neighborhood to select from (acts as a filter).
-        :return:  A list of values from the current neighborhood
-                  that are present in the given neighborhood.
+        Return the values of the nodes for which ``neighborhood`` holds a truthy value.
+
+        Args:
+            neighborhood: The field used as a filter, typically a field of booleans.
+
+        Returns:
+            The values of this field, ordered by node ID, whose node is truthy in
+                ``neighborhood``; nodes missing from ``neighborhood`` are left out.
         """
         # We look at keys present in both, where the *other* neighborhood's value is truthy
         return [self.data[k] for k in self.data if neighborhood.data.get(k, False)]
@@ -395,9 +402,13 @@ class NeighborhoodField(Generic[T], Iterator[T]):
 
     def map(self, func: Callable[[T], U]) -> "NeighborhoodField[U]":
         """
-        Map a function to the neighborhood.
-        :param func: The function to map.
-        :return: A new Neighborhood object with the mapped values.
+        Apply ``func`` to every value of the field.
+
+        Args:
+            func: The function to apply to each value (and to the default, if any).
+
+        Returns:
+            A new ``NeighborhoodField`` with the mapped values.
         """
         mapped_default = None if self.default is None else func(self.default)
         return NeighborhoodField(

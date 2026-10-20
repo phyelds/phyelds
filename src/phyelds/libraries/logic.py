@@ -2,6 +2,7 @@
 Spatial and temporal logic operators for aggregate computing (from FCPP ``slcs`` and ``past_ctl``).
 
 Provides:
+
 - **Spatial Logic for Closure Spaces (SLCS)**: ``interior``, ``closure``, ``boundary``,
   ``interior_boundary``, ``closure_boundary``, ``somewhere``, ``everywhere``,
   ``reaches``, ``touches``, ``surrounds``;

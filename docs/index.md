@@ -25,16 +25,11 @@ only with its immediate neighbors.
 </div>
 
 ```bash
-pip install phyelds-simulator
+pip install phyelds
 ```
 
-<p class="ph-note">
-Python 3.12 or later. This installs phyelds and its simulator; <code>pip install phyelds</code>
-alone is the core, to run programs on a runtime of your own. Optional:
-<code>pip install "phyelds-simulator[jupyter]"</code> for live rendering in Jupyter notebooks,
-<code>pip install phyelds-vmas</code> for the VMAS multi-robot simulator,
-<code>pip install phyelds-mesa</code> for Mesa agent-based models,
-<code>pip install phyelds-webots</code> for the Webots robot simulator.
+<p class="ph-note" markdown>
+Python 3.12 or later. To run programs in simulation, see the [simulator](simulator.md).
 </p>
 
 </div>
@@ -70,12 +65,12 @@ alone is the core, to run programs on a runtime of your own. Optional:
     Ordinary functions, loops, dictionaries and dataclasses: `@aggregate` keeps the
     messages of the devices aligned.
 
--   :material-toolbox-outline:{ .lg .middle } __Batteries included__
+-   :material-toolbox-outline:{ .lg .middle } __Extensive standard library__
 
     ---
 
-    Gradients, collection, gossip, leader election, processes, time and logic, and a
-    simulator that renders animations.
+    Ready-made building blocks for information propagation, data aggregation, consensus,
+    leader election, collective processes, and time-based reactive logic.
 
 </div>
 
@@ -185,4 +180,4 @@ Then go deeper:
 **phyelds** builds upon over a decade of research and open-source tools in spatial and aggregate computing, bringing ideas from **[Proto](https://proto.bbn.com/)**, **[Protelis](https://protelis.github.io/)**, **[ScaFi](https://scafi.github.io/)**, **[FCPP](https://fcpp.github.io/)**, and **[Collektive](https://github.com/Collektive/collektive)** into a pragmatic, Python-native library.
 
 - **Main contributors**: [Gianluca Aguzzi](https://github.com/cric96) and [Davide Domini](https://github.com/davidedomini).
-- **Acknowledgments**: special thanks to **Mirko Viroli**, **Danilo Pianini**, **Roberto Casadei**, and **Giorgio Audrito** for the insightful discussions and foundational work that made this project possible.
+- **Acknowledgments**: special thanks to **Mirko Viroli**, **Ferruccio Damiani**, **Danilo Pianini**, **Roberto Casadei**, and **Giorgio Audrito** for the insightful discussions and foundational work that made this project possible.

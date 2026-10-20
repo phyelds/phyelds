@@ -10,6 +10,15 @@ It is a package of its own, which also installs phyelds:
 pip install phyelds-simulator
 ```
 
+Optional packages:
+
+| Command | Adds |
+| --- | --- |
+| `pip install "phyelds-simulator[jupyter]"` | live rendering in Jupyter notebooks |
+| `pip install phyelds-vmas` | the [VMAS](integration/vmas.md) multi-robot simulator |
+| `pip install phyelds-mesa` | [Mesa](integration/mesa.md) agent-based models |
+| `pip install phyelds-webots` | the [Webots](integration/webots.md) robot simulator |
+
 ## The pieces
 
 | Piece | Module | Role |
