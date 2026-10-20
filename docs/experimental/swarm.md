@@ -149,7 +149,8 @@ Blue is *gather*, orange *cross*, green *circle*. The complete example is
 ## What is not here
 
 MacroSwarm also has formations by slots around a leader (`line`, `centeredCircle`,
-`vShape`): they are not ported, since [formations on shapes](formations.md) take any
-shape and recover from what disturbs them. Its plans, sequences of behaviours each
-ending on a condition, are [collective state machines](state-machines.md) here, as in
-the example above.
+`vShape`): they are not ported.
+[Formations on shapes](formations.md) take any shape instead, and recover from what disturbs them.
+
+Its plans, sequences of behaviours each ending on a condition, are
+[collective state machines](state-machines.md) here, as in the example above.

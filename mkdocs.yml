@@ -123,6 +123,7 @@ nav:
       - phyelds.calculus: reference/calculus.md
       - phyelds.data: reference/data.md
       - phyelds.experimental: reference/experimental.md
+      - phyelds.experimental.formation: reference/formation.md
       - phyelds.libraries: reference/libraries.md
       - phyelds.simulator: reference/simulator.md
       - phyelds.vm: reference/vm.md
