@@ -1,8 +1,16 @@
 """
 Device library: what a device knows about itself, its sensors and its outputs.
+
+A ``Sensor`` or an ``Actuator`` names a sensor or an output once: the program and its
+host share the object, rather than repeating a string that nobody checks.
 """
-from typing import Any, Tuple
+import math
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any, Generic, Tuple, TypeVar
+
 from phyelds import engine
+
+T = TypeVar("T")
 
 
 def local_id() -> int:
@@ -50,3 +58,66 @@ def store(output: str, value: Any) -> None:
         value: The value to store.
     """
     engine.get().node_context.store(output, value)
+
+
+class Sensor(Generic[T]):  # pylint: disable=too-few-public-methods
+    """
+    A sensor of the devices, by name: ``source = Sensor("source")``, then ``source.sense()``.
+
+    Args:
+        name: The name the host gives the sensor.
+    """
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    def sense(self) -> T:
+        """The value of the sensor on the current device."""
+        return sense(self.name)
+
+
+class Actuator(Generic[T]):
+    """
+    An actuator of the devices: the program sends it a value, the host reads it.
+
+    The value is an output (see ``store``): it holds until the next round of the
+    device, which sends another one, or none.
+
+    Args:
+        name: The name of the output.
+        check: Whether a value is valid, if only some are: ``send`` refuses the others.
+    """
+
+    def __init__(self, name: str, check: Callable[[T], bool] | None = None) -> None:
+        self.name = name
+        self._check = check
+
+    def send(self, value: T) -> None:
+        """
+        Send ``value`` to the actuator of the current device.
+
+        Args:
+            value: What the actuator does, in this round.
+
+        Raises:
+            ValueError: If the check of the actuator refuses ``value``.
+        """
+        if self._check is not None and not self._check(value):
+            raise ValueError(f"{self.name} cannot take {value!r}")
+        store(self.name, value)
+
+    def read(self, outputs: Mapping[str, Any], default: T | None = None) -> T | None:
+        """What a program sent, among the ``outputs`` of its device; ``default`` if nothing."""
+        return outputs.get(self.name, default)
+
+
+def _finite_numbers(value: Any) -> bool:
+    """Whether ``value`` is a sequence of finite numbers, such as a tuple or a ``Vector``."""
+    try:
+        return all(not isinstance(each, (str, bool)) and math.isfinite(each) for each in value)
+    except TypeError:
+        return False
+
+
+velocity: Actuator[Sequence[float]] = Actuator("velocity", check=_finite_numbers)
+"""Where the device moves, and how fast: a sequence of finite numbers, one per axis."""
