@@ -6,14 +6,17 @@
  * height or tone (NaN on the grid) marks a device or a point without a value.
  */
 import { region } from "./continuum.js";
-import { SPAN, TEMPERATURE } from "./model.js";
+import { CAP, HOT, SPAN, TEMPERATURE } from "./model.js";
 
 export const ON = 2;
 export const OFF = 3;
 const LONGEST = Math.hypot(SPAN, SPAN); // the longest distance in the arena
+const PLATEAU = 0.5; // the height of True in a channel
 
 const distanceHeight = (distance) => (Number.isFinite(distance) ? distance / LONGEST : null);
 const warmth = (degrees) => (degrees - TEMPERATURE.min) / (TEMPERATURE.max - TEMPERATURE.min);
+// The temperature capped at HOT: whatever is above it is just True, so it sits flat on the cut.
+const capped = (degrees) => warmth(Math.min(degrees, HOT));
 
 function gridOf(values, toHeight, toTone = toHeight) {
   const height = new Float32Array(values.length);
@@ -59,6 +62,18 @@ export const VIEWS = {
     device: (state) => scalar(warmth(state.temperature)),
     cloud: (fields) => gridOf(fields.temperature, warmth),
   },
+  hot: {
+    label: `temperature > ${HOT}`,
+    boolean: true,
+    links: "none",
+    text: (state) => (state.temperature > HOT ? "hot" : "not hot"),
+    device: (state) => ({ height: capped(state.temperature), tone: state.temperature > HOT ? ON : OFF }),
+    // The plane at HOT cuts the temperature: what rose above it is True, flat on the cut.
+    cloud: (fields) => ({
+      ...gridOf(fields.temperature, capped, (degrees) => (degrees > HOT ? ON : OFF)),
+      water: { ...region(fields.grid, fields.temperature.map((degrees) => -degrees), -HOT), height: warmth(HOT), label: `${HOT} °C` },
+    }),
+  },
   neighbors: {
     label: "neighbors in range",
     // Counted against a device far from the border, whose whole range is inside the arena.
@@ -68,6 +83,15 @@ export const VIEWS = {
     text: (state) => `${state.heard.length} in range`,
     device: (state, network) => scalar(state.heard.length / network.typical),
     cloud: (fields) => gridOf(fields.share, (share) => share),
+  },
+  rounds: {
+    label: "rounds counted",
+    scale: { from: "0", to: String(CAP) },
+    links: "none",
+    text: (state) => `${state.rounds} rounds`,
+    device: (state) => scalar(state.rounds / CAP),
+    // Every point keeps counting until the cap: the fixpoint is flat.
+    cloud: (fields) => gridOf(fields.temperature, () => 1),
   },
   toTarget: {
     label: "distance to the target",
@@ -104,17 +128,14 @@ export const VIEWS = {
     boolean: true,
     links: "faint",
     text: (state) => (state.inChannel ? "in the channel" : "outside"),
-    device: (state) => ({
-      height: distanceHeight(state.toSource.distance + state.toTarget.distance),
-      tone: state.inChannel ? ON : OFF,
-    }),
-    // The sum is a valley along the shortest path; flooded up to between + width, the water is the channel.
+    // True is a plateau in the middle, False stays on the ground.
+    device: (state) => ({ height: state.inChannel ? PLATEAU : 0, tone: state.inChannel ? ON : OFF }),
     cloud: (fields, environment) => {
       const level = fields.between + environment.width;
       return {
-        ...gridOf(fields.sum, distanceHeight, (sum) => (sum <= level ? ON : OFF)),
-        curve: curveOf(fields.path, () => distanceHeight(fields.between)),
-        water: { ...region(fields.grid, fields.sum, level), height: distanceHeight(level), label: "between + width" },
+        ...gridOf(fields.sum, (sum) => (sum <= level ? PLATEAU : 0), (sum) => (sum <= level ? ON : OFF)),
+        curve: curveOf(fields.path, () => PLATEAU),
+        water: { ...region(fields.grid, fields.sum, level), height: PLATEAU, label: "between + width" },
       };
     },
   },

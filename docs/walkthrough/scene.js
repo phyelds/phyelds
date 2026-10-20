@@ -364,7 +364,9 @@ export function createScene(canvas) {
     drawShadow(frame);
     drawHoles(frame);
     drawRange(frame);
-    drawStems(frame, points);
+    // Only the inspected device stands on a stem: one per device would clutter the field.
+    const inspected = (device) => frame.focus?.id === device.id || frame.selected === device.id;
+    drawStems({ ...frame, devices: frame.devices.filter(inspected) }, points);
     drawCloud(frame);
     drawWater(frame);
     drawLinks(frame, frame.links, points);

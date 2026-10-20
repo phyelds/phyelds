@@ -16,6 +16,8 @@ export const SPAN = SIZE - 1; // the arena is the square [0, SPAN] x [0, SPAN]
 export const FEWEST = SIZE * SIZE; // the starting lattice
 export const MOST = 100; // the arena takes this many devices at most
 export const TEMPERATURE = { min: 16, max: 27 };
+export const HOT = 22; // the threshold of `temperature > HOT`, in °C
+export const CAP = 10; // the rounds a device counts at most
 const LATTICE_RANGE = 1.65; // in the starting lattice, the 8 devices around, diagonals included
 const LATTICE_HOLE = 0.42; // in the starting lattice, the space a switched-off device leaves empty
 
@@ -166,6 +168,10 @@ function runDevice(network, environment, shared, device) {
   // Only the neighbors that have already run have shared something.
   const heard = network.inRange[id].filter((neighbor) => shared[neighbor.id] !== null);
 
+  // remember(0), then set_count(min(count + 1, CAP)): the device's own last state,
+  // none for a device that has not run yet or was switched off.
+  const rounds = Math.min((shared[id]?.rounds ?? 0) + 1, CAP);
+
   const toTarget = target ? HERE : through(heard, shared, (state) => state.toTarget.distance);
   const toSource = source ? HERE : through(heard, shared, (state) => state.toSource.distance);
 
@@ -182,6 +188,7 @@ function runDevice(network, environment, shared, device) {
 
   return {
     temperature: temperature(device.x, device.y),
+    rounds,
     heard: heard.map((neighbor) => neighbor.id),
     toTarget,
     toSource,
@@ -196,6 +203,7 @@ function runDevice(network, environment, shared, device) {
 const close = (a, b) => a === b || Math.abs(a - b) < 1e-9;
 const SAME = {
   temperature: close,
+  rounds: (a, b) => a === b,
   heard: (a, b) => a.length === b.length && a.every((id, index) => id === b[index]),
   toTarget: (a, b) => close(a.distance, b.distance),
   toSource: (a, b) => close(a.distance, b.distance),
