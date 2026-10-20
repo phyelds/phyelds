@@ -1,3 +1,9 @@
+## [8.7.0](https://github.com/phyelds/phyelds/compare/8.6.0...8.7.0) (2026-10-20)
+
+### Features
+
+* **playground:** grouped, searchable examples and swarms that move ([#25](https://github.com/phyelds/phyelds/issues/25)) ([c0c1cd3](https://github.com/phyelds/phyelds/commit/c0c1cd3132f03ca182ccb88c5b9db338f7842510)), closes [#24](https://github.com/phyelds/phyelds/issues/24)
+
 ## [8.6.0](https://github.com/phyelds/phyelds/compare/8.5.0...8.6.0) (2026-10-20)
 
 ### Features
