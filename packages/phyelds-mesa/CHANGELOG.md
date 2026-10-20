@@ -1,3 +1,9 @@
+## [8.4.2](https://github.com/phyelds/phyelds/compare/8.4.1...8.4.2) (2026-10-20)
+
+### Documentation
+
+* improve explanation, better rendering for docs ([d105cd8](https://github.com/phyelds/phyelds/commit/d105cd8965f1f0107cfbdd2b250fb2ac865059a1))
+
 ## [8.4.1](https://github.com/phyelds/phyelds/compare/8.4.0...8.4.1) (2026-10-20)
 
 ### Documentation
