@@ -92,12 +92,15 @@ class Actuator(Generic[T]):
         self.name = name
         self._check = check
 
-    def send(self, value: T) -> None:
+    def send(self, value: T) -> T:
         """
         Send ``value`` to the actuator of the current device.
 
         Args:
             value: What the actuator does, in this round.
+
+        Returns:
+            ``value``, so that a program can return what it does: ``return velocity.send(v)``.
 
         Raises:
             ValueError: If the check of the actuator refuses ``value``.
@@ -105,6 +108,7 @@ class Actuator(Generic[T]):
         if self._check is not None and not self._check(value):
             raise ValueError(f"{self.name} cannot take {value!r}")
         store(self.name, value)
+        return value
 
     def read(self, outputs: Mapping[str, Any], default: T | None = None) -> T | None:
         """What a program sent, among the ``outputs`` of its device; ``default`` if nothing."""

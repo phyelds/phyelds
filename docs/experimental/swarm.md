@@ -19,6 +19,8 @@ velocity.send((go_to(target) + separation(Vector(), within=1.0) * 2).normalize()
 
 To take a shape, see [formations](formations.md).
 
+[Move a swarm in the playground](../playground/index.md#example=follow){ .md-button }
+
 ---
 
 ## Vectors, in the plane and in space

@@ -86,9 +86,11 @@ function rangeOf(count) {
  * The first `count` devices at `places` (PLACES, unless they were moved), their
  * `range` (rangeOf(count), unless it is given) and the `hole` a switched-off one
  * leaves, who is in range of whom, and how many neighbors a device far from the
- * border has (`typical`, the median, to scale their counts).
+ * border has (`typical`, the median, to scale their counts). A device with a range
+ * of its own in `ranges` hears within it instead: two devices hear each other when
+ * each is in range of the other.
  */
-export function createNetwork(count = FEWEST, places = PLACES, range = rangeOf(count)) {
+export function createNetwork(count = FEWEST, places = PLACES, range = rangeOf(count), ranges = []) {
   const hole = LATTICE_HOLE * Math.sqrt(FEWEST / count);
   const devices = places.slice(0, count).map((place, id) => ({ id, ...place }));
   const links = [];
@@ -96,7 +98,7 @@ export function createNetwork(count = FEWEST, places = PLACES, range = rangeOf(c
   for (const a of devices) {
     for (const b of devices) {
       const length = Math.hypot(a.x - b.x, a.y - b.y);
-      if (a.id < b.id && length <= range) {
+      if (a.id < b.id && length <= Math.min(ranges[a.id] ?? range, ranges[b.id] ?? range)) {
         links.push({ a: a.id, b: b.id, length });
         inRange[a.id].push({ id: b.id, length });
         inRange[b.id].push({ id: a.id, length });

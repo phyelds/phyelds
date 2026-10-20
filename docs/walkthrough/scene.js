@@ -10,6 +10,48 @@ import { SPAN } from "./model.js";
 import { rgba } from "./palette.js";
 
 export const LIFT = 2.1; // world height of a value of 1
+
+/** Traces an arrow of length `size` around (x, y), pointing at `angle` on the screen: a device heading there. */
+export function traceArrow(context, x, y, size, angle) {
+  const at = (length, turn) => [x + length * Math.cos(angle + turn), y + length * Math.sin(angle + turn)];
+  context.moveTo(...at(size, 0));
+  context.lineTo(...at(size * 0.85, 2.45));
+  context.lineTo(...at(size * 0.35, Math.PI));
+  context.lineTo(...at(size * 0.85, -2.45));
+  context.closePath();
+}
+const insides = new WeakMap(); // the polygons of each shape, worked out once
+
+/**
+ * The inside of a shape given by its signed distance at the corners of a grid (`low`,
+ * `high`, `cells`, `distances`): in each cell, the polygon where the distance is negative,
+ * its border where the distance, interpolated along the sides, crosses zero.
+ */
+export function insideOf(shape) {
+  if (insides.has(shape)) return insides.get(shape);
+  const { low, high, cells, distances } = shape;
+  const step = (high - low) / cells;
+  const at = (i, j) => ({ x: low + i * step, y: low + j * step, d: distances[j * (cells + 1) + i] });
+  const polygons = [];
+  for (let j = 0; j < cells; j += 1) {
+    for (let i = 0; i < cells; i += 1) {
+      const corners = [at(i, j), at(i + 1, j), at(i + 1, j + 1), at(i, j + 1)];
+      const polygon = [];
+      corners.forEach((corner, k) => {
+        const next = corners[(k + 1) % 4];
+        if (corner.d <= 0) polygon.push(corner);
+        if (corner.d <= 0 !== next.d <= 0) {
+          const t = corner.d / (corner.d - next.d);
+          polygon.push({ x: corner.x + t * (next.x - corner.x), y: corner.y + t * (next.y - corner.y) });
+        }
+      });
+      if (polygon.length >= 3) polygons.push(polygon);
+    }
+  }
+  insides.set(shape, polygons);
+  return polygons;
+}
+
 export const HIDDEN = 255; // colour index of a cloud point without a value
 export const PULSE_MS = 320; // how long the ring of a device that just ran lasts
 const DISTANCE = 15; // from the camera to the pivot
@@ -47,6 +89,7 @@ export function createScene(canvas) {
   let lens = null;
   let pivot = PIVOT; // what the camera looks at, and how far it backs away to fit a stack of layers
   let reach = 1;
+  let margin = 0; // how far the world goes beyond the arena, on every side, where devices may move
   let projected = []; // every device drawn, as {id, x, y, z}, the topmost first
   let buckets = { colors: null, lists: [] };
 
@@ -112,13 +155,22 @@ export function createScene(canvas) {
     });
   }
 
+  /** The inside of `shape`, filled on the plane at height z: the shape a swarm takes. */
+  function drawShape(shape, z, palette) {
+    context.beginPath();
+    for (const piece of insideOf(shape)) polygon(piece.map(({ x, y }) => project(x, y, z)));
+    // One fill for every piece, so that their shared edges leave no seams.
+    context.fillStyle = rgba(palette.rgb[palette.on], palette.dark ? 0.22 : 0.16);
+    context.fill("nonzero");
+  }
+
   /** The arena as a plane at height z, its edge as opaque as `edge`; returns its corners on screen. */
   function drawGround(palette, z = 0, edge = 0.14) {
     const corners = [
-      project(-PAD, -PAD, z),
-      project(SPAN + PAD, -PAD, z),
-      project(SPAN + PAD, SPAN + PAD, z),
-      project(-PAD, SPAN + PAD, z),
+      project(-PAD - margin, -PAD - margin, z),
+      project(SPAN + PAD + margin, -PAD - margin, z),
+      project(SPAN + PAD + margin, SPAN + PAD + margin, z),
+      project(-PAD - margin, SPAN + PAD + margin, z),
     ];
     context.beginPath();
     polygon(corners);
@@ -305,7 +357,17 @@ export function createScene(canvas) {
       context.stroke();
       return;
     }
-    context.arc(point.x, point.y, radius, 0, 2 * Math.PI);
+    if (Number.isFinite(device.heading)) {
+      // Where the heading points on the screen: a step along it, seen by the camera.
+      const ahead = project(
+        device.x + 0.25 * Math.cos(device.heading),
+        device.y + 0.25 * Math.sin(device.heading),
+        device.z,
+      );
+      traceArrow(context, point.x, point.y, radius * 1.7, Math.atan2(ahead.y - point.y, ahead.x - point.x));
+    } else {
+      context.arc(point.x, point.y, radius, 0, 2 * Math.PI);
+    }
     if (device.color === null) {
       context.fillStyle = rgba(palette.stage);
       context.fill();
@@ -357,6 +419,7 @@ export function createScene(canvas) {
   function draw(frame) {
     pivot = PIVOT;
     reach = 1;
+    margin = 0;
     aim();
     context.clearRect(0, 0, size.width, size.height);
     const points = frame.devices.map((device) => project(device.x, device.y, device.z));
@@ -407,7 +470,8 @@ export function createScene(canvas) {
   function drawLayers(frame) {
     const { layers, palette, top } = frame;
     pivot = { ...PIVOT, z: top / 2 };
-    reach = Math.max(1, (SPAN + top) / (SPAN + LIFT));
+    margin = frame.margin ?? 0;
+    reach = Math.max(1, (SPAN + 2 * margin + top) / (SPAN + LIFT));
     aim();
     context.clearRect(0, 0, size.width, size.height);
     const highest = layers[layers.length - 1];
@@ -426,6 +490,7 @@ export function createScene(canvas) {
       const layer = layers[k];
       const points = layer.devices.map((device) => project(device.x, device.y, device.z));
       label(layer.label, drawGround(palette, layer.base, layer.focused ? 0.4 : 0.14), palette, layer.focused);
+      if (layer.shape) drawShape(layer.shape, layer.base, palette);
       drawLinks(frame, layer.links, points);
       drawLinks(frame, layer.highlights, points);
       // The rings of the neighbors and of the devices that just ran belong to the focused layer only.

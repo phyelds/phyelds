@@ -5,12 +5,17 @@ The page sends the network (where the devices are, how far they hear and what
 they sense), the code and the expressions to watch. Every device of a phyelds
 Simulator runs the last @aggregate function of the code once per round, and each
 step reports what every device computed: its result and the value of every
-watched expression, in its last round.
+watched expression, in its last round. A device whose program sends a velocity
+moves by it from its round on, a little at a time until its next round, and each
+step reports where the devices are. Every
+device hears within a range of its own, which adapts to keep about NEIGHBOURS
+neighbours, and each step reports the ranges too.
 
 The playground loads this module into Pyodide; it is plain Python, so it is
 tested with pytest like the rest of the documentation examples.
 """
 import ast
+import enum
 import heapq
 import inspect
 import itertools
@@ -18,6 +23,7 @@ import linecache
 import math
 import numbers
 import random
+import re
 import reprlib
 import runpy
 import sys
@@ -29,8 +35,11 @@ from typing import Any
 
 from phyelds import engine
 from phyelds.data import NeighborhoodField, State
+from phyelds.experimental.formation import Shape
+from phyelds.experimental.swarm import Vector
+from phyelds.libraries.device import velocity
 from phyelds.simulator import Node, Simulator
-from phyelds.simulator.neighborhood import radius_neighborhood
+from phyelds.simulator.neighborhood import AdaptiveRange, adaptive_range
 from phyelds.simulator.runner import aggregate_program_runner
 
 WATCH = "__watch__"  # what records the watched values, in the globals of the program
@@ -38,6 +47,20 @@ LONGEST_LABEL = 40  # characters of the name of a watch
 LONGEST_TEXT = 40  # characters of the text of a value
 ROUND = 1.0  # simulated time between two runs of a device
 MAX_SUGGESTIONS = 40  # names the completion of the editor offers at once
+MAX_SPEED = 0.15  # how far a device moves in a round at most
+GLIDE = 0.1  # the time between two moves of a device: it moves smoothly, not once a round
+# The colours the page knows by name: a member of an enum named after one is drawn in it.
+COLOURS = {"red", "orange", "yellow", "green", "blue", "purple", "pink", "grey"}
+SHAPE_CELLS = 60  # cells on each side of the grid on which the shape of a program is drawn
+STILL = 0.01  # a velocity slower than this on the plane has no heading: the device stands still
+# Where the devices move: the arena of the page (SPAN in walkthrough/model.js, 5), and as much
+# again around it, so that a swarm has room. The page draws the same world.
+WORLD = (-2.5, 7.5)
+NEIGHBOURS = 8  # how many neighbours the range of a device adapts to keep
+TOLERANCE = 4  # how many more or fewer are fine
+RANGE_STEP = 0.05  # how much a range changes in a round
+SHORTEST_RANGE = 0.3  # the ranges of the slider of the page
+LONGEST_RANGE = 5.0
 NOT_WATCHABLE = "Select an expression inside a function, or a line that assigns, returns or tests one."
 
 
@@ -52,11 +75,23 @@ class Watch:
 
 @dataclass
 class Value:
-    """What a device computed, as the page shows it: a number on a scale, NaN if it has none, and a text."""
+    """
+    What a device computed, as the page shows it: a number on a scale, NaN if it has none,
+    and a text. A direction is a vector, its number the angle from east, in degrees. A
+    value whose type has a known range, as the members of an enum, has ``low`` and ``high``;
+    one named after a colour, such as ``Light.GREEN``, has that ``colour``. A member of an enum
+    has the ``keys`` of its enum, for the legend: the name, the colour (if it is named after
+    one) and the number of every member.
+    """
 
     number: float
     text: str
     boolean: bool = False
+    direction: bool = False
+    low: float = math.nan
+    high: float = math.nan
+    colour: str = ""
+    keys: list[list[str | float]] = field(default_factory=list)
 
 
 NO_VALUE = Value(math.nan, "")
@@ -64,19 +99,29 @@ NO_VALUE = Value(math.nan, "")
 
 @dataclass
 class Layer:
-    """A field over the devices, the result of the program or a watched expression: a number and a text each."""
+    """
+    A field over the devices, the result of the program or a watched expression: a number
+    and a text each, whether all its values are booleans, or all directions, and the scale
+    of its numbers: from ``low`` to ``high``, which only widens in a run. A value named after a
+    colour has it in ``colours``, and the ``keys`` of all the values its type may take.
+    """
 
     numbers: list[float]
     texts: list[str]
     boolean: bool
+    direction: bool = False
+    low: float = math.nan
+    high: float = math.nan
+    colours: list[str] = field(default_factory=list)
+    keys: list[list[str | float]] = field(default_factory=list)
 
 
 @dataclass
 class Snapshot:
     """
-    The network at ``time``: whether an error paused it, whether it is stable (a whole
-    round changed nothing that a device shows), when each device last ran (NaN before
-    its first round), and the layers.
+    The network at ``time``: whether an error paused it, whether it is stable (in a whole
+    round, no device moved nor showed anything new), when each device last ran (NaN before
+    its first round), the layers, where each device is, and how far it hears.
     """
 
     time: float
@@ -84,6 +129,8 @@ class Snapshot:
     stable: bool
     ran: list[float]
     layers: list[Layer]
+    positions: list[list[float]]
+    ranges: list[float]
 
 
 @dataclass
@@ -95,12 +142,30 @@ class Suggestion:
 
 
 @dataclass
+class Ground:
+    """
+    A shape on the world, as the page draws it: its signed distance at the corners of
+    ``cells`` by ``cells`` cells, from ``low`` to ``high`` on each axis, row by row from the
+    lowest. The page fills the part of each cell where the distance is negative.
+    """
+
+    low: float
+    high: float
+    cells: int
+    distances: list[float]
+
+
+@dataclass
 class Loaded:
-    """Whether the code was loaded, the name of the function that runs, and what it watches."""
+    """
+    Whether the code was loaded, the name of the function that runs, what it watches, and
+    the shape it defines, a Shape at the top of the module, if any.
+    """
 
     ok: bool
     program: str = ""
     watches: list[Watch] = field(default_factory=list)
+    shape: Ground | None = None
 
 
 class Playground:
@@ -126,6 +191,7 @@ class Playground:
         self._clock = 0.0
         self._positions: list[tuple[float, ...]] = []
         self._radius = 0.0
+        self._neighbourhood: AdaptiveRange | None = None
         self._sensors: dict[str, set[int]] = {}
         self._program: Callable[[], Any] | None = None
         self._source = ""  # the code of the running program, watches included
@@ -133,7 +199,8 @@ class Playground:
         self._recorder = _Recorder()
         self._watches = 0
         self._rows: dict[int, list[Value]] = {}
-        self._changed = 0.0  # when a device last showed something new
+        self._changed = 0.0  # when a device last moved or showed something new
+        self._scales: dict[int, tuple[float, float]] = {}  # the scale of each layer, so far in this run
 
     def load(self, code: str, selections: Sequence[tuple[int, int]], restart: bool) -> Loaded:
         """
@@ -141,7 +208,8 @@ class Playground:
 
         Args:
             code: the module that defines the program.
-            selections: the expressions to watch, as ``instrument`` takes them.
+            selections: the expressions to watch, as ``instrument`` takes them. When the
+                devices start over, the lines marked ``# watch`` are watched too.
             restart: start every device over, rather than swap the program of the running ones.
 
         Returns:
@@ -151,10 +219,14 @@ class Playground:
         try:
             # Compiled first as it is, so that its own errors are not blamed on the watches.
             compile(code, str(self._main), "exec")
+            if restart:
+                chosen = [tuple(selection) for selection in selections]
+                selections = [*chosen, *(mark for mark in marked(code) if mark not in chosen)]
             source, watches = instrument(code, selections)
             self._write(source)
             namespace = runpy.run_path(str(self._main), init_globals={WATCH: self._recorder}, run_name="playground")
             program = _program(namespace, ast.parse(code))
+            shape = next((value for value in namespace.values() if isinstance(value, Shape)), None)
         # The errors of the code are reported to its author, like Python would.
         except Exception as error:  # pylint: disable=broad-exception-caught
             _print_traceback(error, self._main)
@@ -162,12 +234,13 @@ class Playground:
             self._write(self._source)
             return Loaded(False)
         self._program, self._source, self._watches, self._error = program, source, len(watches), None
+        self._scales = {}  # the k-th layer may now be another expression
         if restart:
             self._restart()
         else:
             # The k-th watch may now be another expression: its values come back as the devices run.
             self._rows = {node_id: row[:1] for node_id, row in self._rows.items()}
-        return Loaded(True, program.__name__, watches)
+        return Loaded(True, program.__name__, watches, None if shape is None else _ground(shape))
 
     def update(
         self, positions: Sequence[Sequence[float]], radius: float, sensors: Mapping[str, Collection[int]]
@@ -176,11 +249,15 @@ class Playground:
         Place the devices as the page has them.
 
         Args:
-            positions: where each device is: device k at ``positions[k]``. Devices past
-                the end are removed; new ones run from the next round on.
-            radius: how far a device hears.
+            positions: where the page placed each device: device k at ``positions[k]``.
+                A device the program moved stays where it is, unless the page placed it
+                elsewhere since. Devices past the end are removed; new ones run from the
+                next round on.
+            radius: how far a device hears at first: its range then adapts, until
+                the page changes the radius, which starts every range over.
             sensors: for every sensor, the devices on which it is on.
         """
+        placed = self._positions
         self._positions = [tuple(position) for position in positions]
         self._radius = radius
         self._sensors = {name: set(on) for name, on in sensors.items()}
@@ -190,6 +267,9 @@ class Playground:
         for node_id in removed:
             environment.remove_node(node_id)
             self._rows.pop(node_id, None)
+            if self._neighbourhood is not None:
+                # A device added back starts with the radius of the page, not the range it had.
+                self._neighbourhood.ranges.pop(node_id, None)
         if removed:
             # Their next rounds go too: a device added back with the same id would run twice.
             queue = self._simulator.event_queue
@@ -197,9 +277,15 @@ class Playground:
             heapq.heapify(queue)
         for node_id, position in enumerate(self._positions):
             node = environment.nodes[node_id] if node_id in environment.nodes else self._add(node_id)
-            node.position = position
+            if node_id >= len(placed) or placed[node_id] != position:
+                node.position = position
             node.data.update({name: node_id in on for name, on in self._sensors.items()})
-        environment.set_neighborhood_function(radius_neighborhood(radius))
+        if self._neighbourhood is None or self._neighbourhood.radius != radius:
+            self._neighbourhood = adaptive_range(
+                radius, neighbors=NEIGHBOURS, tolerance=TOLERANCE, step=RANGE_STEP,
+                min_range=SHORTEST_RANGE, max_range=LONGEST_RANGE,
+            )
+        environment.set_neighborhood_function(self._neighbourhood)
 
     def advance(self, rounds: float) -> Snapshot:
         """Run the devices for ``rounds`` rounds, unless no program runs or an error paused them."""
@@ -215,13 +301,16 @@ class Playground:
         linecache.clearcache()
 
     def _restart(self) -> None:
-        """Every device from its first round, in the order of the previous restart."""
+        """Every device from its first round, where the page placed it, in the order of the previous restart."""
         self._simulator = Simulator()
         self._random = random.Random(self._seed)
         self._clock = 0.0
         self._rows = {}
         self._changed = 0.0
-        self.update(self._positions, self._radius, self._sensors)
+        self._scales = {}
+        positions, self._positions = self._positions, []
+        self._neighbourhood = None
+        self.update(positions, self._radius, self._sensors)
 
     def _add(self, node_id: int) -> Node:
         """A new device, whose first round comes within a round from now."""
@@ -231,6 +320,7 @@ class Playground:
         self._simulator.schedule_event(
             first - self._simulator.current_time, aggregate_program_runner, self._simulator, ROUND, node, self._run
         )
+        self._simulator.schedule_event(first - self._simulator.current_time, self._glide, self._simulator, GLIDE, node)
         return node
 
     def _run(self) -> Any:
@@ -254,6 +344,37 @@ class Playground:
         self._rows[node_id] = row
         return result
 
+    def _glide(self, simulator: Simulator, delta: float, node: Node) -> None:
+        """Move ``node`` for ``delta`` by the velocity its last round sent, and again after ``delta``."""
+        before = node.position
+        self._move(node, velocity.read(node.data.get("outputs", {})), delta)
+        if node.position != before:
+            self._changed = simulator.current_time
+        simulator.schedule_event(delta, self._glide, simulator, delta, node)
+
+    @staticmethod
+    def _move(node: Node, heading: Sequence[float] | None, duration: float) -> None:
+        """Move ``node`` by ``heading`` for ``duration``, at MAX_SPEED at most, and inside the world."""
+        if heading is None:
+            return
+        step = [component * duration for component in tuple(heading)[:len(node.position)]]
+        length = math.sqrt(sum(component * component for component in step))
+        longest = MAX_SPEED * duration / ROUND
+        scale = longest / length if length > longest else 1.0
+        node.position = tuple(
+            min(WORLD[1], max(WORLD[0], coordinate + component * scale))
+            for coordinate, component in zip(node.position, step)
+        )
+
+    def _widened(self, k: int, known: Sequence[Value]) -> tuple[float, float]:
+        """The scale of layer ``k``: its scale so far, widened to its values and their known ranges."""
+        ends = [end for value in known for end in (value.number, value.low, value.high) if math.isfinite(end)]
+        ends += [end for end in self._scales.get(k, ()) if math.isfinite(end)]
+        if not ends:
+            return math.nan, math.nan
+        self._scales[k] = (min(ends), max(ends))
+        return self._scales[k]
+
     def _snapshot(self) -> Snapshot:
         """The network now."""
         count = len(self._positions)
@@ -263,11 +384,18 @@ class Playground:
             values = [row[k] if k < len(row) else NO_VALUE for row in rows]
             known = [value for value in values if value.text]
             boolean = bool(known) and all(value.boolean for value in known)
-            layers.append(Layer([value.number for value in values], [value.text for value in values], boolean))
+            direction = bool(known) and all(value.direction for value in known)
+            low, high = self._widened(k, known)
+            figures, texts = [value.number for value in values], [value.text for value in values]
+            colours = [value.colour for value in values]
+            keys = next((value.keys for value in known if value.keys), [])
+            layers.append(Layer(figures, texts, boolean, direction, low, high, colours, keys))
         nodes = self._simulator.environment.nodes
         ran = [nodes[node_id].data.get("time", math.nan) for node_id in range(count)]
         stable = self._clock - self._changed >= ROUND
-        return Snapshot(self._clock, self._error is not None, stable, ran, layers)
+        positions = [list(nodes[node_id].position) for node_id in range(count)]
+        ranges = [self._neighbourhood.range_of(nodes[node_id]) for node_id in range(count)]
+        return Snapshot(self._clock, self._error is not None, stable, ran, layers, positions, ranges)
 
 
 class _Recorder:
@@ -298,18 +426,42 @@ def _value(value: Any) -> Value:
     try:
         if isinstance(value, State):
             value = value.value
+        if isinstance(value, enum.Enum) and isinstance(value, numbers.Real):
+            # A member of an IntEnum: its name, on the scale of all the members.
+            members = [float(member) for member in type(value)]
+            keys = [[member.name, _colour(member), float(member)] for member in type(value)]
+            low, high = min(members), max(members)
+            return Value(float(value), value.name, low=low, high=high, colour=_colour(value), keys=keys)
         if isinstance(value, bool):
             return Value(float(value), str(value), boolean=True)
         if isinstance(value, numbers.Real):
             number = float(value)
             text = str(value) if isinstance(value, numbers.Integral) else f"{number:.4g}"
             return Value(number if math.isfinite(number) else math.nan, text)
+        if isinstance(value, Vector):
+            moving = math.sqrt(value.x * value.x + value.y * value.y) >= STILL
+            angle = math.degrees(math.atan2(value.y, value.x)) if moving else math.nan
+            height = f", z={value.z:.2f}" if value.z else ""
+            return Value(angle, f"(x={value.x:.2f}, y={value.y:.2f}{height})", direction=True)
         if isinstance(value, NeighborhoodField):
             return Value(math.nan, f"field {_SHORT.repr(value.data)}")
         return Value(math.nan, _SHORT.repr(value))
     # The program may print values whose __repr__ fails: that must not stop its round.
     except Exception:  # pylint: disable=broad-exception-caught
         return Value(math.nan, "?")
+
+
+def _ground(shape: Shape) -> Ground:
+    """``shape`` sampled at the corners of the cells of the world."""
+    low, high = WORLD
+    step = (high - low) / SHAPE_CELLS
+    corners = [low + corner * step for corner in range(SHAPE_CELLS + 1)]
+    return Ground(low, high, SHAPE_CELLS, [float(shape(Vector(x, y))) for y in corners for x in corners])
+
+
+def _colour(member: enum.Enum) -> str:
+    """The colour ``member`` is named after, if any."""
+    return member.name.lower() if member.name.lower() in COLOURS else ""
 
 
 def _program(namespace: Mapping[str, Any], tree: ast.Module) -> Callable[[], Any]:
@@ -351,7 +503,9 @@ def instrument(code: str, selections: Sequence[tuple[int, int]]) -> tuple[str, l
     or a ``while``. The k-th watched expression ``e`` becomes ``__watch__[k, (e)]``,
     on the same lines: a subscript and not a call, because @aggregate aligns apart
     the branches of ``a if c else b`` only when they call something, and moving them
-    into an alignment would change the alignment of everything after them.
+    into an alignment would change the alignment of everything after them. A name
+    among the targets of an assignment, as ``b`` in ``a, b = pair()``, is watched
+    after it, on its line: ``a, b = pair(); __watch__[k, (b)]``.
 
     Args:
         code: the program.
@@ -371,8 +525,8 @@ def instrument(code: str, selections: Sequence[tuple[int, int]]) -> tuple[str, l
     watches = []
     for selection in selections:
         start, end = _trimmed(code, *(source.index(offset) for offset in selection))
-        expression, label = _watched(source, _path(source, source.tree, start, end), end)
-        span = source.span(expression)
+        expression, label, after = _watched(source, _path(source, source.tree, start, end), end)
+        span = (*source.span(expression), None if after is None else source.span(after)[1])
         try:
             compile(_wrap(code, [span]), "<watch>", "exec")
         except SyntaxError as error:
@@ -413,6 +567,31 @@ class _Source:
         """The index in the code of a line and a column of ast, which counts UTF-8 bytes."""
         line = self.lines[lineno - 1]
         return self.starts[lineno - 1] + len(line.encode()[:column].decode())
+
+
+_MARK = re.compile(r"^([ \t]*)(\S.*?)[ \t]*#[ \t]*watch(?:[ \t]+(\w+))?[ \t]*$", re.MULTILINE)
+
+
+def marked(code: str) -> list[tuple[int, int]]:
+    """
+    The lines of the code marked ``# watch``, or the names they mark with ``# watch name``:
+    what an example watches when it runs.
+
+    Returns:
+        The selection of each line, from its first character to its comment, or of the
+        first word of the line that is the name, in UTF-16 units.
+    """
+    source = _Source(code)
+    marks = []
+    for match in _MARK.finditer(code):
+        start, end = match.span(2)
+        if match.group(3):
+            word = re.search(rf"\b{match.group(3)}\b", match.group(2))
+            if word is None:
+                continue
+            start, end = start + word.start(), start + word.end()
+        marks.append((source.utf16(start), source.utf16(end)))
+    return marks
 
 
 def complete(code: str, offset: int) -> list[Suggestion]:
@@ -465,8 +644,11 @@ def _path(source: _Source, node: ast.AST, start: int, end: int) -> list[ast.AST]
     return [node]
 
 
-def _watched(source: _Source, path: list[ast.AST], end: int) -> tuple[ast.expr, str]:
-    """The expression to watch for the selection that ends at ``end`` and has this path, and its label."""
+def _watched(source: _Source, path: list[ast.AST], end: int) -> tuple[ast.expr, str, ast.stmt | None]:
+    """
+    The expression to watch for the selection that ends at ``end`` and has this path, its
+    label, and the statement after which it is watched, if it is a name that one assigns.
+    """
     in_a_body = any(
         isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and below in node.body
         for node, below in zip(path, path[1:])
@@ -475,24 +657,28 @@ def _watched(source: _Source, path: list[ast.AST], end: int) -> tuple[ast.expr, 
         raise ValueError(NOT_WATCHABLE)
     node, above = path[-1], path[-2]
     if _is_target(node):
-        # A name being assigned: the value assigned to it.
+        # A name being assigned: the value assigned to it, or the name itself after the
+        # assignment, when it is one of several the assignment unpacks.
         statement = next(each for each in reversed(path) if not _is_target(each))
+        unpacked = isinstance(above, (ast.Tuple, ast.List)) and isinstance(statement, ast.Assign)
+        if isinstance(node, ast.Name) and unpacked:
+            return node, node.id, statement
         if isinstance(statement, ast.NamedExpr):
-            return statement, _label(source.text(statement.target))
+            return statement, _label(source.text(statement.target)), None
         if isinstance(statement, (ast.Assign, ast.AnnAssign)) and statement.value is not None:
-            return statement.value, _label(_targets(source, statement))
+            return statement.value, _label(_targets(source, statement)), None
         raise ValueError(NOT_WATCHABLE)
     if isinstance(node, (ast.FormattedValue, ast.JoinedStr)) or isinstance(above, ast.JoinedStr):
         # Text inside an f-string, which a wrapper would only change: the whole f-string.
         node = next(each for each in path if isinstance(each, ast.JoinedStr))
     if isinstance(node, ast.expr):
-        return node, _label(source.text(node))
+        return node, _label(source.text(node)), None
     if isinstance(node, (ast.Assign, ast.AnnAssign)) and node.value is not None:
-        return node.value, _label(_targets(source, node))
+        return node.value, _label(_targets(source, node)), None
     if isinstance(node, (ast.Return, ast.Expr)) and node.value is not None:
-        return node.value, _label(source.text(node.value))
+        return node.value, _label(source.text(node.value)), None
     if isinstance(node, (ast.If, ast.While)) and end <= source.span(node.body[0])[0]:
-        return node.test, _label(source.text(node.test))
+        return node.test, _label(source.text(node.test)), None
     raise ValueError(NOT_WATCHABLE)
 
 
@@ -513,12 +699,18 @@ def _label(text: str) -> str:
     return text if len(text) <= LONGEST_LABEL else f"{text[:LONGEST_LABEL - 1]}…"
 
 
-def _wrap(code: str, spans: Sequence[tuple[int, int]]) -> str:
-    """``code`` with the text of the k-th span written ``__watch__[k, (text)]``."""
+def _wrap(code: str, spans: Sequence[tuple[int, int, int | None]]) -> str:
+    """
+    ``code`` with the text of the k-th span written ``__watch__[k, (text)]``, or, if the
+    span has an offset after it, with ``; __watch__[k, (text)]`` written at that offset.
+    """
     # At the same offset, a watch closes before another opens; the inner watch closes
-    # first and the outer one opens first.
+    # first and the outer one opens first; a watch after a statement comes after both.
     edits = []
-    for index, (start, end) in enumerate(spans):
+    for index, (start, end, after) in enumerate(spans):
+        if after is not None:
+            edits.append((after, 0, math.inf, f"; {WATCH}[{index}, ({code[start:end]})]"))
+            continue
         edits.append((start, 1, start - end, f"{WATCH}[{index}, ("))
         edits.append((end, 0, end - start, ")]"))
     edits.sort(key=lambda edit: edit[:3])
