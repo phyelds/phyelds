@@ -37,16 +37,16 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.dependencies]
 python = ">=3.12,<3.14"
-wrapt = ">=1.17.2,<1.18.0"
+wrapt = ">=1.17.2,<2.6.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^4.2.0"
 pytest = "^9.0.3"
-pylint = "^3.0.0"
+pylint = ">=3,<5"
 pytest-cov = "^7.0.0"
-ruff = "^0.3.0"
+ruff = ">=0.3,<0.18"
 flake8 = "^7.0.0"
-jedi = "^0.19.2"
+jedi = ">=0.19.2,<0.21.0"
 # The tests, the examples and the playground of the docs run on the simulator.
 phyelds-simulator = { path = "packages/phyelds-simulator", develop = true }
 

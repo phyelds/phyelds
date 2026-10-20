@@ -28,7 +28,7 @@ mesa = { version = ">=3.5.1,<4.0.0", extras = ["network"] }
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.0.3"
-pylint = "^3.0.0"
+pylint = ">=3,<5"
 flake8 = "^7.0.0"
 
 [tool.pytest.ini_options]
