@@ -16,6 +16,7 @@ import { bindPointer } from "../walkthrough/pointer.js";
 import { LIFT, PULSE_MS, createScene } from "../walkthrough/scene.js";
 import { MAPS, categoryOf, extendPalette, stopsOf, toneOf } from "./colours.js";
 import { createEditor, shifted } from "./editor.js";
+import { createMenu } from "./menu.js";
 
 const ROUND_MS = 700; // how long a round lasts while playing: every device runs once in it
 const MAX_STEP = 0.5; // rounds asked of Python at once at most, so that the devices are seen to run in turn
@@ -97,6 +98,21 @@ let examples = [];
 const scene = createScene(element("wt-scene"));
 const map = createMap(element("wt-map"));
 const editor = createEditor(element("pg-code"), { onRun: run, onWatch: watch, onEdit, onComplete: complete });
+const menu = createMenu(
+  {
+    button: element("pg-example"),
+    title: element("pg-example-title"),
+    panel: element("pg-menu"),
+    search: element("pg-search"),
+    list: element("pg-menu-list"),
+  },
+  {
+    onPick: (name) => {
+      history.replaceState(null, "", `#example=${name}`);
+      openExample(name);
+    },
+  },
+);
 const completions = new Map(); // what the editor asked Python to complete, by id, waiting for the answer
 let questions = 0;
 
@@ -860,7 +876,7 @@ async function share() {
 
 async function openExample(name) {
   const example = examples.find((candidate) => candidate.name === name) ?? examples[0];
-  element("pg-example").value = example.name;
+  menu.show(example.title);
   element("pg-summary").textContent = example.summary.replace(/^./, (first) => first.toUpperCase());
   const response = await fetch(new URL(`examples/${example.name}.py`, base));
   watches = [];
@@ -874,7 +890,7 @@ async function openFromHash() {
     await openExample(hash.get("example"));
     return;
   }
-  element("pg-example").value = "";
+  menu.show("Shared program");
   element("pg-summary").textContent = "A shared program.";
   watches = [];
   editor.setCode(decode(hash.get("code")));
@@ -1017,14 +1033,10 @@ function frame(now) {
 async function start() {
   const response = await fetch(new URL("manifest.json", base));
   examples = (await response.json()).examples;
-  for (const example of examples) element("pg-example").add(new Option(example.title, example.name));
+  menu.setExamples(examples);
   await openFromHash();
   // A link to another example or program, followed from this page, changes only the hash.
   window.addEventListener("hashchange", openFromHash);
-  element("pg-example").addEventListener("change", (event) => {
-    history.replaceState(null, "", `#example=${event.target.value}`);
-    openExample(event.target.value);
-  });
 }
 
 Object.assign(element("pg-devices"), { min: FEWEST_DEVICES, max: MOST, value: world.count });
