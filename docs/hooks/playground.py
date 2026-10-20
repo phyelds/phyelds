@@ -26,8 +26,10 @@ FULL_SCREEN = ("walkthrough", "playground")
 # The groups of the menu, in order, and their examples in order: every example is in one.
 GROUPS = {
     "Basics": ["neighbours", "gradient"],
-    "Spreading and collection": ["channel"],
-    "Leaders and processes": ["leaders", "bubbles"],
+    "Spreading and collection": ["channel", "census"],
+    "Gossip": ["gossip", "opinions"],
+    "Time and logic": ["waves", "trail", "regions"],
+    "Coordination": ["leaders", "bubbles", "lights"],
 }
 
 
