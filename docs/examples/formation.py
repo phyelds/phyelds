@@ -19,7 +19,7 @@ from pydantic import ConfigDict
 
 from phyelds.calculus import aggregate
 from phyelds.experimental.formation import Shape, circle, formation, segment, star
-from phyelds.libraries.device import store
+from phyelds.libraries.device import velocity
 from phyelds.libraries.time import local_time
 from phyelds.simulator import Environment, Simulator
 from phyelds.simulator.actions import follow_velocity
@@ -53,7 +53,7 @@ def shape_at(time: float) -> Shape:
 @aggregate
 def drone() -> None:
     """The program every drone runs: where to move, to spread over the current shape."""
-    store("velocity", formation(shape_at(local_time()), reach=RANGE / 2))
+    velocity.send(formation(shape_at(local_time()), reach=RANGE / 2))
 # --8<-- [end:formation]
 
 

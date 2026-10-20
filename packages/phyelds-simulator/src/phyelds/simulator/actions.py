@@ -5,6 +5,7 @@ import math
 import random
 from typing import Optional, Tuple
 
+from phyelds.libraries.device import velocity as velocity_actuator
 from phyelds.simulator import Simulator, Node
 
 
@@ -43,21 +44,21 @@ def follow_velocity(
     simulator: Simulator,
     delta_time: float,
     node: Node,
-    output: str = "velocity",
+    output: str = velocity_actuator.name,
     max_speed: Optional[float] = None,
 ):
     """
-    Move a node, every ``delta_time``, by the velocity its program stores.
+    Move a node, every ``delta_time``, by the velocity its program sends.
 
-    The velocity is what the program stores as ``output`` (``store("velocity", v)``), with
-    as many components as the position or more: a planar node ignores a height. A node
-    whose program has stored nothing yet stays still.
+    The velocity is what the program sends to the ``velocity`` actuator
+    (``velocity.send(v)``), with as many components as the position or more: a planar
+    node ignores a height. A node whose program has sent nothing yet stays still.
 
     Args:
         simulator: The simulator.
         delta_time: The time between two moves, and the time each move lasts.
         node: The node to move.
-        output: The name of the output holding the velocity.
+        output: The name of the output holding the velocity, if not ``velocity``.
         max_speed: The speed the node cannot exceed, if any.
     """
     velocity = node.data.get("outputs", {}).get(output)

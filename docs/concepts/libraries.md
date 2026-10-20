@@ -51,7 +51,7 @@ Combining just these three blocks gives you:
 
 ## Device sensors & actuators: `phyelds.libraries.device`
 
-Every aggregate program interacts with its host device through four basic functions in `phyelds.libraries.device`:
+Every aggregate program interacts with its host device through `phyelds.libraries.device`:
 
 | Function | Returns / Effect |
 | --- | --- |
@@ -59,6 +59,23 @@ Every aggregate program interacts with its host device through four basic functi
 | `local_position()` | The position tuple of the current device (`sense("position")`) |
 | `sense(sensor)` | The current value of sensor `sensor` (`None` if missing) |
 | `store(output, value)` | Writes an output named `output` for the platform/simulator to read (actuation, metrics) |
+| `Sensor(name).sense()` | The value of the sensor `name`, named once and shared by the program and its host |
+| `Actuator(name).send(value)` | Writes the output `name`; the host reads it with `.read(outputs)`. `check=` refuses invalid values |
+| `velocity.send(v)` | The actuator the robots move by: a sequence of finite numbers, one per axis |
+
+A string repeated in the program and in its host is checked by nobody: `store("velocty", v)`
+leaves the robot still, without an error. Name sensors and actuators once instead, and
+share the object:
+
+```python
+from phyelds.libraries.device import Actuator, Sensor
+
+source: Sensor[bool] = Sensor("source")
+led: Actuator[bool] = Actuator("led")
+
+led.send(source.sense())                 # in the program
+led.read(device.outputs, default=False)  # in the host
+```
 
 ---
 

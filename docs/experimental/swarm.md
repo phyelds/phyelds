@@ -5,16 +5,16 @@
 
 A swarm behaviour is an aggregate function that returns where a robot moves: a
 `Vector`, a velocity or a heading. Behaviours are summed and weighted to compose new
-ones, and the program stores the result as the `velocity` the robot moves by. The
+ones, and the program sends the result to the `velocity` actuator the robot moves by. The
 blocks follow [*MacroSwarm: A Field-based Compositional Framework for Swarm
 Programming*](https://arxiv.org/abs/2401.10969) (Aguzzi, Casadei, Viroli, LMCS 2025)
 and its [ScaFi implementation](https://github.com/scafi/macro-swarm).
 
 ```python
-from phyelds.experimental.swarm import Vector, go_to, separation, sink_at
+from phyelds.experimental.swarm import Vector, go_to, separation
+from phyelds.libraries.device import velocity
 
-velocity = (go_to(target) + separation(Vector(), within=1.0) * 2).normalize()
-store("velocity", velocity)
+velocity.send((go_to(target) + separation(Vector(), within=1.0) * 2).normalize())
 ```
 
 To take a shape, see [formations](formations.md).
@@ -36,9 +36,9 @@ Vectors travel in messages, so they can be shared with `neighbors` and spread.
 
 ## Moving the robots
 
-The program stores the velocity; whoever runs it moves the robot. In the
+The program sends the velocity; whoever runs it moves the robot. In the
 [simulator](../simulator.md), `follow_velocity` moves a node by the velocity its
-program stores, in any dimension, capped at `max_speed`:
+program sends, in any dimension, capped at `max_speed`:
 
 ```python
 from phyelds.simulator.actions import follow_velocity
@@ -51,7 +51,7 @@ A swarm that gathers and spreads out changes how many neighbors each drone has: 
 [`adaptive_range`](../simulator.md#ranges-that-adapt), each node adapts its range to
 keep about the same number, as the examples on this page do.
 
-On a robot, read the `velocity` output after each round, as from
+On a robot, read it after each round with `velocity.read(outputs)`, as from
 [Webots](../integration/webots.md) or [Mesa](../integration/mesa.md), and drive the
 motors with it.
 
