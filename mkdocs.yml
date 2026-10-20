@@ -48,6 +48,8 @@ extra_css:
   - stylesheets/extra.css
 
 hooks:
+  # drafts first: the playground links the pages left in the navigation
+  - docs/hooks/drafts.py
   - docs/hooks/playground.py
 
 markdown_extensions:
