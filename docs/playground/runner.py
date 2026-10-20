@@ -474,7 +474,9 @@ def instrument(code: str, selections: Sequence[tuple[int, int]]) -> tuple[str, l
     or a ``while``. The k-th watched expression ``e`` becomes ``__watch__[k, (e)]``,
     on the same lines: a subscript and not a call, because @aggregate aligns apart
     the branches of ``a if c else b`` only when they call something, and moving them
-    into an alignment would change the alignment of everything after them.
+    into an alignment would change the alignment of everything after them. A name
+    among the targets of an assignment, as ``b`` in ``a, b = pair()``, is watched
+    after it, on its line: ``a, b = pair(); __watch__[k, (b)]``.
 
     Args:
         code: the program.
@@ -494,8 +496,8 @@ def instrument(code: str, selections: Sequence[tuple[int, int]]) -> tuple[str, l
     watches = []
     for selection in selections:
         start, end = _trimmed(code, *(source.index(offset) for offset in selection))
-        expression, label = _watched(source, _path(source, source.tree, start, end), end)
-        span = source.span(expression)
+        expression, label, after = _watched(source, _path(source, source.tree, start, end), end)
+        span = (*source.span(expression), None if after is None else source.span(after)[1])
         try:
             compile(_wrap(code, [span]), "<watch>", "exec")
         except SyntaxError as error:
@@ -538,18 +540,29 @@ class _Source:
         return self.starts[lineno - 1] + len(line.encode()[:column].decode())
 
 
-_MARK = re.compile(r"^([ \t]*)(\S.*?)[ \t]*#[ \t]*watch[ \t]*$", re.MULTILINE)
+_MARK = re.compile(r"^([ \t]*)(\S.*?)[ \t]*#[ \t]*watch(?:[ \t]+(\w+))?[ \t]*$", re.MULTILINE)
 
 
 def marked(code: str) -> list[tuple[int, int]]:
     """
-    The lines of the code marked ``# watch``: what an example watches when it opens.
+    The lines of the code marked ``# watch``, or the names they mark with ``# watch name``:
+    what an example watches when it runs.
 
     Returns:
-        The selection of each, from its first character to its comment, in UTF-16 units.
+        The selection of each line, from its first character to its comment, or of the
+        first word of the line that is the name, in UTF-16 units.
     """
     source = _Source(code)
-    return [(source.utf16(match.start(2)), source.utf16(match.end(2))) for match in _MARK.finditer(code)]
+    marks = []
+    for match in _MARK.finditer(code):
+        start, end = match.span(2)
+        if match.group(3):
+            word = re.search(rf"\b{match.group(3)}\b", match.group(2))
+            if word is None:
+                continue
+            start, end = start + word.start(), start + word.end()
+        marks.append((source.utf16(start), source.utf16(end)))
+    return marks
 
 
 def complete(code: str, offset: int) -> list[Suggestion]:
@@ -602,8 +615,11 @@ def _path(source: _Source, node: ast.AST, start: int, end: int) -> list[ast.AST]
     return [node]
 
 
-def _watched(source: _Source, path: list[ast.AST], end: int) -> tuple[ast.expr, str]:
-    """The expression to watch for the selection that ends at ``end`` and has this path, and its label."""
+def _watched(source: _Source, path: list[ast.AST], end: int) -> tuple[ast.expr, str, ast.stmt | None]:
+    """
+    The expression to watch for the selection that ends at ``end`` and has this path, its
+    label, and the statement after which it is watched, if it is a name that one assigns.
+    """
     in_a_body = any(
         isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and below in node.body
         for node, below in zip(path, path[1:])
@@ -612,24 +628,28 @@ def _watched(source: _Source, path: list[ast.AST], end: int) -> tuple[ast.expr, 
         raise ValueError(NOT_WATCHABLE)
     node, above = path[-1], path[-2]
     if _is_target(node):
-        # A name being assigned: the value assigned to it.
+        # A name being assigned: the value assigned to it, or the name itself after the
+        # assignment, when it is one of several the assignment unpacks.
         statement = next(each for each in reversed(path) if not _is_target(each))
+        unpacked = isinstance(above, (ast.Tuple, ast.List)) and isinstance(statement, ast.Assign)
+        if isinstance(node, ast.Name) and unpacked:
+            return node, node.id, statement
         if isinstance(statement, ast.NamedExpr):
-            return statement, _label(source.text(statement.target))
+            return statement, _label(source.text(statement.target)), None
         if isinstance(statement, (ast.Assign, ast.AnnAssign)) and statement.value is not None:
-            return statement.value, _label(_targets(source, statement))
+            return statement.value, _label(_targets(source, statement)), None
         raise ValueError(NOT_WATCHABLE)
     if isinstance(node, (ast.FormattedValue, ast.JoinedStr)) or isinstance(above, ast.JoinedStr):
         # Text inside an f-string, which a wrapper would only change: the whole f-string.
         node = next(each for each in path if isinstance(each, ast.JoinedStr))
     if isinstance(node, ast.expr):
-        return node, _label(source.text(node))
+        return node, _label(source.text(node)), None
     if isinstance(node, (ast.Assign, ast.AnnAssign)) and node.value is not None:
-        return node.value, _label(_targets(source, node))
+        return node.value, _label(_targets(source, node)), None
     if isinstance(node, (ast.Return, ast.Expr)) and node.value is not None:
-        return node.value, _label(source.text(node.value))
+        return node.value, _label(source.text(node.value)), None
     if isinstance(node, (ast.If, ast.While)) and end <= source.span(node.body[0])[0]:
-        return node.test, _label(source.text(node.test))
+        return node.test, _label(source.text(node.test)), None
     raise ValueError(NOT_WATCHABLE)
 
 
@@ -650,12 +670,18 @@ def _label(text: str) -> str:
     return text if len(text) <= LONGEST_LABEL else f"{text[:LONGEST_LABEL - 1]}…"
 
 
-def _wrap(code: str, spans: Sequence[tuple[int, int]]) -> str:
-    """``code`` with the text of the k-th span written ``__watch__[k, (text)]``."""
+def _wrap(code: str, spans: Sequence[tuple[int, int, int | None]]) -> str:
+    """
+    ``code`` with the text of the k-th span written ``__watch__[k, (text)]``, or, if the
+    span has an offset after it, with ``; __watch__[k, (text)]`` written at that offset.
+    """
     # At the same offset, a watch closes before another opens; the inner watch closes
-    # first and the outer one opens first.
+    # first and the outer one opens first; a watch after a statement comes after both.
     edits = []
-    for index, (start, end) in enumerate(spans):
+    for index, (start, end, after) in enumerate(spans):
+        if after is not None:
+            edits.append((after, 0, math.inf, f"; {WATCH}[{index}, ({code[start:end]})]"))
+            continue
         edits.append((start, 1, start - end, f"{WATCH}[{index}, ("))
         edits.append((end, 0, end - start, ")]"))
     edits.sort(key=lambda edit: edit[:3])

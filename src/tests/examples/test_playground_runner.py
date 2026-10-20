@@ -66,6 +66,23 @@ def test_instrument_watches_the_value_of_a_line_selected_with_its_indentation():
     assert watches == [runner.Watch(*_span(code, "count(1)"), "total")]
 
 
+def test_instrument_watches_one_name_of_a_tuple_assignment_after_the_assignment():
+    code = "def program():\n    a, b = pair()\n    return a\n"
+
+    instrumented, watches = runner.instrument(code, [_span(code, "b")])
+
+    assert instrumented == "def program():\n    a, b = pair(); __watch__[0, (b)]\n    return a\n"
+    assert watches == [runner.Watch(*_span(code, "b"), "b")]
+
+
+def test_marked_selects_the_line_or_the_name_its_mark_says():
+    code = "def program():\n    a, b = pair()  # watch b\n    c = a  # watch\n    return c\n"
+
+    marks = runner.marked(code)
+
+    assert marks == [_span(code, "b"), _span(code, "c = a")]
+
+
 def test_instrument_counts_offsets_in_utf16_like_the_editor():
     code = "def program():\n    # più 🙂\n    return a + b\n"
 
@@ -86,7 +103,7 @@ def test_instrument_nests_a_watch_inside_another():
 def test_instrument_names_a_watch_after_all_the_targets_of_its_assignment():
     code = "def program():\n    source, target = sense(1), sense(2)\n"
 
-    _, watches = runner.instrument(code, [_span(code, "target")])
+    _, watches = runner.instrument(code, [_span(code, "source, target = sense(1), sense(2)")])
 
     assert watches == [runner.Watch(*_span(code, "sense(1), sense(2)"), "source, target")]
 

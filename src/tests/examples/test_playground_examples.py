@@ -134,8 +134,10 @@ def test_playground_spread_example_gathers_then_spreads_the_swarm(tmp_path):
 def test_playground_mission_example_takes_the_swarm_across_the_arena_with_its_leader(tmp_path):
     playground, _ = _running("mission", {"leader": [35]}, tmp_path, rounds=0.0)
 
-    positions = playground.advance(100.0).positions
+    snapshot = playground.advance(100.0)
+    positions = snapshot.positions
 
+    assert set(snapshot.layers[1].texts) <= {"GATHER", "CROSS", "CIRCLE"}
     assert max(positions[35]) < 1.0
     assert sum(math.dist(position, positions[35]) for position in positions) / len(positions) < 1.5
 

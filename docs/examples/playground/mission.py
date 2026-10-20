@@ -3,8 +3,9 @@ Mission: the swarm gathers around its leader, crosses the arena with it, turns a
 
 The phases are a collective state machine that the leader moves on: after GATHERING
 rounds it heads across the arena, and once there the swarm turns around it for
-CIRCLING rounds, then gathers again. Drag the leader to send the swarm elsewhere, and
-watch `mission.run()` for the phase.
+CIRCLING rounds, then gathers again. The arrows are the headings; the layer under them is
+the phase each device is in, as the change spreads. Drag the leader to send the swarm
+elsewhere.
 """
 from enum import IntEnum
 
@@ -76,5 +77,5 @@ def circle() -> Vector:
 @aggregate
 def drone() -> Vector:
     """Move as the phase the drone agrees on says: the velocity the drone moves by."""
-    _, heading = mission.run()
+    phase, heading = mission.run()  # watch phase
     return velocity.send(heading)
