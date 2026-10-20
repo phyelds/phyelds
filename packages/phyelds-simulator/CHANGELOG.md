@@ -1,3 +1,9 @@
+## [8.8.0](https://github.com/phyelds/phyelds/compare/8.7.0...8.8.0) (2026-10-20)
+
+### Features
+
+* **playground:** show the program, the network, or both ([#26](https://github.com/phyelds/phyelds/issues/26)) ([c7b2c35](https://github.com/phyelds/phyelds/commit/c7b2c35501eb3d9372cfe7395cf71b5c66cdffc5))
+
 ## [8.7.0](https://github.com/phyelds/phyelds/compare/8.6.0...8.7.0) (2026-10-20)
 
 ### Features
