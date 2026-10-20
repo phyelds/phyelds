@@ -1,5 +1,5 @@
 """
-Sent of actions related to node movements and interactions in the simulator
+Set of actions related to node movements and interactions in the simulator.
 """
 import random
 from typing import Tuple

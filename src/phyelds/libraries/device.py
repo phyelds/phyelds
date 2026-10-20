@@ -1,6 +1,5 @@
 """
-Device library:
-Set of function used to get the device information.
+Device library: what a device knows about itself, its sensors and its outputs.
 """
 from typing import Any, Tuple
 from phyelds import engine
@@ -8,34 +7,46 @@ from phyelds import engine
 
 def local_id() -> int:
     """
-    Get the local id of the device.
-    :return:
+    Return the ID of the current device.
+
+    Returns:
+        The ID of the device running the program.
     """
     return engine.get().node_context.node_id
 
 
 def sense(sensor: str) -> Any:
     """
-    Get the value of the sensor.
-    :param sensor: The name of the sensor.
-    :return: The value of the sensor.
+    Read a sensor of the current device.
+
+    Args:
+        sensor: The name of the sensor.
+
+    Returns:
+        The value of the sensor.
     """
     return engine.get().node_context.sense(sensor)
 
 
 def local_position() -> Tuple[float, float]:
     """
-    Get the position of the device.
-    :return: The position of the device.
+    Return the position of the current device.
+
+    Returns:
+        The position of the device, as given by its ``"position"`` sensor.
     """
     return engine.get().node_context.position()
 
 
 def store(output: str, value: Any) -> None:
     """
-    Store the value in the context.
-    :param output: The name of the stored value.
-    :param value: The value to be stored.
-    :return:
+    Write an output of the current device, replacing its previous value.
+
+    Outputs leave the program: the simulator, for instance, collects them in each
+    node's ``"outputs"``.
+
+    Args:
+        output: The name of the output.
+        value: The value to store.
     """
     engine.get().node_context.store(output, value)

@@ -32,5 +32,5 @@ def test_diagrams_example_draws_every_figure_at_the_width_of_the_docs_column(tmp
     diagrams.main()
 
     widths = {path.name: Image.open(path).width for path in tmp_path.glob("*.png")}
-    assert len(widths) == 20
+    assert len(widths) == 22
     assert set(widths.values()) == {round(diagrams.COLUMN_WIDTH * diagrams.DPI)}

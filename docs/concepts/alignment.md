@@ -50,6 +50,30 @@ def program():
 1. Path: `program@0 / left@0 / neighbors@0`. Only neighbors that also took the `True` branch appear in this `NeighborhoodField`.
 2. Path: `program@0 / right@0 / neighbors@0`. Only neighbors that also took the `False` branch appear here.
 
+### Leaving a branch resets its state
+
+The state of a branch lives only as long as the device keeps taking it. Leave the branch for one round and come back, and its state starts over from the initial value:
+
+```python
+from phyelds.calculus import aggregate
+from phyelds.libraries.device import sense
+from phyelds.libraries.time import counter
+
+@aggregate
+def rounds_inside():
+    if sense("inside"):
+        return counter()   # (1)!
+    else:
+        return 0
+```
+
+1. `counter()` keeps its count with `remember`, under the path of the `True` branch: in a round that takes the `False` branch, that state is not read, so it is dropped.
+
+![A counter inside an if starts over after a round in the else branch](../assets/branch-reset.png#only-light)
+![A counter inside an if starts over after a round in the else branch](../assets/branch-reset-dark.png#only-dark)
+
+In round 4 the device enters the branch again, and the count restarts from 1, not from 3. To keep a value across branch changes, `remember` it outside the `if`.
+
 The same automatic splitting applies to Python conditional expressions (`a if c else b`). This also keeps devices aligned for all calls *after* the conditional expression, even when only one branch communicates:
 
 ```python

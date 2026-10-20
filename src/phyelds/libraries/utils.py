@@ -15,10 +15,15 @@ T = TypeVar("T")
 
 def min_with_default(iterable: Any, default: Any = None) -> Any:
     """
-    Returns the minimum value from an iterable, or a default value if the iterable is empty.
-    :param iterable: a list of values (or any iterable)
-    :param default: the default value to return if the iterable is empty
-    :return: the minimum value from the iterable or the default value
+    Return the minimum of a collection, or ``default`` if it is empty.
+
+    Args:
+        iterable: A ``list``, ``tuple``, ``set`` or ``range``, or a ``dict``, whose
+            values are compared.
+        default: The value returned when ``iterable`` is empty or of another type.
+
+    Returns:
+        The minimum value, or ``default``.
     """
     if not iterable:
         return default

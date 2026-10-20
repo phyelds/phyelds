@@ -8,13 +8,17 @@ from phyelds import engine
 
 class AlignContext:
     """
-    Context manager for alignment in phyelds.
-    This context manager is used to align the state of the engine with the
-    current context. It should be used in the following way:
-    with AlignContext("context_name"):
-        # do something
-        pass
+    Context manager that scopes a block of code under an alignment point.
 
+    Use it through ``align`` rather than directly:
+
+    ```python
+    with align("context_name"):
+        ...
+    ```
+
+    Args:
+        name: The name of the alignment point.
     """
     def __init__(self, name: str):
         self.name = name

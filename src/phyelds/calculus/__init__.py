@@ -1,19 +1,21 @@
 """
-Core syntax for phyelds.
-It exposes a set of functions that are used to create and manipulate fields,
-as well as to manage the state of the system.
-@aggregate is a decorator that marks a function as an aggregate function,
-Example:
+Core syntax of phyelds: the primitives aggregate programs are made of.
+
+`@aggregate` marks a function as an aggregate function:
+
+```python
 @aggregate
 def my_function():
-    # do something
-    return result
+    ...
+```
 
-Then, there is the core syntax of phyelds:
-- remember: used to remember a value across iterations.
-- neighbors: used to get the neighbors of a node.
-- exchange: used to exchange values (or anisotropic fields) across iterations and neighbors.
-- neighbors_distances: used to get the distances to the neighbors.
+Inside it, the core syntax is:
+
+- `remember`: keeps a value across rounds.
+- `remember_and_evolve`: keeps a value across rounds, updating it with a function.
+- `neighbors`: shares a value with the neighbors and returns their values.
+- `exchange`: evolves a state and sends values (possibly distinct per neighbor) in one step.
+- `align`: scopes the calls inside it, so that they only align with the same scope on the neighbors.
 """
 import functools
 from typing import TypeVar, Callable, Tuple, Union, Any
@@ -37,13 +39,22 @@ T = TypeVar("T")
 
 def aggregate(func):
     """
-    A decorator for aggregate functions,
-    namely each function that is called in the context of a field.
-    You can use it in the following way:
-    @aggregate
-    def my_function():
-        # do something
-        return result
+    Mark a function as an aggregate function, returning a wrapper that aligns its calls.
+
+    Each call enters a new alignment point named after the function, so the values a
+    device shares inside it only meet those of neighbors running the same call. The
+    branches of the ``if`` statements and conditional expressions in its body are
+    aligned too, so devices on different branches do not exchange values.
+
+    Example:
+        ```python
+        @aggregate
+        def my_function():
+            ...
+        ```
+
+    Args:
+        func (Callable): The function to wrap.
     """
 
     @functools.wraps(func)
@@ -59,10 +70,24 @@ def aggregate(func):
 @aggregate
 def remember(init: T) -> Tuple[Callable[[Union[T, "State[T]"]], "State[T]"], "State[T]"]:
     """
-    One of the main operator of phyelds.
+    Keep a value across the rounds of the current device.
 
-    :param init: The initial value for the state.
-    :return: A tuple containing the update function and the state object.
+    On the first round the state holds ``init``; afterwards it holds the value last
+    passed to the update function.
+
+    Example:
+        ```python
+        set_count, count = remember(0)
+        set_count(count + 1)  # count is now 1 more than in the previous round
+        ```
+
+    Args:
+        init: The value of the state on the first round.
+
+    Returns:
+        A tuple ``(set_state, state)``: ``set_state`` stores a new value (which ``state``
+            reflects at once) and returns ``state``; ``state`` is a ``State`` proxy that
+            behaves like the value it holds.
     """
     # engine.get() returns the context/engine instance
     state = State(init, engine.get().current_path(), engine.get())
@@ -74,12 +99,19 @@ def remember_and_evolve(
         evolve_fn: Callable[["State[T]"], T]
 ) -> "State[T]":
     """
-    Remember a value across iterations and evolve it using the provided function.
+    Keep a value across rounds, replacing it every round with ``evolve_fn`` of itself.
 
-    :param init: Initial value to remember.
-    :param evolve_fn: Function to evolve the remembered value.
-                      It receives the current State object and should return the new value.
-    :return: The updated State object.
+    Example:
+        ```python
+        rounds = remember_and_evolve(0, lambda count: count + 1)  # 1 on the first round
+        ```
+
+    Args:
+        init: The value the state starts from, before the first evolution.
+        evolve_fn: Function that receives the current ``State`` and returns the new value.
+
+    Returns:
+        The ``State`` after this round's evolution: ``evolve_fn(init)`` on the first round.
     """
     state = State(init, engine.get().current_path(), engine.get())
     # evolve_fn takes the state and returns the new value (T)
@@ -91,11 +123,23 @@ def remember_and_evolve(
 @aggregate
 def neighbors(value: T) -> "NeighborhoodField[T]":
     """
-    Get the `value` of the neighbors from the current node.
+    Share ``value`` with the neighbors and gather the values they shared at this point.
+
     Example:
-    neighbors(context.data["temperature"]) // returns the temperature of the neighbors
-    :param value: used to query the neighbors.
-    :return: the neighborhood representing this value containing data of type T
+        ```python
+        temperatures = neighbors(sense("temperature"))  # one temperature per neighbor
+        hottest = temperatures.max()
+        ```
+
+    Args:
+        value: The local value to share; it cannot be a ``NeighborhoodField``.
+
+    Returns:
+        A ``NeighborhoodField`` mapping the current device and each neighbor that
+            shared a value at the same alignment point to that value.
+
+    Raises:
+        TypeError: If ``value`` is a ``NeighborhoodField``.
     """
     if isinstance(value, NeighborhoodField):
         raise TypeError("Neighborhood is not supported as a value")
@@ -130,7 +174,7 @@ def exchange(
 
     Returns:
         A tuple ``(set_field, field)`` containing the send function for the next round
-        and the ``NeighborhoodField`` received in the current round.
+            and the ``NeighborhoodField`` received in the current round.
     """
     current_engine = engine.get()
     path = current_engine.current_path()
@@ -168,33 +212,50 @@ def exchange(
 
 def align(name: Any):
     """
-    Used to align a part of the code with the current context,
-    creating different non communicating zones
-    :param name: symbol you would like to align on
-    :return: the context
+    Scope a block of code under ``name``, as a context manager.
+
+    The calls inside the block only align with the calls made inside a block with the
+    same name on the neighbors, so devices in blocks with different names do not
+    exchange values there.
+
+    Example:
+        ```python
+        with align(sense("team")):
+            members = neighbors(1).sum()  # counts only the neighbors in the same team
+        ```
+
+    Args:
+        name: The key of the block; it is converted with ``str``.
+
+    Returns:
+        A context manager that enters the block on ``with`` and leaves it on exit.
     """
     return AlignContext(str(name))
 
 
 def align_right():
     """
-    Typically used in if statements to align the code
+    Scope the ``else`` branch of a conditional, as ``align("right")``.
+
+    ``@aggregate`` already aligns the branches of ``if`` statements and conditional
+    expressions; ``align_left`` and ``align_right`` do it by hand.
+
     Example:
-    if condition:
-        with align_left():
-            # do something
-    else:
-        with align_right():
-            # do something else
-    :return:
+        ```python
+        if condition:
+            with align_left():
+                ...  # devices where condition holds
+        else:
+            with align_right():
+                ...  # the other devices
+        ```
     """
     return align("right")
 
 
 def align_left():
     """
-    Typically used in if statements to align the code
-    See align_right
+    Scope the ``if`` branch of a conditional, as ``align("left")``; see ``align_right``.
     """
     return align("left")
 

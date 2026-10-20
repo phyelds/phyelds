@@ -154,6 +154,7 @@ export const STEPS = [
     text: [
       "Fields add and compare point by point. The gradients from the source and from the target add up to <code>between</code>, the length of the shortest path, along that path, and to more away from it.",
       "Where the sum stays within <code>between + width</code>, the comparison is <code>True</code>: the channel, a plateau in the middle, while the devices outside stay on the ground. At infinite density, it is an ellipse with foci in the source and the target.",
+      "Combining self-stabilizing fields gives a self-stabilizing field: the gradients settle, and the channel built on them settles too. Move the source or the target, and it heals by itself.",
     ],
     hint: "Change the width, or drag the source and the target. Restart to watch it settle: while the distances are still infinite, inf <= inf holds.",
     view: "channel",

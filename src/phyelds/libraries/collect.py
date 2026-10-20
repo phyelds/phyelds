@@ -24,10 +24,14 @@ _NO_DATA = register(object(), "collect.no_data")
 @aggregate
 def find_parent(potential: StateT[float]) -> Optional[int]:
     """
-    Find the parent of a path given a potential neighborhood.
+    Find the neighbor to send data to along a ``potential`` field.
 
-    :param potential: The potential value (distance/gradient) at the current node.
-    :return: The node ID of the parent (neighbor with min potential), or None if local is min.
+    Args:
+        potential: Local potential value (such as a distance) at the current node.
+
+    Returns:
+        The ID of the neighbor with the lowest potential, or ``None`` if no neighbor
+            has a potential lower than ``potential``.
     """
     neighbors_potential: NeighborhoodField[float] = neighbors(potential)
     min_value: Tuple[int, float] = min(neighbors_potential.data.items(), key=lambda x: x[1])
