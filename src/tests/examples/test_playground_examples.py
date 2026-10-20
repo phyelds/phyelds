@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+from phyelds.experimental.swarm import Vector
+
 DOCS = Path(__file__).resolve().parents[3] / "docs"
 EXAMPLES = DOCS / "examples" / "playground"
 NAMES = sorted(path.stem for path in EXAMPLES.glob("*.py"))
@@ -128,10 +130,48 @@ def test_playground_spread_example_gathers_then_spreads_the_swarm(tmp_path):
     assert gathered < 1.2 < spread
 
 
-def test_playground_mission_example_takes_the_swarm_to_the_target(tmp_path):
-    playground, _ = _running("mission", {"leader": [28], "target": [7], "go": [0]}, tmp_path, rounds=0.0)
+def test_playground_mission_example_takes_the_swarm_across_the_arena_with_its_leader(tmp_path):
+    playground, _ = _running("mission", {"leader": [35]}, tmp_path, rounds=0.0)
 
-    positions = playground.advance(120.0).positions
+    positions = playground.advance(70.0).positions
 
-    assert math.dist(positions[28], positions[7]) < 1.5
-    assert sum(math.dist(position, positions[28]) for position in positions) / len(positions) < 1.5
+    assert max(positions[35]) < 2.0
+    assert sum(math.dist(position, positions[35]) for position in positions) / len(positions) < 1.5
+
+
+def _order(headings):
+    """How much the headings, in degrees, agree: 1 when they all point the same way."""
+    angles = [math.radians(heading) for heading in headings if not math.isnan(heading)]
+    return math.hypot(sum(map(math.cos, angles)), sum(map(math.sin, angles))) / len(angles)
+
+
+def test_playground_flock_example_agrees_on_a_heading(tmp_path):
+    playground, _ = _running("flock", {}, tmp_path, rounds=30.0)
+
+    orders = [_order(playground.advance(5.0).layers[0].numbers) for _ in range(6)]
+
+    assert sum(orders) / len(orders) > 0.6
+
+
+def test_playground_teams_example_splits_the_swarm_in_teams_that_stay(tmp_path):
+    playground = runner.Playground(tmp_path / "run")
+    playground.update(GRID, 1.5, {})
+    code = (EXAMPLES / "teams.py").read_text()
+    start = code.index("team = team_formation")
+    playground.load(code, [(start, start + len("team"))], restart=True)
+
+    early = set(playground.advance(30.0).layers[1].texts)
+    late = set(playground.advance(30.0).layers[1].texts)
+
+    assert 2 <= len(late) <= 6
+    assert early == late
+
+
+def test_playground_star_example_covers_the_star(tmp_path):
+    star = importlib.util.module_from_spec(spec := importlib.util.spec_from_file_location("star", EXAMPLES / "star.py"))
+    spec.loader.exec_module(star)
+    playground, _ = _running("star", {}, tmp_path, rounds=0.0)
+
+    positions = playground.advance(40.0).positions
+
+    assert all(star.SHAPE(Vector(*position)) < 0.1 for position in positions)

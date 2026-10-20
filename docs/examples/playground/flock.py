@@ -1,24 +1,40 @@
 """
-Flock: the leader wanders around the arena, and the swarm moves as it moves, together.
+Flock: the boids of Reynolds, every device steering as its neighbours do, and the swarm flies as one.
 
-Every device takes the velocity of the leader, plus a pull towards it and a push away
-from the devices too close. Drag the leader somewhere else, or switch `leader` on for
-another device. Watch `heading`: every device takes that of the leader.
+The three rules of the boids, each a steering weighted by how much it counts: keep apart
+from the closest (separation), head as the neighbours head (alignment) and towards them
+(cohesion); and turn back near the walls. The colour is the heading: a flock that agrees has one
+colour. Drag a device across it, or add some more.
 """
-from phyelds.calculus import aggregate
-from phyelds.experimental.swarm import Vector, align_with_leader, explore, separation, sink_at
-from phyelds.libraries.device import Sensor, velocity
+from phyelds.calculus import aggregate, remember_and_evolve
+from phyelds.experimental.swarm import Vector, alignment, avoid_obstacles, brownian, cohesion, separation
+from phyelds.libraries.device import local_position, velocity
 
-LOWEST, HIGHEST = (0.5, 0.5), (4.5, 4.5)  # where the leader wanders, inside the arena
-SPACING = 0.5  # how far a device keeps from the others
+ARENA = 5.0  # the side of the arena of the playground
+VISION = 2.0  # how far a boid looks at the others to align and gather
+SPACE = 0.4  # how close a boid lets another come
+SEPARATION, ALIGNMENT, COHESION = 0.4, 0.6, 0.02  # how much each rule turns a boid in a round
+MARGIN = 0.6  # how close to a wall a boid starts turning back
 
-leader: Sensor[bool] = Sensor("leader")
+
+def walls() -> list[Vector]:
+    """The vector from the device to each wall of the arena."""
+    x, y = local_position()
+    return [Vector(-x, 0), Vector(ARENA - x, 0), Vector(0, -y), Vector(0, ARENA - y)]
+
+
+def steer(heading: Vector) -> Vector:
+    """The heading of the boid, from the one it had: the three rules, and away from the walls."""
+    turn = (
+        separation(heading, within=SPACE) * SEPARATION
+        + alignment(heading, within=VISION) * ALIGNMENT
+        + cohesion(heading, within=VISION) * COHESION
+    )
+    return (heading + turn + avoid_obstacles(walls(), MARGIN, norm=0.5)).normalize()
 
 
 @aggregate
 def flock() -> Vector:
-    """Move as the leader, close to it and apart from the others: the velocity the device moves by."""
-    is_leader = leader.sense()
-    heading = align_with_leader(is_leader, explore(LOWEST, HIGHEST))
-    keep = sink_at(is_leader) * 0.5 + separation(Vector(), within=SPACING) * 2
-    return velocity.send(heading if is_leader else heading + keep)
+    """Fly with the flock: the velocity the device moves by."""
+    heading = remember_and_evolve(brownian(), lambda previous: steer(previous.value))
+    return velocity.send(heading.value)

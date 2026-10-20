@@ -30,7 +30,7 @@ GROUPS = {
     "Gossip": ["gossip", "opinions"],
     "Time and logic": ["waves", "trail", "regions"],
     "Coordination": ["leaders", "bubbles", "lights"],
-    "Swarms": ["follow", "spread", "flock", "teams", "mission"],
+    "Swarms": ["follow", "spread", "flock", "teams", "mission", "star"],
 }
 
 
