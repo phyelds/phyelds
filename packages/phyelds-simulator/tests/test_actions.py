@@ -1,6 +1,6 @@
 import pytest
 
-from phyelds.libraries.device import store
+from phyelds.libraries.device import velocity as velocity_actuator
 from phyelds.simulator import Simulator
 from phyelds.simulator.actions import follow_velocity
 from phyelds.simulator.runner import aggregate_program_runner
@@ -9,7 +9,7 @@ from phyelds.simulator.runner import aggregate_program_runner
 def _moving(position, velocity, max_speed=None, rounds=3.0):
     simulator = Simulator()
     node = simulator.create_node(position, node_id=0)
-    simulator.schedule_event(0.0, aggregate_program_runner, simulator, 1.0, node, lambda: store("velocity", velocity))
+    simulator.schedule_event(0.0, aggregate_program_runner, simulator, 1.0, node, lambda: velocity_actuator.send(velocity))
     simulator.schedule_event(0.5, follow_velocity, simulator, 1.0, node, max_speed=max_speed)
     simulator.run(rounds)
     return node.position
