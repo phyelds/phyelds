@@ -65,3 +65,9 @@ def test_actuator_send_rejects_a_value_its_check_refuses():
 def test_velocity_rejects_anything_but_finite_numbers(value):
     with pytest.raises(ValueError, match="velocity"):
         velocity.send(value)
+
+
+def test_actuator_send_returns_what_it_sent_so_a_program_can_return_its_action():
+    led: Actuator[bool] = Actuator("led")
+
+    assert led.send(True) is True
