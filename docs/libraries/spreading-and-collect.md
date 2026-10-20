@@ -89,7 +89,6 @@ A gradient towards a `target`, `collect_or` along it from a `source`, and a seco
 ![A self-organizing channel between bottom-left and top-right corners](../assets/channel.gif#only-light){ width="480" }
 ![A self-organizing channel between bottom-left and top-right corners](../assets/channel-dark.gif#only-dark){ width="480" }
 
-[Run the corridor in the playground](../playground/index.md#example=corridor){ .md-button }
 
 ---
 

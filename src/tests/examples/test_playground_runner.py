@@ -66,6 +66,23 @@ def test_instrument_watches_the_value_of_a_line_selected_with_its_indentation():
     assert watches == [runner.Watch(*_span(code, "count(1)"), "total")]
 
 
+def test_instrument_watches_one_name_of_a_tuple_assignment_after_the_assignment():
+    code = "def program():\n    a, b = pair()\n    return a\n"
+
+    instrumented, watches = runner.instrument(code, [_span(code, "b")])
+
+    assert instrumented == "def program():\n    a, b = pair(); __watch__[0, (b)]\n    return a\n"
+    assert watches == [runner.Watch(*_span(code, "b"), "b")]
+
+
+def test_marked_selects_the_line_or_the_name_its_mark_says():
+    code = "def program():\n    a, b = pair()  # watch b\n    c = a  # watch\n    return c\n"
+
+    marks = runner.marked(code)
+
+    assert marks == [_span(code, "b"), _span(code, "c = a")]
+
+
 def test_instrument_counts_offsets_in_utf16_like_the_editor():
     code = "def program():\n    # più 🙂\n    return a + b\n"
 
@@ -86,7 +103,7 @@ def test_instrument_nests_a_watch_inside_another():
 def test_instrument_names_a_watch_after_all_the_targets_of_its_assignment():
     code = "def program():\n    source, target = sense(1), sense(2)\n"
 
-    _, watches = runner.instrument(code, [_span(code, "target")])
+    _, watches = runner.instrument(code, [_span(code, "source, target = sense(1), sense(2)")])
 
     assert watches == [runner.Watch(*_span(code, "sense(1), sense(2)"), "source, target")]
 
@@ -537,3 +554,299 @@ def test_complete_suggests_at_most_a_screenful_of_names():
     suggestions = runner.complete(code, len(code))
 
     assert 0 < len(suggestions) <= runner.MAX_SUGGESTIONS
+
+
+# ---------- devices that move ----------
+
+EAST = """
+from phyelds.calculus import aggregate
+from phyelds.libraries.device import local_id, sense, velocity
+
+@aggregate
+def program():
+    if not sense("still"):
+        velocity.send((10.0, 0.0))
+    return local_id()
+"""
+
+
+def _xs(snapshot):
+    return [x for x, _ in snapshot.positions]
+
+
+def test_playground_reports_where_the_devices_are(tmp_path):
+    playground = _deployed(tmp_path, NEIGHBOURS)
+
+    snapshot = playground.advance(1.0)
+
+    assert snapshot.positions == [list(position) for position in LINE]
+
+
+def test_playground_moves_a_device_by_the_velocity_its_program_sends_up_to_a_top_speed(tmp_path):
+    playground = _deployed(tmp_path, EAST, sensors={"still": [1, 2]})
+    before = _xs(playground.advance(2.0))
+
+    after = _xs(playground.advance(1.0))
+
+    assert after[0] - before[0] == pytest.approx(runner.MAX_SPEED, abs=0.01)
+    assert after[1:] == [1.0, 2.0]
+
+
+def test_playground_moves_a_device_between_its_rounds_not_in_jumps(tmp_path):
+    playground = _deployed(tmp_path, EAST, sensors={"still": [1, 2]})
+    xs = [_xs(playground.advance(1.0))[0]]
+
+    for _ in range(4):
+        xs.append(_xs(playground.advance(0.25))[0])
+
+    steps = [after - before for before, after in zip(xs, xs[1:])]
+    assert steps == pytest.approx([runner.MAX_SPEED / 4] * 4, abs=0.01)
+
+
+def test_playground_keeps_the_devices_that_move_in_a_world_wider_than_the_arena(tmp_path):
+    playground = _deployed(tmp_path, EAST)
+
+    snapshot = playground.advance(100.0)
+
+    assert runner.WORLD == (-2.5, 7.5)
+    assert _xs(snapshot) == pytest.approx([7.5] * 3)
+
+
+def test_playground_keeps_where_the_devices_moved_when_the_page_changes_something_else(tmp_path):
+    playground = _deployed(tmp_path, EAST, sensors={"still": [1, 2]})
+    moved = _xs(playground.advance(2.0))[0]
+
+    playground.update(LINE, 1.5, {"still": [1, 2]})
+    snapshot = playground.advance(0.0)
+
+    assert moved > 0.0
+    assert _xs(snapshot)[0] == moved
+
+
+def test_playground_puts_a_moving_device_where_the_page_drags_it(tmp_path):
+    playground = _deployed(tmp_path, EAST, sensors={"still": [0, 1, 2]})
+    playground.advance(1.0)
+
+    playground.update([(0.0, 0.0), (1.0, 0.0), (4.0, 3.0)], 1.5, {"still": [0, 1, 2]})
+    snapshot = playground.advance(1.0)
+
+    assert snapshot.positions[2] == [4.0, 3.0]
+
+
+def test_playground_puts_the_devices_back_where_the_page_placed_them_on_restart(tmp_path):
+    playground = _deployed(tmp_path, EAST)
+    playground.advance(3.0)
+
+    playground.load(EAST, [], restart=True)
+    snapshot = playground.advance(0.0)
+
+    assert snapshot.positions == [list(position) for position in LINE]
+
+
+def test_playground_never_tells_a_network_whose_devices_move_is_stable(tmp_path):
+    playground = _deployed(tmp_path, EAST, positions=[(0.0, 0.0)])
+
+    snapshots = [playground.advance(1.0) for _ in range(5)]
+
+    assert not any(snapshot.stable for snapshot in snapshots)
+
+
+# ---------- ranges that adapt ----------
+
+CROWD = [(x / 5, y / 5) for y in range(6) for x in range(6)]  # 36 devices in a unit
+
+
+def test_playground_starts_every_device_with_the_radius_of_the_page(tmp_path):
+    playground = _deployed(tmp_path, NEIGHBOURS)
+
+    snapshot = playground.advance(0.0)
+
+    assert snapshot.ranges == [1.5, 1.5, 1.5]
+
+
+def test_playground_shrinks_the_range_of_crowded_devices_to_keep_a_few_neighbours(tmp_path):
+    playground = _deployed(tmp_path, NEIGHBOURS, CROWD)
+
+    snapshot = playground.advance(40.0)
+
+    assert all(reach < 1.5 for reach in snapshot.ranges)
+    assert max(_results(snapshot)) <= runner.NEIGHBOURS + runner.TOLERANCE
+
+
+def test_playground_keeps_the_ranges_when_the_page_changes_something_else(tmp_path):
+    playground = _deployed(tmp_path, NEIGHBOURS, CROWD)
+    shrunk = playground.advance(20.0).ranges
+
+    playground.update(CROWD, 1.5, {"source": [0]})
+    kept = playground.advance(0.0).ranges
+
+    assert kept == shrunk
+
+
+def test_playground_starts_the_ranges_over_when_the_page_changes_the_radius_or_restarts(tmp_path):
+    playground = _deployed(tmp_path, NEIGHBOURS, CROWD)
+    playground.advance(20.0)
+
+    playground.update(CROWD, 2.0, {})
+    changed = playground.advance(0.0).ranges
+    playground.advance(20.0)
+    playground.load(NEIGHBOURS, [], restart=True)
+    restarted = playground.advance(0.0).ranges
+
+    assert changed == [2.0] * 36
+    assert restarted == [2.0] * 36
+
+
+HEADINGS = """
+from phyelds.calculus import aggregate
+from phyelds.experimental.swarm import Vector
+from phyelds.libraries.device import local_id
+
+@aggregate
+def program():
+    return [Vector(0.951, 0.234), Vector(0, 1), Vector(0.001, 0, 2)][local_id()]
+"""
+
+
+def test_playground_shows_vectors_as_directions_in_degrees(tmp_path):
+    playground = _deployed(tmp_path, HEADINGS)
+
+    layer = playground.advance(1.0).layers[0]
+
+    assert layer.direction
+    assert layer.numbers[:2] == [pytest.approx(13.82, abs=0.01), 90.0]
+    assert math.isnan(layer.numbers[2])  # all but still on the plane: no heading
+    assert layer.texts == ["(x=0.95, y=0.23)", "(x=0.00, y=1.00)", "(x=0.00, y=0.00, z=2.00)"]
+
+
+PHASES = """
+from enum import IntEnum
+from phyelds.calculus import aggregate
+
+class Light(IntEnum):
+    GREEN = 0
+    YELLOW = 1
+    RED = 2
+
+@aggregate
+def program():
+    return Light.YELLOW
+"""
+
+
+def test_playground_scales_an_enum_on_all_its_members_and_names_them(tmp_path):
+    playground = _deployed(tmp_path, PHASES)
+
+    layer = playground.advance(1.0).layers[0]
+
+    assert (layer.low, layer.high) == (0.0, 2.0)
+    assert layer.numbers == [1.0, 1.0, 1.0]
+    assert [key[0] for key in layer.keys] == ["GREEN", "YELLOW", "RED"]
+    assert layer.texts == ["YELLOW"] * 3
+
+
+def test_playground_widens_the_scale_of_a_layer_but_never_narrows_it_in_a_run(tmp_path):
+    playground = _deployed(tmp_path, COUNTER)
+    first = playground.advance(1.0).layers[0]
+
+    later = playground.advance(3.0).layers[0]
+    playground.load(COUNTER, [], restart=True)
+    restarted = playground.advance(1.0).layers[0]
+
+    assert (first.low, first.high) == (1.0, 1.0)
+    assert (later.low, later.high) == (1.0, 4.0)
+    assert (restarted.low, restarted.high) == (1.0, 1.0)
+
+
+def test_playground_colours_the_members_of_an_enum_named_after_colours(tmp_path):
+    playground = _deployed(tmp_path, PHASES)
+
+    layer = playground.advance(1.0).layers[0]
+
+    assert layer.colours == ["yellow"] * 3
+    assert layer.keys == [["GREEN", "green", 0.0], ["YELLOW", "yellow", 1.0], ["RED", "red", 2.0]]
+
+
+def test_playground_colours_nothing_by_name_when_a_value_names_no_colour(tmp_path):
+    playground = _deployed(tmp_path, COUNTER)
+
+    layer = playground.advance(1.0).layers[0]
+
+    assert layer.colours == [""] * 3
+    assert layer.keys == []
+
+
+MARKED = """
+from phyelds.calculus import aggregate
+from phyelds.libraries.device import local_id
+
+@aggregate
+def program():
+    double = local_id() * 2  # watch
+    return double + 1
+"""
+
+
+def test_playground_watches_the_lines_marked_watch_when_it_runs_the_code(tmp_path):
+    playground = runner.Playground(tmp_path / "run")
+    playground.update(LINE, 1.5, {})
+
+    loaded = playground.load(MARKED, [], restart=True)
+    snapshot = playground.advance(1.0)
+
+    assert [watch.label for watch in loaded.watches] == ["double"]
+    assert snapshot.layers[1].numbers == [0.0, 2.0, 4.0]
+
+
+def test_playground_watches_a_marked_line_once_when_it_is_also_selected(tmp_path):
+    playground = runner.Playground(tmp_path / "run")
+    playground.update(LINE, 1.5, {})
+
+    # As the page sends it: a list, not a tuple.
+    loaded = playground.load(MARKED, [list(_span(MARKED, "double = local_id() * 2"))], restart=True)
+
+    assert [watch.label for watch in loaded.watches] == ["double"]
+
+
+def test_playground_leaves_the_marks_alone_when_the_watches_change_on_the_running_devices(tmp_path):
+    playground = _deployed(tmp_path, MARKED)
+
+    loaded = playground.load(MARKED, [], restart=False)
+
+    assert loaded.watches == []
+
+
+SHAPED = """
+from phyelds.calculus import aggregate
+from phyelds.experimental.formation import circle
+
+SHAPE = circle((2.5, 2.5), 1.0)
+
+@aggregate
+def program():
+    return 0
+"""
+
+
+def test_playground_samples_the_shape_of_the_program_on_the_world(tmp_path):
+    playground = runner.Playground(tmp_path / "run")
+    playground.update(LINE, 1.5, {})
+
+    shape = playground.load(SHAPED, [], restart=True).shape
+
+    low, high = runner.WORLD
+    cells = runner.SHAPE_CELLS
+    step = (high - low) / cells
+    centre = round((2.5 - low) / step)
+    assert (shape.low, shape.high, shape.cells) == (low, high, cells)
+    assert len(shape.distances) == (cells + 1) ** 2
+    assert shape.distances[centre * (cells + 1) + centre] == pytest.approx(-1.0)
+    assert shape.distances[0] > 0
+    assert sum(distance <= 0 for distance in shape.distances) * step * step == pytest.approx(3.14, abs=0.3)
+
+
+def test_playground_samples_no_shape_when_the_program_has_none(tmp_path):
+    playground = runner.Playground(tmp_path / "run")
+    playground.update(LINE, 1.5, {})
+
+    assert playground.load(COUNTER, [], restart=True).shape is None

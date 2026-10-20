@@ -112,7 +112,7 @@ async function record(browser, theme, folder) {
     { name: "prefers-color-scheme", value: theme },
     { name: "prefers-reduced-motion", value: "reduce" },
   ]);
-  await page.goto(`${SITE}playground/#example=self_healing`, { waitUntil: "load" });
+  await page.goto(`${SITE}playground/#example=gradient`, { waitUntil: "load" });
   await page.waitForFunction(() => /round <strong>[1-9]/.test(document.querySelector("#wt-round").innerHTML), { timeout: 180000 });
   await page.addStyleTag({ content: CLEAN });
   await page.evaluate(() => document.activeElement.blur());

@@ -21,7 +21,7 @@ only with its immediate neighbors.
 <div class="ph-actions" markdown>
 [Get started](concepts/aggregate-programs.md){ .md-button .md-button--primary }
 [3D walkthrough](walkthrough/index.md){ .md-button }
-[Playground](playground/index.md#example=self_healing){ .md-button }
+[Playground](playground/index.md#example=gradient){ .md-button }
 </div>
 
 ```bash
@@ -36,7 +36,7 @@ Python 3.12 or later. To run programs in simulation, see the [simulator](simulat
 <figure markdown>
 ![A distance gradient, in 3D, repairing itself as its source is dragged across the network](assets/hero.gif#only-light)
 ![A distance gradient, in 3D, repairing itself as its source is dragged across the network](assets/hero-dark.gif#only-dark)
-<figcaption markdown>In the [playground](playground/index.md#example=self_healing), a distance gradient repairs itself as its source is dragged across the network.</figcaption>
+<figcaption markdown>In the [playground](playground/index.md#example=gradient), a distance gradient repairs itself as its source is dragged across the network.</figcaption>
 </figure>
 </div>
 

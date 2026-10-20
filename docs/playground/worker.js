@@ -8,7 +8,7 @@
  *               {type: "advance", rounds}
  *               {type: "complete", id, code, offset}
  * Messages out: {type: "status", text} | {type: "stdout" | "stderr", text}
- *               {type: "loaded", ok, program, watches}
+ *               {type: "loaded", ok, program, watches, shape}
  *               {type: "snapshot", time, paused, stable, ran, layers}
  *               {type: "completions", id, suggestions} | {type: "failed"}
  */

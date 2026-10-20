@@ -3,7 +3,8 @@ MkDocs hook: publish what the playground loads in the browser.
 
 After every build, ``site/playground/`` gets ``phyelds.zip`` (the package of
 this commit and its simulator, which Pyodide unpacks into site-packages), the examples and a
-``manifest.json`` that lists them for the menu. The full-screen pages, the
+``manifest.json`` that lists them for the menu, group by group, with the names each imports
+for the search. The full-screen pages, the
 walkthrough and the playground, replace their Markdown placeholders, and stay
 out of the previous and next links.
 """
@@ -22,8 +23,15 @@ PACKAGES = (ROOT / "src" / "phyelds", ROOT / "packages" / "phyelds-simulator" / 
 EXAMPLES = DOCS / "examples" / "playground"
 # Pages that open full screen: docs/<name>/app.html, published in place of docs/<name>/index.md.
 FULL_SCREEN = ("walkthrough", "playground")
-# The menu follows this tour; examples not listed come after, by name.
-TOUR = ["neighbours", "gradient", "self_healing", "channel", "corridor", "leaders", "bubbles"]
+# The groups of the menu, in order, and their examples in order: every example is in one.
+GROUPS = {
+    "Basics": ["neighbours", "gradient"],
+    "Spreading and collection": ["channel", "census"],
+    "Gossip": ["gossip", "opinions"],
+    "Time and logic": ["waves", "trail", "regions"],
+    "Coordination": ["leaders", "bubbles", "lights"],
+    "Swarms": ["follow", "spread", "flock", "teams", "mission", "star"],
+}
 
 
 def on_nav(nav: Any, **_: Any) -> Any:
@@ -50,9 +58,11 @@ def on_post_build(config: Mapping[str, Any], **_: Any) -> None:
     shutil.rmtree(examples, ignore_errors=True)
     examples.mkdir()
     manifest = []
-    for source in _tour_order(EXAMPLES.glob("*.py")):
-        shutil.copy(source, examples / source.name)
-        manifest.append(_describe(source))
+    for group, names in GROUPS.items():
+        for name in names:
+            source = EXAMPLES / f"{name}.py"
+            shutil.copy(source, examples / source.name)
+            manifest.append({"group": group, **_describe(source)})
     (playground / "manifest.json").write_text(json.dumps({"examples": manifest}, indent=2))
     for name in FULL_SCREEN:
         _publish_full_screen(DOCS / name / "app.html", site_dir / name)
@@ -77,17 +87,10 @@ def _bundle_packages(packages: Iterable[Path], archive: Path) -> None:
                     bundle.write(path, path.relative_to(package.parent).as_posix())
 
 
-def _tour_order(sources: Iterable[Path]) -> list[Path]:
-    """The examples in the order of TOUR, then the others by name."""
-    def position(source: Path) -> tuple[int, str]:
-        rank = TOUR.index(source.stem) if source.stem in TOUR else len(TOUR)
-        return rank, source.stem
-
-    return sorted(sources, key=position)
-
-
-def _describe(source: Path) -> dict[str, str]:
-    """Name, title and summary of an example, from the first line of its docstring."""
-    docstring = ast.get_docstring(ast.parse(source.read_text())) or source.stem
+def _describe(source: Path) -> dict[str, Any]:
+    """Name, title and summary of an example, from the first line of its docstring, and the names it imports."""
+    tree = ast.parse(source.read_text())
+    docstring = ast.get_docstring(tree) or source.stem
     title, _, summary = docstring.splitlines()[0].partition(":")
-    return {"name": source.stem, "title": title.strip(), "summary": summary.strip()}
+    uses = [alias.name for node in tree.body if isinstance(node, ast.ImportFrom) for alias in node.names]
+    return {"name": source.stem, "title": title.strip(), "summary": summary.strip(), "uses": uses}

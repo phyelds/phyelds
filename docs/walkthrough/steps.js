@@ -135,7 +135,7 @@ export const STEPS = [
     hint: "Restart to watch it spread. Drag the target, or switch devices off: the field repairs itself.",
     view: "toTarget",
     roles: ["target"],
-    playground: "self_healing",
+    playground: "gradient",
     code: [
       { code: "@aggregate" },
       { code: "def to_target() -> float:" },
