@@ -1,3 +1,9 @@
+## [8.4.1](https://github.com/phyelds/phyelds/compare/8.4.0...8.4.1) (2026-10-20)
+
+### Documentation
+
+* better visual for wlakthrough ([a08a52f](https://github.com/phyelds/phyelds/commit/a08a52fb6d8803d191cb364c05e9e68f7008314d))
+
 ## [8.4.0](https://github.com/phyelds/phyelds/compare/8.3.0...8.4.0) (2026-10-19)
 
 ### Features
