@@ -4,7 +4,8 @@
  * how far they hear and what they sense. Python, in a worker (worker.js), runs the
  * program on it round after round and sends back what every device computed, which
  * the stage draws as a stack of layers: the result at the bottom, and above it every
- * expression of the program that the reader selects and watches.
+ * expression of the program that the reader selects and watches. A program that sends a
+ * velocity moves its devices: Python moves them, and the page draws them where they are.
  *
  * The URL hash selects what the editor opens with: #example=<name> for an example,
  * #code=<base64url> for a shared program.
@@ -27,7 +28,8 @@ const ANCHORS = [
   { x: SPAN - 1, y: SPAN - 1 },
   { x: 1, y: 1 },
 ];
-const SENSE = /\bsense\(\s*["']([A-Za-z_]\w*)["']\s*\)/g;
+// A sensor read with sense("name"), or named with Sensor("name").
+const SENSE = /\b(?:sense|Sensor)\(\s*["']([A-Za-z_]\w*)["']\s*\)/g;
 // What the simulator keeps in the data of a device besides its sensors: nothing to switch.
 const RESERVED = new Set(["position", "time", "state", "messages", "result", "outputs"]);
 const CONSOLE_LINES = 200; // pieces of output the console keeps: a program may print every round
@@ -60,13 +62,16 @@ function spread(places) {
 }
 
 const world = {
-  places: spread(PLACES), // where each device is, as the reader moved it
+  places: spread(PLACES), // where each device is, as the reader placed it
+  moved: [], // where each device is, as its program moved it: the places of the last step
   count: FEWEST,
   radius: null, // how far devices hear, if the reader chose it; else it follows their number
   sensors: new Map(), // each sensor, and the devices on which it is on
   dirty: false, // Python has not been told yet
 };
-const connect = () => createNetwork(world.count, world.places, world.radius ?? undefined);
+/** Where the devices are: where their program moved them, else where the reader placed them. */
+const placesNow = () => world.places.map((place, id) => world.moved[id] ?? place);
+const connect = () => createNetwork(world.count, placesNow(), world.radius ?? undefined);
 let network = connect();
 
 const app = {
@@ -122,7 +127,7 @@ const changed = () => {
 const inspected = () => app.hovered ?? app.selected;
 const format = (number) => String(Number(number.toPrecision(3)));
 
-/** The sensors a program reads, in order: every sense("name") with a name written in it. */
+/** The sensors a program reads, in order: every sense("name") or Sensor("name") with a name written in it. */
 function sensorsOf(code) {
   const names = new Set(Array.from(code.matchAll(SENSE), (match) => match[1]));
   return [...names].filter((name) => !RESERVED.has(name));
@@ -158,7 +163,7 @@ function stop(text) {
 function sendWorld() {
   post({
     type: "update",
-    positions: network.devices.map(({ x, y }) => [x, y]),
+    positions: world.places.slice(0, world.count).map(({ x, y }) => [x, y]),
     radius: network.range,
     sensors: Object.fromEntries([...world.sensors].map(([name, on]) => [name, [...on]])),
   });
@@ -192,7 +197,8 @@ const marked = () => kept().map(({ mark }) => [mark.start, mark.end]);
 
 /** The device nearest `point`, among the first `count`. */
 function nearest(point, count = world.count) {
-  const distance = (id) => Math.hypot(world.places[id].x - point.x, world.places[id].y - point.y);
+  const places = placesNow();
+  const distance = (id) => Math.hypot(places[id].x - point.x, places[id].y - point.y);
   let best = 0;
   for (let id = 1; id < count; id += 1) {
     if (distance(id) < distance(best)) best = id;
@@ -397,6 +403,7 @@ function onSnapshot(message) {
     if (Number.isFinite(time) && time !== snapshot?.ran[id]) display.ranAt[id] = now;
   });
   snapshot = message;
+  followDevices(message.positions);
   refreshLooks();
   if (snapshot.paused && app.playing) {
     setPlaying(false);
@@ -404,6 +411,16 @@ function onSnapshot(message) {
   }
   app.panelDirty = true;
   changed();
+}
+
+/** Draws the devices where their program moved them, if it moved any. */
+function followDevices(positions) {
+  const moved = positions.map(([x, y]) => ({ x, y }));
+  const same = moved.length === world.moved.length && moved.every(({ x, y }, id) => x === world.moved[id].x && y === world.moved[id].y);
+  if (same) return;
+  world.moved = moved;
+  network = connect();
+  app.panelDirty = true;
 }
 
 /** Asks Python for the rounds due since the last step, while playing. */
@@ -753,11 +770,13 @@ function setDeviceCount(count) {
     for (const id of [...on]) {
       if (id >= count) {
         on.delete(id);
-        on.add(nearest(world.places[id], count));
+        on.add(nearest(placesNow()[id], count));
       }
     }
   }
   world.count = count;
+  // A device added back starts where the reader placed it, not where its program had moved it.
+  world.moved = world.moved.slice(0, count);
   world.radius = null;
   element("pg-devices-value").textContent = count;
   if (app.hovered !== null && app.hovered >= count) app.hovered = null;
@@ -770,6 +789,7 @@ function move(id, point) {
   if (!point) return;
   const inside = (value) => Math.max(0, Math.min(SPAN, value));
   world.places[id] = { x: inside(point.x), y: inside(point.y) };
+  world.moved[id] = world.places[id];
   worldChanged();
 }
 
