@@ -5,7 +5,8 @@ The page sends the network (where the devices are, how far they hear and what
 they sense), the code and the expressions to watch. Every device of a phyelds
 Simulator runs the last @aggregate function of the code once per round, and each
 step reports what every device computed: its result and the value of every
-watched expression, in its last round.
+watched expression, in its last round. A device whose program sends a velocity
+moves by it after its round, and each step reports where the devices are.
 
 The playground loads this module into Pyodide; it is plain Python, so it is
 tested with pytest like the rest of the documentation examples.
@@ -29,6 +30,7 @@ from typing import Any
 
 from phyelds import engine
 from phyelds.data import NeighborhoodField, State
+from phyelds.libraries.device import velocity
 from phyelds.simulator import Node, Simulator
 from phyelds.simulator.neighborhood import radius_neighborhood
 from phyelds.simulator.runner import aggregate_program_runner
@@ -38,6 +40,8 @@ LONGEST_LABEL = 40  # characters of the name of a watch
 LONGEST_TEXT = 40  # characters of the text of a value
 ROUND = 1.0  # simulated time between two runs of a device
 MAX_SUGGESTIONS = 40  # names the completion of the editor offers at once
+MAX_SPEED = 0.15  # how far a device moves in a round at most
+ARENA = 5.0  # the side of the square in which the devices move: SPAN in walkthrough/model.js
 NOT_WATCHABLE = "Select an expression inside a function, or a line that assigns, returns or tests one."
 
 
@@ -76,7 +80,7 @@ class Snapshot:
     """
     The network at ``time``: whether an error paused it, whether it is stable (a whole
     round changed nothing that a device shows), when each device last ran (NaN before
-    its first round), and the layers.
+    its first round), the layers, and where each device is.
     """
 
     time: float
@@ -84,6 +88,7 @@ class Snapshot:
     stable: bool
     ran: list[float]
     layers: list[Layer]
+    positions: list[list[float]]
 
 
 @dataclass
@@ -176,11 +181,14 @@ class Playground:
         Place the devices as the page has them.
 
         Args:
-            positions: where each device is: device k at ``positions[k]``. Devices past
-                the end are removed; new ones run from the next round on.
+            positions: where the page placed each device: device k at ``positions[k]``.
+                A device the program moved stays where it is, unless the page placed it
+                elsewhere since. Devices past the end are removed; new ones run from the
+                next round on.
             radius: how far a device hears.
             sensors: for every sensor, the devices on which it is on.
         """
+        placed = self._positions
         self._positions = [tuple(position) for position in positions]
         self._radius = radius
         self._sensors = {name: set(on) for name, on in sensors.items()}
@@ -197,7 +205,8 @@ class Playground:
             heapq.heapify(queue)
         for node_id, position in enumerate(self._positions):
             node = environment.nodes[node_id] if node_id in environment.nodes else self._add(node_id)
-            node.position = position
+            if node_id >= len(placed) or placed[node_id] != position:
+                node.position = position
             node.data.update({name: node_id in on for name, on in self._sensors.items()})
         environment.set_neighborhood_function(radius_neighborhood(radius))
 
@@ -215,13 +224,14 @@ class Playground:
         linecache.clearcache()
 
     def _restart(self) -> None:
-        """Every device from its first round, in the order of the previous restart."""
+        """Every device from its first round, where the page placed it, in the order of the previous restart."""
         self._simulator = Simulator()
         self._random = random.Random(self._seed)
         self._clock = 0.0
         self._rows = {}
         self._changed = 0.0
-        self.update(self._positions, self._radius, self._sensors)
+        positions, self._positions = self._positions, []
+        self.update(positions, self._radius, self._sensors)
 
     def _add(self, node_id: int) -> Node:
         """A new device, whose first round comes within a round from now."""
@@ -246,13 +256,27 @@ class Playground:
                 _print_traceback(error, self._main)
             self._simulator.stop()
             result = None
-        node_id = engine.get().node_context.node_id
+        context = engine.get().node_context
+        node_id = context.node_id
+        self._move(self._simulator.environment.nodes[node_id], velocity.read(context.outputs))
         row = [_value(result), *(self._recorder.values.get(k, NO_VALUE) for k in range(self._watches))]
         # Compared as shown: NaN differs from itself, and a value settling past the shown digits is settled.
         if [value.text for value in row] != [value.text for value in self._rows.get(node_id, [])]:
             self._changed = self._simulator.current_time
         self._rows[node_id] = row
         return result
+
+    @staticmethod
+    def _move(node: Node, heading: Sequence[float] | None) -> None:
+        """Move ``node`` by ``heading`` for a round, at MAX_SPEED at most, and inside the arena."""
+        if heading is None:
+            return
+        step = [component * ROUND for component in tuple(heading)[:len(node.position)]]
+        length = math.sqrt(sum(component * component for component in step))
+        scale = MAX_SPEED / length if length > MAX_SPEED else 1.0
+        node.position = tuple(
+            min(ARENA, max(0.0, coordinate + component * scale)) for coordinate, component in zip(node.position, step)
+        )
 
     def _snapshot(self) -> Snapshot:
         """The network now."""
@@ -267,7 +291,8 @@ class Playground:
         nodes = self._simulator.environment.nodes
         ran = [nodes[node_id].data.get("time", math.nan) for node_id in range(count)]
         stable = self._clock - self._changed >= ROUND
-        return Snapshot(self._clock, self._error is not None, stable, ran, layers)
+        positions = [list(nodes[node_id].position) for node_id in range(count)]
+        return Snapshot(self._clock, self._error is not None, stable, ran, layers, positions)
 
 
 class _Recorder:

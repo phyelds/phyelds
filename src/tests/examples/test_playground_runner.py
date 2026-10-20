@@ -537,3 +537,75 @@ def test_complete_suggests_at_most_a_screenful_of_names():
     suggestions = runner.complete(code, len(code))
 
     assert 0 < len(suggestions) <= runner.MAX_SUGGESTIONS
+
+
+# ---------- devices that move ----------
+
+EAST = """
+from phyelds.calculus import aggregate
+from phyelds.libraries.device import local_id, sense, velocity
+
+@aggregate
+def program():
+    if not sense("still"):
+        velocity.send((10.0, 0.0))
+    return local_id()
+"""
+
+
+def _xs(snapshot):
+    return [x for x, _ in snapshot.positions]
+
+
+def test_playground_reports_where_the_devices_are(tmp_path):
+    playground = _deployed(tmp_path, NEIGHBOURS)
+
+    snapshot = playground.advance(1.0)
+
+    assert snapshot.positions == [list(position) for position in LINE]
+
+
+def test_playground_moves_a_device_by_the_velocity_its_program_sends_up_to_a_top_speed(tmp_path):
+    playground = _deployed(tmp_path, EAST, sensors={"still": [1, 2]})
+
+    snapshot = playground.advance(2.0)
+
+    assert _xs(snapshot) == pytest.approx([2 * runner.MAX_SPEED, 1.0, 2.0])
+
+
+def test_playground_keeps_the_devices_that_move_in_the_arena(tmp_path):
+    playground = _deployed(tmp_path, EAST)
+
+    snapshot = playground.advance(100.0)
+
+    assert _xs(snapshot) == pytest.approx([runner.ARENA] * 3)
+
+
+def test_playground_keeps_where_the_devices_moved_when_the_page_changes_something_else(tmp_path):
+    playground = _deployed(tmp_path, EAST, sensors={"still": [1, 2]})
+    playground.advance(2.0)
+
+    playground.update(LINE, 1.5, {"still": [0, 1, 2]})
+    snapshot = playground.advance(1.0)
+
+    assert _xs(snapshot)[0] == pytest.approx(2 * runner.MAX_SPEED)
+
+
+def test_playground_puts_a_moving_device_where_the_page_drags_it(tmp_path):
+    playground = _deployed(tmp_path, EAST, sensors={"still": [0, 1, 2]})
+    playground.advance(1.0)
+
+    playground.update([(0.0, 0.0), (1.0, 0.0), (4.0, 3.0)], 1.5, {"still": [0, 1, 2]})
+    snapshot = playground.advance(1.0)
+
+    assert snapshot.positions[2] == [4.0, 3.0]
+
+
+def test_playground_puts_the_devices_back_where_the_page_placed_them_on_restart(tmp_path):
+    playground = _deployed(tmp_path, EAST)
+    playground.advance(3.0)
+
+    playground.load(EAST, [], restart=True)
+    snapshot = playground.advance(0.0)
+
+    assert snapshot.positions == [list(position) for position in LINE]
