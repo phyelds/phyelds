@@ -609,3 +609,11 @@ def test_playground_puts_the_devices_back_where_the_page_placed_them_on_restart(
     snapshot = playground.advance(0.0)
 
     assert snapshot.positions == [list(position) for position in LINE]
+
+
+def test_playground_never_tells_a_network_whose_devices_move_is_stable(tmp_path):
+    playground = _deployed(tmp_path, EAST, positions=[(0.0, 0.0)])
+
+    snapshots = [playground.advance(1.0) for _ in range(5)]
+
+    assert not any(snapshot.stable for snapshot in snapshots)

@@ -78,8 +78,8 @@ class Layer:
 @dataclass
 class Snapshot:
     """
-    The network at ``time``: whether an error paused it, whether it is stable (a whole
-    round changed nothing that a device shows), when each device last ran (NaN before
+    The network at ``time``: whether an error paused it, whether it is stable (in a whole
+    round, no device moved nor showed anything new), when each device last ran (NaN before
     its first round), the layers, and where each device is.
     """
 
@@ -138,7 +138,7 @@ class Playground:
         self._recorder = _Recorder()
         self._watches = 0
         self._rows: dict[int, list[Value]] = {}
-        self._changed = 0.0  # when a device last showed something new
+        self._changed = 0.0  # when a device last moved or showed something new
 
     def load(self, code: str, selections: Sequence[tuple[int, int]], restart: bool) -> Loaded:
         """
@@ -258,7 +258,11 @@ class Playground:
             result = None
         context = engine.get().node_context
         node_id = context.node_id
-        self._move(self._simulator.environment.nodes[node_id], velocity.read(context.outputs))
+        node = self._simulator.environment.nodes[node_id]
+        before = node.position
+        self._move(node, velocity.read(context.outputs))
+        if node.position != before:
+            self._changed = self._simulator.current_time
         row = [_value(result), *(self._recorder.values.get(k, NO_VALUE) for k in range(self._watches))]
         # Compared as shown: NaN differs from itself, and a value settling past the shown digits is settled.
         if [value.text for value in row] != [value.text for value in self._rows.get(node_id, [])]:
