@@ -6,7 +6,9 @@ they sense), the code and the expressions to watch. Every device of a phyelds
 Simulator runs the last @aggregate function of the code once per round, and each
 step reports what every device computed: its result and the value of every
 watched expression, in its last round. A device whose program sends a velocity
-moves by it after its round, and each step reports where the devices are.
+moves by it after its round, and each step reports where the devices are. Every
+device hears within a range of its own, which adapts to keep about NEIGHBOURS
+neighbours, and each step reports the ranges too.
 
 The playground loads this module into Pyodide; it is plain Python, so it is
 tested with pytest like the rest of the documentation examples.
@@ -32,7 +34,7 @@ from phyelds import engine
 from phyelds.data import NeighborhoodField, State
 from phyelds.libraries.device import velocity
 from phyelds.simulator import Node, Simulator
-from phyelds.simulator.neighborhood import radius_neighborhood
+from phyelds.simulator.neighborhood import AdaptiveRange, adaptive_range
 from phyelds.simulator.runner import aggregate_program_runner
 
 WATCH = "__watch__"  # what records the watched values, in the globals of the program
@@ -42,6 +44,11 @@ ROUND = 1.0  # simulated time between two runs of a device
 MAX_SUGGESTIONS = 40  # names the completion of the editor offers at once
 MAX_SPEED = 0.15  # how far a device moves in a round at most
 ARENA = 5.0  # the side of the square in which the devices move: SPAN in walkthrough/model.js
+NEIGHBOURS = 8  # how many neighbours the range of a device adapts to keep
+TOLERANCE = 4  # how many more or fewer are fine
+RANGE_STEP = 0.05  # how much a range changes in a round
+SHORTEST_RANGE = 0.3  # the ranges of the slider of the page
+LONGEST_RANGE = ARENA
 NOT_WATCHABLE = "Select an expression inside a function, or a line that assigns, returns or tests one."
 
 
@@ -80,7 +87,7 @@ class Snapshot:
     """
     The network at ``time``: whether an error paused it, whether it is stable (in a whole
     round, no device moved nor showed anything new), when each device last ran (NaN before
-    its first round), the layers, and where each device is.
+    its first round), the layers, where each device is, and how far it hears.
     """
 
     time: float
@@ -89,6 +96,7 @@ class Snapshot:
     ran: list[float]
     layers: list[Layer]
     positions: list[list[float]]
+    ranges: list[float]
 
 
 @dataclass
@@ -131,6 +139,7 @@ class Playground:
         self._clock = 0.0
         self._positions: list[tuple[float, ...]] = []
         self._radius = 0.0
+        self._neighbourhood: AdaptiveRange | None = None
         self._sensors: dict[str, set[int]] = {}
         self._program: Callable[[], Any] | None = None
         self._source = ""  # the code of the running program, watches included
@@ -185,7 +194,8 @@ class Playground:
                 A device the program moved stays where it is, unless the page placed it
                 elsewhere since. Devices past the end are removed; new ones run from the
                 next round on.
-            radius: how far a device hears.
+            radius: how far a device hears at first: its range then adapts, until
+                the page changes the radius, which starts every range over.
             sensors: for every sensor, the devices on which it is on.
         """
         placed = self._positions
@@ -198,6 +208,9 @@ class Playground:
         for node_id in removed:
             environment.remove_node(node_id)
             self._rows.pop(node_id, None)
+            if self._neighbourhood is not None:
+                # A device added back starts with the radius of the page, not the range it had.
+                self._neighbourhood.ranges.pop(node_id, None)
         if removed:
             # Their next rounds go too: a device added back with the same id would run twice.
             queue = self._simulator.event_queue
@@ -208,7 +221,12 @@ class Playground:
             if node_id >= len(placed) or placed[node_id] != position:
                 node.position = position
             node.data.update({name: node_id in on for name, on in self._sensors.items()})
-        environment.set_neighborhood_function(radius_neighborhood(radius))
+        if self._neighbourhood is None or self._neighbourhood.radius != radius:
+            self._neighbourhood = adaptive_range(
+                radius, neighbors=NEIGHBOURS, tolerance=TOLERANCE, step=RANGE_STEP,
+                min_range=SHORTEST_RANGE, max_range=LONGEST_RANGE,
+            )
+        environment.set_neighborhood_function(self._neighbourhood)
 
     def advance(self, rounds: float) -> Snapshot:
         """Run the devices for ``rounds`` rounds, unless no program runs or an error paused them."""
@@ -231,6 +249,7 @@ class Playground:
         self._rows = {}
         self._changed = 0.0
         positions, self._positions = self._positions, []
+        self._neighbourhood = None
         self.update(positions, self._radius, self._sensors)
 
     def _add(self, node_id: int) -> Node:
@@ -296,7 +315,8 @@ class Playground:
         ran = [nodes[node_id].data.get("time", math.nan) for node_id in range(count)]
         stable = self._clock - self._changed >= ROUND
         positions = [list(nodes[node_id].position) for node_id in range(count)]
-        return Snapshot(self._clock, self._error is not None, stable, ran, layers, positions)
+        ranges = [self._neighbourhood.range_of(nodes[node_id]) for node_id in range(count)]
+        return Snapshot(self._clock, self._error is not None, stable, ran, layers, positions, ranges)
 
 
 class _Recorder:

@@ -617,3 +617,49 @@ def test_playground_never_tells_a_network_whose_devices_move_is_stable(tmp_path)
     snapshots = [playground.advance(1.0) for _ in range(5)]
 
     assert not any(snapshot.stable for snapshot in snapshots)
+
+
+# ---------- ranges that adapt ----------
+
+CROWD = [(x / 5, y / 5) for y in range(6) for x in range(6)]  # 36 devices in a unit
+
+
+def test_playground_starts_every_device_with_the_radius_of_the_page(tmp_path):
+    playground = _deployed(tmp_path, NEIGHBOURS)
+
+    snapshot = playground.advance(0.0)
+
+    assert snapshot.ranges == [1.5, 1.5, 1.5]
+
+
+def test_playground_shrinks_the_range_of_crowded_devices_to_keep_a_few_neighbours(tmp_path):
+    playground = _deployed(tmp_path, NEIGHBOURS, CROWD)
+
+    snapshot = playground.advance(40.0)
+
+    assert all(reach < 1.5 for reach in snapshot.ranges)
+    assert max(_results(snapshot)) <= runner.NEIGHBOURS + runner.TOLERANCE
+
+
+def test_playground_keeps_the_ranges_when_the_page_changes_something_else(tmp_path):
+    playground = _deployed(tmp_path, NEIGHBOURS, CROWD)
+    shrunk = playground.advance(20.0).ranges
+
+    playground.update(CROWD, 1.5, {"source": [0]})
+    kept = playground.advance(0.0).ranges
+
+    assert kept == shrunk
+
+
+def test_playground_starts_the_ranges_over_when_the_page_changes_the_radius_or_restarts(tmp_path):
+    playground = _deployed(tmp_path, NEIGHBOURS, CROWD)
+    playground.advance(20.0)
+
+    playground.update(CROWD, 2.0, {})
+    changed = playground.advance(0.0).ranges
+    playground.advance(20.0)
+    playground.load(NEIGHBOURS, [], restart=True)
+    restarted = playground.advance(0.0).ranges
+
+    assert changed == [2.0] * 36
+    assert restarted == [2.0] * 36

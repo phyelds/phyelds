@@ -64,6 +64,7 @@ function spread(places) {
 const world = {
   places: spread(PLACES), // where each device is, as the reader placed it
   moved: [], // where each device is, as its program moved it: the places of the last step
+  ranges: [], // how far each device hears, as its range adapted: the ranges of the last step
   count: FEWEST,
   radius: null, // how far devices hear, if the reader chose it; else it follows their number
   sensors: new Map(), // each sensor, and the devices on which it is on
@@ -71,7 +72,7 @@ const world = {
 };
 /** Where the devices are: where their program moved them, else where the reader placed them. */
 const placesNow = () => world.places.map((place, id) => world.moved[id] ?? place);
-const connect = () => createNetwork(world.count, placesNow(), world.radius ?? undefined);
+const connect = () => createNetwork(world.count, placesNow(), world.radius ?? undefined, world.ranges);
 let network = connect();
 
 const app = {
@@ -403,7 +404,7 @@ function onSnapshot(message) {
     if (Number.isFinite(time) && time !== snapshot?.ran[id]) display.ranAt[id] = now;
   });
   snapshot = message;
-  followDevices(message.positions);
+  followDevices(message.positions, message.ranges);
   refreshLooks();
   if (snapshot.paused && app.playing) {
     setPlaying(false);
@@ -413,12 +414,16 @@ function onSnapshot(message) {
   changed();
 }
 
-/** Draws the devices where their program moved them, if it moved any. */
-function followDevices(positions) {
+/** Draws the devices where their program moved them, linked as their ranges say, if either changed. */
+function followDevices(positions, ranges) {
   const moved = positions.map(([x, y]) => ({ x, y }));
-  const same = moved.length === world.moved.length && moved.every(({ x, y }, id) => x === world.moved[id].x && y === world.moved[id].y);
+  const same =
+    moved.length === world.moved.length &&
+    moved.every(({ x, y }, id) => x === world.moved[id].x && y === world.moved[id].y) &&
+    ranges.every((range, id) => range === world.ranges[id]);
   if (same) return;
   world.moved = moved;
+  world.ranges = ranges;
   network = connect();
   app.panelDirty = true;
 }
@@ -777,6 +782,7 @@ function setDeviceCount(count) {
   world.count = count;
   // A device added back starts where the reader placed it, not where its program had moved it.
   world.moved = world.moved.slice(0, count);
+  world.ranges = [];
   world.radius = null;
   element("pg-devices-value").textContent = count;
   if (app.hovered !== null && app.hovered >= count) app.hovered = null;
@@ -988,6 +994,8 @@ element("pg-flat").addEventListener("click", () => setFlat(!app.flat));
 element("pg-devices").addEventListener("input", (event) => setDeviceCount(Number(event.target.value)));
 element("pg-radius").addEventListener("input", (event) => {
   world.radius = Number(event.target.value);
+  // Every range starts over from the radius, in Python too.
+  world.ranges = [];
   worldChanged();
 });
 element("pg-speed").addEventListener("change", (event) => {

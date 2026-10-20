@@ -8,6 +8,9 @@ and your code is not sent anywhere.
 
 ## How it works
 
+- **Example** opens one of the examples, group by group, from the basics to swarms
+  that move. Its search finds them by title, by summary, or by the functions they
+  import, such as `gossip` or `sink_at`.
 - The editor holds a Python module: every device runs its last `@aggregate`
   function, once per round. The playground owns the network: how many devices
   there are, where they are, and what they sense.
@@ -23,11 +26,19 @@ and your code is not sent anywhere.
 - The eye of a layer hides it from the stack. **One at a time** (S) shows only the layer
   in front, and ↑ and ↓ move through the stack; Shift+↑ and Shift+↓ move the watch in
   front up and down it. **2D** shows the layer in front from above, flat.
-- Every `sense("name")` of the program becomes a switch on the selected device.
+- Every `sense("name")` or `Sensor("name")` of the program becomes a switch on the
+  selected device.
 - Drag a device, in 3D or on the map, to move it. The sliders choose how many
-  devices there are, from two to a hundred, and how far they hear; the devices
-  that stay keep their state. The rounds run at the speed you pick, and the bar
+  devices there are, from two to a hundred, and how far they hear at first; the
+  devices that stay keep their state. Then the range of every device
+  [adapts](../simulator.md#ranges-that-adapt) to keep about eight neighbours, as a
+  swarm that gathers or scatters needs, and two devices hear each other when each is
+  in range of the other. The rounds run at the speed you pick, and the bar
   under the network says when a whole round changed nothing: the program is stable.
+- A program that sends a velocity (`velocity.send(v)`, from
+  `phyelds.libraries.device`) moves its devices after each round, at a top speed,
+  inside the arena: the [swarm behaviours](../experimental/swarm.md) are ready to use.
+  **Restart** (R) puts them back where you placed them.
 - **Run** (Ctrl+Enter) applies the code and starts every device over;
   **Stop** ends a program that never returns.
 - **Share** copies a link that opens the playground with your program, its watches
