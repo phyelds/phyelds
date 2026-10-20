@@ -33,6 +33,7 @@ from typing import Any
 
 from phyelds import engine
 from phyelds.data import NeighborhoodField, State
+from phyelds.experimental.swarm import Vector
 from phyelds.libraries.device import velocity
 from phyelds.simulator import Node, Simulator
 from phyelds.simulator.neighborhood import AdaptiveRange, adaptive_range
@@ -65,11 +66,15 @@ class Watch:
 
 @dataclass
 class Value:
-    """What a device computed, as the page shows it: a number on a scale, NaN if it has none, and a text."""
+    """
+    What a device computed, as the page shows it: a number on a scale, NaN if it has none,
+    and a text. A direction is a vector, its number the angle from east, in degrees.
+    """
 
     number: float
     text: str
     boolean: bool = False
+    direction: bool = False
 
 
 NO_VALUE = Value(math.nan, "")
@@ -77,11 +82,15 @@ NO_VALUE = Value(math.nan, "")
 
 @dataclass
 class Layer:
-    """A field over the devices, the result of the program or a watched expression: a number and a text each."""
+    """
+    A field over the devices, the result of the program or a watched expression: a number
+    and a text each, and whether all its values are booleans, or all directions.
+    """
 
     numbers: list[float]
     texts: list[str]
     boolean: bool
+    direction: bool = False
 
 
 @dataclass
@@ -316,7 +325,10 @@ class Playground:
             values = [row[k] if k < len(row) else NO_VALUE for row in rows]
             known = [value for value in values if value.text]
             boolean = bool(known) and all(value.boolean for value in known)
-            layers.append(Layer([value.number for value in values], [value.text for value in values], boolean))
+            direction = bool(known) and all(value.direction for value in known)
+            layers.append(
+                Layer([value.number for value in values], [value.text for value in values], boolean, direction)
+            )
         nodes = self._simulator.environment.nodes
         ran = [nodes[node_id].data.get("time", math.nan) for node_id in range(count)]
         stable = self._clock - self._changed >= ROUND
@@ -359,6 +371,11 @@ def _value(value: Any) -> Value:
             number = float(value)
             text = str(value) if isinstance(value, numbers.Integral) else f"{number:.4g}"
             return Value(number if math.isfinite(number) else math.nan, text)
+        if isinstance(value, Vector):
+            planar = value.x != 0 or value.y != 0
+            angle = math.degrees(math.atan2(value.y, value.x)) if planar else math.nan
+            height = f", z={value.z:.2f}" if value.z else ""
+            return Value(angle, f"(x={value.x:.2f}, y={value.y:.2f}{height})", direction=True)
         if isinstance(value, NeighborhoodField):
             return Value(math.nan, f"field {_SHORT.repr(value.data)}")
         return Value(math.nan, _SHORT.repr(value))

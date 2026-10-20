@@ -1,8 +1,9 @@
 /*
  * The colour maps a layer of the playground can take: plasma, as in the walkthrough
- * and the GIFs of the docs; viridis; a diverging map, from blue to red; and
- * categories, for ids. They extend the palette of the walkthrough, whose colours the
- * stage draws by their index.
+ * and the GIFs of the docs; viridis; a diverging map, from blue to red;
+ * categories, for ids; and directions, a wheel for headings, the same colour at both
+ * ends. They extend the palette of the walkthrough, whose colours the stage draws by
+ * their index.
  */
 import { rgba, toneIndex } from "../walkthrough/palette.js";
 
@@ -25,6 +26,15 @@ const DIVERGING = [
   [59, 76, 192],
   [150, 150, 150],
   [180, 4, 38],
+];
+// A wheel of hues: west, south, east, north and west again, so that a heading has one colour.
+const DIRECTIONS = [
+  [214, 76, 129],
+  [235, 150, 60],
+  [96, 178, 92],
+  [62, 146, 204],
+  [145, 104, 205],
+  [214, 76, 129],
 ];
 // Tableau 10: ten categories that tell apart on both themes.
 const CATEGORIES = [
@@ -58,6 +68,7 @@ export function extendPalette(palette) {
   for (const [map, colours] of [
     ["viridis", levels(VIRIDIS, low, high)],
     ["diverging", levels(DIVERGING)],
+    ["directions", levels(DIRECTIONS)],
     ["categories", CATEGORIES],
   ]) {
     starts[map] = rgb.length;

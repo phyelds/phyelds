@@ -677,3 +677,25 @@ def test_playground_starts_the_ranges_over_when_the_page_changes_the_radius_or_r
 
     assert changed == [2.0] * 36
     assert restarted == [2.0] * 36
+
+
+HEADINGS = """
+from phyelds.calculus import aggregate
+from phyelds.experimental.swarm import Vector
+from phyelds.libraries.device import local_id
+
+@aggregate
+def program():
+    return [Vector(0.951, 0.234), Vector(0, 1), Vector(0, 0, 2)][local_id()]
+"""
+
+
+def test_playground_shows_vectors_as_directions_in_degrees(tmp_path):
+    playground = _deployed(tmp_path, HEADINGS)
+
+    layer = playground.advance(1.0).layers[0]
+
+    assert layer.direction
+    assert layer.numbers[:2] == [pytest.approx(13.82, abs=0.01), 90.0]
+    assert math.isnan(layer.numbers[2])  # straight up: no heading on the plane
+    assert layer.texts == ["(x=0.95, y=0.23)", "(x=0.00, y=1.00)", "(x=0.00, y=0.00, z=2.00)"]

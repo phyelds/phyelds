@@ -22,6 +22,7 @@ import { createMenu } from "./menu.js";
 const ROUND_MS = 700; // how long a round lasts while playing: every device runs once in it
 const MAX_STEP = 0.5; // rounds asked of Python at once at most, so that the devices are seen to run in turn
 const EASE_MS = 140; // how fast heights follow a change of value
+const GLIDE_MS = 90; // how fast a drawn device follows its device, which Python moves step by step
 const FEWEST_DEVICES = 2;
 // Where the first two sensors of a program start: by the source and the target of the walkthrough.
 const ANCHORS = [
@@ -85,6 +86,7 @@ const app = {
   look: { map: "plasma", height: 1, visible: true }, // how the result is drawn: colours, height, whether at all
   solo: false, // only the layer in front is shown
   flat: false, // the layer in front, from above and flat; the camera of the 3D view is kept in `turned`
+  moved: false, // the program of this run moved its devices, and the view went flat for it
   turned: null,
   dirty: true, // the views need drawing again
   panelDirty: true, // the layers, the inspected device and the rounds need writing again
@@ -98,7 +100,13 @@ let layers = []; // per layer of the snapshot, the look of every device and the 
 // The watched expressions: where they are in the code Python runs, their label, how they are
 // drawn, and where the editor marks them, which edits move (null once an edit went through one).
 let watches = [];
-const display = { z: [], ranAt: new Float64Array(MOST).fill(-Infinity) };
+// Where the devices are drawn, and the heights of their layers: they follow the devices smoothly.
+const display = {
+  x: new Float64Array(MOST).fill(NaN),
+  y: new Float64Array(MOST).fill(NaN),
+  z: [],
+  ranAt: new Float64Array(MOST).fill(-Infinity),
+};
 let examples = [];
 
 const scene = createScene(element("wt-scene"));
@@ -214,6 +222,7 @@ function run() {
     if (!world.sensors.has(name)) world.sensors.set(name, new Set(index < ANCHORS.length ? [nearest(ANCHORS[index])] : []));
   });
   clearConsole();
+  app.moved = false;
   sendWorld();
   load(code, marked(), true, "run", kept());
   status("Starting the program…");
@@ -424,6 +433,11 @@ function followDevices(positions, ranges) {
   if (same) return;
   world.moved = moved;
   world.ranges = ranges;
+  // A swarm is seen from above: once a run, when its devices start moving.
+  if (!app.moved && moved.some(({ x, y }, id) => x !== world.places[id].x || y !== world.places[id].y)) {
+    app.moved = true;
+    setFlat(true);
+  }
   network = connect();
   app.panelDirty = true;
 }
@@ -476,12 +490,15 @@ function looksOf(layer, look) {
   const looks = layer.numbers.map((number, id) => {
     const finite = Number.isFinite(number);
     if (layer.boolean) return finite ? { relief: number, colour: number ? palette.on : palette.off } : null;
+    // A heading, in degrees from east: a colour of the wheel, flat, as a swarm moves on a plane.
+    if (layer.direction) return finite ? { relief: 0, colour: toneOf(palette, "directions", (number + 180) / 360) } : null;
     if (look.map === "categories") {
       return layer.texts[id] ? { relief: finite ? share(number) : 0, colour: categoryOf(palette, number, layer.texts[id]) } : null;
     }
     return finite ? { relief: share(number), colour: toneOf(palette, look.map, share(number)) } : null;
   });
-  return { looks, texts: layer.texts, boolean: layer.boolean, known: known.length > 0, low, high, map: look.map };
+  const map = layer.direction ? "directions" : look.map;
+  return { looks, texts: layer.texts, boolean: layer.boolean, direction: layer.direction, known: known.length > 0, low, high, map };
 }
 
 /** The looks of the layers of the last step, as the reader set them. */
@@ -507,10 +524,28 @@ function stackOf() {
   });
 }
 
+/** Moves the drawn devices a step toward their devices; true while any still moves. */
+function glide(elapsed) {
+  const pull = calm.matches ? 1 : 1 - Math.exp(-elapsed / GLIDE_MS);
+  let moving = false;
+  for (const { id, x, y } of network.devices) {
+    const gaps = [x - display.x[id], y - display.y[id]];
+    if (gaps.some(Number.isNaN)) {
+      display.x[id] = x;
+      display.y[id] = y;
+    } else if (Math.abs(gaps[0]) + Math.abs(gaps[1]) > 1e-4) {
+      moving = true;
+      display.x[id] += gaps[0] * pull;
+      display.y[id] += gaps[1] * pull;
+    }
+  }
+  return moving;
+}
+
 /** Moves the heights a step toward the values of the layers; true while anything still moves. */
 function ease(elapsed) {
   const pull = calm.matches ? 1 : 1 - Math.exp(-elapsed / EASE_MS);
-  let moving = false;
+  let moving = glide(elapsed);
   display.z.length = layerCount();
   for (const { k, base, relief } of stackOf()) {
     display.z[k] ??= new Float32Array(MOST).fill(base);
@@ -544,8 +579,8 @@ function draw(now) {
     focused: k === focused,
     devices: network.devices.map((device) => ({
       id: device.id,
-      x: device.x,
-      y: device.y,
+      x: display.x[device.id],
+      y: display.y[device.id],
       z: display.z[k][device.id],
       color: layers[k]?.looks[device.id]?.colour ?? null,
       off: false,
@@ -587,6 +622,12 @@ function scaleOf(layer) {
   if (layer.boolean) {
     return `<div class="wt-legend-keys">${swatch(palette.css[palette.on], "True")}${swatch(palette.css[palette.off], "False")}</div>`;
   }
+  if (layer.direction) {
+    return (
+      `<div class="wt-legend-bar" style="background:linear-gradient(90deg, ${stopsOf(palette, "directions").join(", ")})"></div>` +
+      `<div class="wt-legend-ends"><span>W</span><span>S</span><span>E</span><span>N</span><span>W</span></div>`
+    );
+  }
   if (layer.map === "categories") {
     return `<div class="pg-categories">${stopsOf(palette, "categories").map((colour) => swatch(colour)).join("")}</div>`;
   }
@@ -609,6 +650,8 @@ function lookControls(k) {
   const look = lookOf(k);
   const controls = document.createElement("div");
   controls.className = "pg-look";
+  // Headings have a wheel of their own, and stay flat.
+  if (layers[k]?.direction) return controls;
   if (!layers[k]?.boolean) {
     const colours = document.createElement("select");
     colours.title = "Colours of this layer";
@@ -647,7 +690,7 @@ const EYE_SHUT =
 function renderLayers() {
   const focused = focusedLayer();
   const labels = stackOrder().map((k) => `${isShown(k)}:${labelOf(k)}`);
-  const key = [focused, oneAtATime(), Boolean(layers[focused]?.boolean), ...labels].join("\n");
+  const key = [focused, oneAtATime(), Boolean(layers[focused]?.boolean), Boolean(layers[focused]?.direction), ...labels].join("\n");
   // Rebuilt only when the layers change, not at every step: a click must find its button.
   if (layerRows?.key !== key) layerRows = { key, rows: buildLayerRows(focused) };
   const id = inspected();
@@ -783,6 +826,8 @@ function setDeviceCount(count) {
   // A device added back starts where the reader placed it, not where its program had moved it.
   world.moved = world.moved.slice(0, count);
   world.ranges = [];
+  display.x.fill(NaN, count);
+  display.y.fill(NaN, count);
   world.radius = null;
   element("pg-devices-value").textContent = count;
   if (app.hovered !== null && app.hovered >= count) app.hovered = null;
