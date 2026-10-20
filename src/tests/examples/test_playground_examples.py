@@ -10,7 +10,7 @@ EXAMPLES = DOCS / "examples" / "playground"
 NAMES = sorted(path.stem for path in EXAMPLES.glob("*.py"))
 # A 6x6 grid one apart, in the arena of the page, and the sensors the examples read.
 GRID = [(float(x), float(y)) for y in range(6) for x in range(6)]
-SENSORS = {"source": [0], "target": [35], "alarm": [14], "high": [14], "vote": [0], "zone": [14]}
+SENSORS = {"source": [0], "target": [35], "alarm": [14], "high": [14], "vote": [0], "zone": [14], "leader": [14]}
 
 
 def _load_runner():
@@ -99,3 +99,38 @@ def test_playground_lights_example_goes_through_its_phases_together(tmp_path):
             seen.append(phases.pop())
 
     assert {0.0, 1.0, 2.0} <= set(seen)
+
+
+def _spread(positions):
+    """The mean distance of the devices from their centre."""
+    centre = [sum(axis) / len(positions) for axis in zip(*positions)]
+    return sum(math.dist(position, centre) for position in positions) / len(positions)
+
+
+def test_playground_follow_example_gathers_the_swarm_around_its_leader(tmp_path):
+    playground, _ = _running("follow", {"leader": [14]}, tmp_path, rounds=0.0)
+
+    positions = playground.advance(30.0).positions
+
+    leader = positions[14]
+    assert sum(math.dist(position, leader) for position in positions) / len(positions) < 1.2
+    assert positions[14] == list(GRID[14])
+
+
+def test_playground_spread_example_gathers_then_spreads_the_swarm(tmp_path):
+    playground, _ = _running("spread", {"gather": [14]}, tmp_path, rounds=0.0)
+
+    gathered = _spread(playground.advance(40.0).positions)
+    playground.update(GRID, 1.5, {"gather": []})
+    spread = _spread(playground.advance(40.0).positions)
+
+    assert gathered < 1.2 < spread
+
+
+def test_playground_mission_example_goes_through_its_phases(tmp_path):
+    playground, _ = _running("mission", {"leader": [28], "target": [7], "go": [0]}, tmp_path, rounds=0.0)
+
+    phases = [playground.advance(10.0).layers[0].numbers[28] for _ in range(12)]
+
+    assert phases[0] in (0.0, 1.0)
+    assert 1.0 in phases and phases[-1] == 2.0
