@@ -6,7 +6,8 @@ they sense), the code and the expressions to watch. Every device of a phyelds
 Simulator runs the last @aggregate function of the code once per round, and each
 step reports what every device computed: its result and the value of every
 watched expression, in its last round. A device whose program sends a velocity
-moves by it after its round, and each step reports where the devices are. Every
+moves by it from its round on, a little at a time until its next round, and each
+step reports where the devices are. Every
 device hears within a range of its own, which adapts to keep about NEIGHBOURS
 neighbours, and each step reports the ranges too.
 
@@ -43,6 +44,7 @@ LONGEST_TEXT = 40  # characters of the text of a value
 ROUND = 1.0  # simulated time between two runs of a device
 MAX_SUGGESTIONS = 40  # names the completion of the editor offers at once
 MAX_SPEED = 0.15  # how far a device moves in a round at most
+GLIDE = 0.1  # the time between two moves of a device: it moves smoothly, not once a round
 ARENA = 5.0  # the side of the square in which the devices move: SPAN in walkthrough/model.js
 NEIGHBOURS = 8  # how many neighbours the range of a device adapts to keep
 TOLERANCE = 4  # how many more or fewer are fine
@@ -260,6 +262,7 @@ class Playground:
         self._simulator.schedule_event(
             first - self._simulator.current_time, aggregate_program_runner, self._simulator, ROUND, node, self._run
         )
+        self._simulator.schedule_event(first - self._simulator.current_time, self._glide, self._simulator, GLIDE, node)
         return node
 
     def _run(self) -> Any:
@@ -275,13 +278,7 @@ class Playground:
                 _print_traceback(error, self._main)
             self._simulator.stop()
             result = None
-        context = engine.get().node_context
-        node_id = context.node_id
-        node = self._simulator.environment.nodes[node_id]
-        before = node.position
-        self._move(node, velocity.read(context.outputs))
-        if node.position != before:
-            self._changed = self._simulator.current_time
+        node_id = engine.get().node_context.node_id
         row = [_value(result), *(self._recorder.values.get(k, NO_VALUE) for k in range(self._watches))]
         # Compared as shown: NaN differs from itself, and a value settling past the shown digits is settled.
         if [value.text for value in row] != [value.text for value in self._rows.get(node_id, [])]:
@@ -289,14 +286,23 @@ class Playground:
         self._rows[node_id] = row
         return result
 
+    def _glide(self, simulator: Simulator, delta: float, node: Node) -> None:
+        """Move ``node`` for ``delta`` by the velocity its last round sent, and again after ``delta``."""
+        before = node.position
+        self._move(node, velocity.read(node.data.get("outputs", {})), delta)
+        if node.position != before:
+            self._changed = simulator.current_time
+        simulator.schedule_event(delta, self._glide, simulator, delta, node)
+
     @staticmethod
-    def _move(node: Node, heading: Sequence[float] | None) -> None:
-        """Move ``node`` by ``heading`` for a round, at MAX_SPEED at most, and inside the arena."""
+    def _move(node: Node, heading: Sequence[float] | None, duration: float) -> None:
+        """Move ``node`` by ``heading`` for ``duration``, at MAX_SPEED at most, and inside the arena."""
         if heading is None:
             return
-        step = [component * ROUND for component in tuple(heading)[:len(node.position)]]
+        step = [component * duration for component in tuple(heading)[:len(node.position)]]
         length = math.sqrt(sum(component * component for component in step))
-        scale = MAX_SPEED / length if length > MAX_SPEED else 1.0
+        longest = MAX_SPEED * duration / ROUND
+        scale = longest / length if length > longest else 1.0
         node.position = tuple(
             min(ARENA, max(0.0, coordinate + component * scale)) for coordinate, component in zip(node.position, step)
         )

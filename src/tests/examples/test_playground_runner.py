@@ -567,10 +567,23 @@ def test_playground_reports_where_the_devices_are(tmp_path):
 
 def test_playground_moves_a_device_by_the_velocity_its_program_sends_up_to_a_top_speed(tmp_path):
     playground = _deployed(tmp_path, EAST, sensors={"still": [1, 2]})
+    before = _xs(playground.advance(2.0))
 
-    snapshot = playground.advance(2.0)
+    after = _xs(playground.advance(1.0))
 
-    assert _xs(snapshot) == pytest.approx([2 * runner.MAX_SPEED, 1.0, 2.0])
+    assert after[0] - before[0] == pytest.approx(runner.MAX_SPEED, abs=0.01)
+    assert after[1:] == [1.0, 2.0]
+
+
+def test_playground_moves_a_device_between_its_rounds_not_in_jumps(tmp_path):
+    playground = _deployed(tmp_path, EAST, sensors={"still": [1, 2]})
+    xs = [_xs(playground.advance(1.0))[0]]
+
+    for _ in range(4):
+        xs.append(_xs(playground.advance(0.25))[0])
+
+    steps = [after - before for before, after in zip(xs, xs[1:])]
+    assert steps == pytest.approx([runner.MAX_SPEED / 4] * 4, abs=0.01)
 
 
 def test_playground_keeps_the_devices_that_move_in_the_arena(tmp_path):
@@ -583,12 +596,13 @@ def test_playground_keeps_the_devices_that_move_in_the_arena(tmp_path):
 
 def test_playground_keeps_where_the_devices_moved_when_the_page_changes_something_else(tmp_path):
     playground = _deployed(tmp_path, EAST, sensors={"still": [1, 2]})
-    playground.advance(2.0)
+    moved = _xs(playground.advance(2.0))[0]
 
-    playground.update(LINE, 1.5, {"still": [0, 1, 2]})
-    snapshot = playground.advance(1.0)
+    playground.update(LINE, 1.5, {"still": [1, 2]})
+    snapshot = playground.advance(0.0)
 
-    assert _xs(snapshot)[0] == pytest.approx(2 * runner.MAX_SPEED)
+    assert moved > 0.0
+    assert _xs(snapshot)[0] == moved
 
 
 def test_playground_puts_a_moving_device_where_the_page_drags_it(tmp_path):
