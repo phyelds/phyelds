@@ -23,7 +23,7 @@ from phyelds.experimental.state_machines import StateMachine
 from phyelds.experimental.swarm import (
     Vector, align_with_leader, go_to, separation, sink_at, spin_around,
 )
-from phyelds.libraries.device import sense, store
+from phyelds.libraries.device import sense, velocity
 from phyelds.libraries.time import local_time
 from phyelds.simulator import Simulator
 from phyelds.simulator.actions import follow_velocity
@@ -94,8 +94,8 @@ def circle() -> Vector:
 @aggregate
 def drone() -> Phase:
     """The program every drone runs: the phase it agrees on, and where it moves."""
-    phase, velocity = mission.run()
-    store("velocity", velocity)
+    phase, heading = mission.run()
+    velocity.send(heading)
     return phase
 # --8<-- [end:swarm]
 

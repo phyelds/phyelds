@@ -16,8 +16,9 @@ of signed-distance formations.
 
 ```python
 from phyelds.experimental.formation import circle, formation
+from phyelds.libraries.device import velocity
 
-store("velocity", formation(circle((0, 0), 5), reach=1.5))
+velocity.send(formation(circle((0, 0), 5), reach=1.5))
 ```
 
 A formation separates three concerns, each of which can change without the others:
@@ -82,7 +83,7 @@ where its neighbors are. It is a function returning a `Frame`, passed to `format
 | `anchor_positioning` | Only how far each neighbor is | Fixed by three anchors: each robot trilaterates its position from its path distances to them |
 
 ```python
-store("velocity", formation(shape, reach=1.5, positioning=leader_positioning))
+velocity.send(formation(shape, reach=1.5, positioning=leader_positioning))
 ```
 
 When the swarm builds the frame, the shape is placed on it: the leader finds a point
@@ -99,7 +100,7 @@ commands move its estimate, probing the space first:
 ```python
 from phyelds.experimental.formation import anchor_positioning, self_aligned
 
-store("velocity", formation(shape, reach=1.5, positioning=anchor_positioning, actuation=self_aligned))
+velocity.send(formation(shape, reach=1.5, positioning=anchor_positioning, actuation=self_aligned))
 ```
 
 Anchors and self-alignment are planar.
