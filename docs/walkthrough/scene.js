@@ -10,6 +10,16 @@ import { SPAN } from "./model.js";
 import { rgba } from "./palette.js";
 
 export const LIFT = 2.1; // world height of a value of 1
+
+/** Traces an arrow of length `size` around (x, y), pointing at `angle` on the screen: a device heading there. */
+export function traceArrow(context, x, y, size, angle) {
+  const at = (length, turn) => [x + length * Math.cos(angle + turn), y + length * Math.sin(angle + turn)];
+  context.moveTo(...at(size, 0));
+  context.lineTo(...at(size * 0.85, 2.45));
+  context.lineTo(...at(size * 0.35, Math.PI));
+  context.lineTo(...at(size * 0.85, -2.45));
+  context.closePath();
+}
 export const HIDDEN = 255; // colour index of a cloud point without a value
 export const PULSE_MS = 320; // how long the ring of a device that just ran lasts
 const DISTANCE = 15; // from the camera to the pivot
@@ -305,7 +315,17 @@ export function createScene(canvas) {
       context.stroke();
       return;
     }
-    context.arc(point.x, point.y, radius, 0, 2 * Math.PI);
+    if (Number.isFinite(device.heading)) {
+      // Where the heading points on the screen: a step along it, seen by the camera.
+      const ahead = project(
+        device.x + 0.25 * Math.cos(device.heading),
+        device.y + 0.25 * Math.sin(device.heading),
+        device.z,
+      );
+      traceArrow(context, point.x, point.y, radius * 1.7, Math.atan2(ahead.y - point.y, ahead.x - point.x));
+    } else {
+      context.arc(point.x, point.y, radius, 0, 2 * Math.PI);
+    }
     if (device.color === null) {
       context.fillStyle = rgba(palette.stage);
       context.fill();

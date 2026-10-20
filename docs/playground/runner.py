@@ -46,6 +46,7 @@ ROUND = 1.0  # simulated time between two runs of a device
 MAX_SUGGESTIONS = 40  # names the completion of the editor offers at once
 MAX_SPEED = 0.15  # how far a device moves in a round at most
 GLIDE = 0.1  # the time between two moves of a device: it moves smoothly, not once a round
+STILL = 0.01  # a velocity slower than this on the plane has no heading: the device stands still
 ARENA = 5.0  # the side of the square in which the devices move: SPAN in walkthrough/model.js
 NEIGHBOURS = 8  # how many neighbours the range of a device adapts to keep
 TOLERANCE = 4  # how many more or fewer are fine
@@ -372,8 +373,8 @@ def _value(value: Any) -> Value:
             text = str(value) if isinstance(value, numbers.Integral) else f"{number:.4g}"
             return Value(number if math.isfinite(number) else math.nan, text)
         if isinstance(value, Vector):
-            planar = value.x != 0 or value.y != 0
-            angle = math.degrees(math.atan2(value.y, value.x)) if planar else math.nan
+            moving = math.sqrt(value.x * value.x + value.y * value.y) >= STILL
+            angle = math.degrees(math.atan2(value.y, value.x)) if moving else math.nan
             height = f", z={value.z:.2f}" if value.z else ""
             return Value(angle, f"(x={value.x:.2f}, y={value.y:.2f}{height})", direction=True)
         if isinstance(value, NeighborhoodField):

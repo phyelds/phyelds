@@ -5,7 +5,7 @@
 import { RESOLUTION } from "./continuum.js";
 import { SPAN } from "./model.js";
 import { rgba } from "./palette.js";
-import { HIDDEN } from "./scene.js";
+import { HIDDEN, traceArrow } from "./scene.js";
 
 const PAD = 14;
 const LINK_ALPHA = { plain: 0.16, faint: 0.1, outside: 0.12, inside: 0.34, cut: 0.4 };
@@ -155,7 +155,9 @@ export function createMap(canvas) {
         context.stroke();
         continue;
       }
-      context.arc(x, y, dot, 0, 2 * Math.PI);
+      // North is up on the map: a heading turns the other way on the screen.
+      if (Number.isFinite(device.heading)) traceArrow(context, x, y, dot * 1.8, -device.heading);
+      else context.arc(x, y, dot, 0, 2 * Math.PI);
       context.fillStyle = device.color === null ? rgba(palette.stage) : palette.css[device.color];
       context.fill();
       context.strokeStyle = device.color === null ? rgba(palette.muted) : rgba(palette.stage, 0.9);

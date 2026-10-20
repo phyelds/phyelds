@@ -491,7 +491,10 @@ function looksOf(layer, look) {
     const finite = Number.isFinite(number);
     if (layer.boolean) return finite ? { relief: number, colour: number ? palette.on : palette.off } : null;
     // A heading, in degrees from east: a colour of the wheel, flat, as a swarm moves on a plane.
-    if (layer.direction) return finite ? { relief: 0, colour: toneOf(palette, "directions", (number + 180) / 360) } : null;
+    if (layer.direction) {
+      const heading = (number * Math.PI) / 180;
+      return finite ? { relief: 0, colour: toneOf(palette, "directions", (number + 180) / 360), heading } : null;
+    }
     if (look.map === "categories") {
       return layer.texts[id] ? { relief: finite ? share(number) : 0, colour: categoryOf(palette, number, layer.texts[id]) } : null;
     }
@@ -583,6 +586,7 @@ function draw(now) {
       y: display.y[device.id],
       z: display.z[k][device.id],
       color: layers[k]?.looks[device.id]?.colour ?? null,
+      heading: layers[k]?.looks[device.id]?.heading ?? null, // drawn as an arrow, when the value is a heading
       off: false,
       role: rolesOf(device.id).join(", ") || null,
       ranAt: display.ranAt[device.id],
