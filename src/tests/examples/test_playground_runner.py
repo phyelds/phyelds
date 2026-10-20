@@ -699,3 +699,41 @@ def test_playground_shows_vectors_as_directions_in_degrees(tmp_path):
     assert layer.numbers[:2] == [pytest.approx(13.82, abs=0.01), 90.0]
     assert math.isnan(layer.numbers[2])  # all but still on the plane: no heading
     assert layer.texts == ["(x=0.95, y=0.23)", "(x=0.00, y=1.00)", "(x=0.00, y=0.00, z=2.00)"]
+
+
+PHASES = """
+from enum import IntEnum
+from phyelds.calculus import aggregate
+
+class Light(IntEnum):
+    GREEN = 0
+    YELLOW = 1
+    RED = 2
+
+@aggregate
+def program():
+    return Light.YELLOW
+"""
+
+
+def test_playground_scales_an_enum_on_all_its_members_and_names_them(tmp_path):
+    playground = _deployed(tmp_path, PHASES)
+
+    layer = playground.advance(1.0).layers[0]
+
+    assert (layer.low, layer.high) == (0.0, 2.0)
+    assert layer.numbers == [1.0, 1.0, 1.0]
+    assert layer.texts == ["YELLOW"] * 3
+
+
+def test_playground_widens_the_scale_of_a_layer_but_never_narrows_it_in_a_run(tmp_path):
+    playground = _deployed(tmp_path, COUNTER)
+    first = playground.advance(1.0).layers[0]
+
+    later = playground.advance(3.0).layers[0]
+    playground.load(COUNTER, [], restart=True)
+    restarted = playground.advance(1.0).layers[0]
+
+    assert (first.low, first.high) == (1.0, 1.0)
+    assert (later.low, later.high) == (1.0, 4.0)
+    assert (restarted.low, restarted.high) == (1.0, 1.0)

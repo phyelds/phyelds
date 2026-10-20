@@ -484,8 +484,9 @@ const stackOrder = () => [0, ...allLayers().slice(1).sort((a, b) => lookOf(a).ra
 function looksOf(layer, look) {
   const { palette } = app;
   const known = layer.numbers.filter(Number.isFinite);
-  const low = Math.min(...known);
-  const high = Math.max(...known);
+  // The scale Python keeps, which only widens in a run, so that a colour keeps its meaning.
+  const low = Number.isFinite(layer.low) ? layer.low : Math.min(...known);
+  const high = Number.isFinite(layer.high) ? layer.high : Math.max(...known);
   const share = (number) => (high > low ? (number - low) / (high - low) : 0.5);
   const looks = layer.numbers.map((number, id) => {
     const finite = Number.isFinite(number);

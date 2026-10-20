@@ -50,7 +50,7 @@ def red() -> None:
 
 
 @aggregate
-def traffic_light() -> int:
+def traffic_light() -> Light:
     """The phase the device agrees on."""
     phase, _ = light.run()
-    return int(phase)
+    return phase

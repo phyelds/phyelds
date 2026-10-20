@@ -15,6 +15,7 @@ The playground loads this module into Pyodide; it is plain Python, so it is
 tested with pytest like the rest of the documentation examples.
 """
 import ast
+import enum
 import heapq
 import inspect
 import itertools
@@ -69,13 +70,16 @@ class Watch:
 class Value:
     """
     What a device computed, as the page shows it: a number on a scale, NaN if it has none,
-    and a text. A direction is a vector, its number the angle from east, in degrees.
+    and a text. A direction is a vector, its number the angle from east, in degrees. A
+    value whose type has a known range, as the members of an enum, has ``low`` and ``high``.
     """
 
     number: float
     text: str
     boolean: bool = False
     direction: bool = False
+    low: float = math.nan
+    high: float = math.nan
 
 
 NO_VALUE = Value(math.nan, "")
@@ -85,13 +89,16 @@ NO_VALUE = Value(math.nan, "")
 class Layer:
     """
     A field over the devices, the result of the program or a watched expression: a number
-    and a text each, and whether all its values are booleans, or all directions.
+    and a text each, whether all its values are booleans, or all directions, and the scale
+    of its numbers: from ``low`` to ``high``, which only widens in a run.
     """
 
     numbers: list[float]
     texts: list[str]
     boolean: bool
     direction: bool = False
+    low: float = math.nan
+    high: float = math.nan
 
 
 @dataclass
@@ -160,6 +167,7 @@ class Playground:
         self._watches = 0
         self._rows: dict[int, list[Value]] = {}
         self._changed = 0.0  # when a device last moved or showed something new
+        self._scales: dict[int, tuple[float, float]] = {}  # the scale of each layer, so far in this run
 
     def load(self, code: str, selections: Sequence[tuple[int, int]], restart: bool) -> Loaded:
         """
@@ -188,6 +196,7 @@ class Playground:
             self._write(self._source)
             return Loaded(False)
         self._program, self._source, self._watches, self._error = program, source, len(watches), None
+        self._scales = {}  # the k-th layer may now be another expression
         if restart:
             self._restart()
         else:
@@ -260,6 +269,7 @@ class Playground:
         self._clock = 0.0
         self._rows = {}
         self._changed = 0.0
+        self._scales = {}
         positions, self._positions = self._positions, []
         self._neighbourhood = None
         self.update(positions, self._radius, self._sensors)
@@ -317,6 +327,15 @@ class Playground:
             min(ARENA, max(0.0, coordinate + component * scale)) for coordinate, component in zip(node.position, step)
         )
 
+    def _widened(self, k: int, known: Sequence[Value]) -> tuple[float, float]:
+        """The scale of layer ``k``: its scale so far, widened to its values and their known ranges."""
+        ends = [end for value in known for end in (value.number, value.low, value.high) if math.isfinite(end)]
+        ends += [end for end in self._scales.get(k, ()) if math.isfinite(end)]
+        if not ends:
+            return math.nan, math.nan
+        self._scales[k] = (min(ends), max(ends))
+        return self._scales[k]
+
     def _snapshot(self) -> Snapshot:
         """The network now."""
         count = len(self._positions)
@@ -327,9 +346,9 @@ class Playground:
             known = [value for value in values if value.text]
             boolean = bool(known) and all(value.boolean for value in known)
             direction = bool(known) and all(value.direction for value in known)
-            layers.append(
-                Layer([value.number for value in values], [value.text for value in values], boolean, direction)
-            )
+            low, high = self._widened(k, known)
+            figures, texts = [value.number for value in values], [value.text for value in values]
+            layers.append(Layer(figures, texts, boolean, direction, low, high))
         nodes = self._simulator.environment.nodes
         ran = [nodes[node_id].data.get("time", math.nan) for node_id in range(count)]
         stable = self._clock - self._changed >= ROUND
@@ -366,6 +385,10 @@ def _value(value: Any) -> Value:
     try:
         if isinstance(value, State):
             value = value.value
+        if isinstance(value, enum.Enum) and isinstance(value, numbers.Real):
+            # A member of an IntEnum: its name, on the scale of all the members.
+            members = [float(member) for member in type(value)]
+            return Value(float(value), value.name, low=min(members), high=max(members))
         if isinstance(value, bool):
             return Value(float(value), str(value), boolean=True)
         if isinstance(value, numbers.Real):
