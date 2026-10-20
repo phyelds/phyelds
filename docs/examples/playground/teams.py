@@ -3,7 +3,7 @@ Teams: the swarm splits into teams around elected leaders, and every team wander
 
 Leaders are elected about EXTRA / 2 apart; the devices gather around the nearest one,
 INTRA apart, and once its team is formed, every leader wanders around the arena with its
-team, apart from the others. The colour is the leader of the team.
+team, apart from the others. Watch `team`: its leader, and whether it is formed.
 """
 from phyelds.calculus import aggregate
 from phyelds.experimental.swarm import (
@@ -25,8 +25,7 @@ def wander(leader: int) -> Vector:
 
 
 @aggregate
-def teams() -> int:
-    """Gather, then wander, in the team of the device; the leader of the team."""
+def teams() -> Vector:
+    """Gather, then wander, in the team of the device: the velocity the device moves by."""
     team = team_formation(INTRA, EXTRA, condition=lambda leader: is_team_formed(leader, INTRA * 2))
-    velocity.send(team.inside(wander))
-    return team.leader
+    return velocity.send(team.inside(wander))

@@ -2,8 +2,8 @@
 Mission: the swarm gathers around its leader, crosses the arena to the target with it, then turns around it.
 
 The phases are a collective state machine. Switch `go` on for any device: the swarm
-leaves, and turns once the leader reaches the target. Restart (R) to start over. The
-colour is the phase: 0 gather, 1 cross, 2 circle.
+leaves, and turns once the leader reaches the target. Restart (R) to start over. Watch
+`phase`: the phase every device agrees on, and its heading.
 """
 from enum import IntEnum
 
@@ -67,8 +67,7 @@ def circle() -> Vector:
 
 
 @aggregate
-def drone() -> int:
-    """The phase the drone agrees on; it moves as the phase says."""
+def drone() -> Vector:
+    """Move as the phase the drone agrees on says: the velocity the drone moves by."""
     phase, heading = mission.run()
-    velocity.send(heading)
-    return int(phase)
+    return velocity.send(heading)

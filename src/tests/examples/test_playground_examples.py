@@ -33,7 +33,8 @@ def test_playground_example_gives_every_device_a_value_on_a_small_network(name, 
 
     assert loaded.ok
     assert not snapshot.paused
-    assert all(math.isfinite(number) for number in snapshot.layers[0].numbers)
+    # A value, not always a number: a program that moves returns its velocity.
+    assert all(snapshot.layers[0].texts)
 
 
 def test_playground_channel_example_keeps_the_devices_along_the_shortest_path(tmp_path):
@@ -127,10 +128,10 @@ def test_playground_spread_example_gathers_then_spreads_the_swarm(tmp_path):
     assert gathered < 1.2 < spread
 
 
-def test_playground_mission_example_goes_through_its_phases(tmp_path):
+def test_playground_mission_example_takes_the_swarm_to_the_target(tmp_path):
     playground, _ = _running("mission", {"leader": [28], "target": [7], "go": [0]}, tmp_path, rounds=0.0)
 
-    phases = [playground.advance(10.0).layers[0].numbers[28] for _ in range(12)]
+    positions = playground.advance(120.0).positions
 
-    assert phases[0] in (0.0, 1.0)
-    assert 1.0 in phases and phases[-1] == 2.0
+    assert math.dist(positions[28], positions[7]) < 1.5
+    assert sum(math.dist(position, positions[28]) for position in positions) / len(positions) < 1.5
