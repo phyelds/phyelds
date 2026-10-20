@@ -1,7 +1,8 @@
 """
 The animations of the library pages: leader clusters, a process bubble and a corridor.
 
-They run the programs of the playground examples, on the larger scenes the pages show.
+They run the programs of the playground examples, on the larger scenes the pages show,
+and the corridor that the tutorial builds.
 Run it to regenerate them in ``docs/assets``, each in the light theme of the docs and,
 with ``-dark`` in its name, in the dark one:
 
@@ -15,6 +16,11 @@ from types import ModuleType
 
 from matplotlib import pyplot as plt
 
+from phyelds.calculus import aggregate
+from phyelds.libraries.collect import collect_or
+from phyelds.libraries.device import sense
+from phyelds.libraries.distances import neighbors_distances
+from phyelds.libraries.spreading import distance_to
 from phyelds.simulator import Simulator
 from phyelds.simulator.deployments import deformed_lattice
 from phyelds.simulator.effects import DrawEdges, DrawNodes, RenderConfig, RenderMode
@@ -28,6 +34,7 @@ ROUND = 0.5  # time between two rounds of a device, and between two frames
 SEED = 42  # the same lattices at every run, and in each theme
 # The suffix of each animation, and the matplotlib style it is drawn in: as it is, and dark.
 THEMES = {"": {}, "-dark": Path(__file__).resolve().parent / "dark.mplstyle"}
+WIDTH = 1.6  # devices one apart: a corridor a device or so wide on each side of the path
 
 
 def example(name: str) -> ModuleType:
@@ -90,16 +97,23 @@ def bubbles(save: bool = True, suffix: str = "") -> Simulator:
     return simulator
 
 
+@aggregate
+def corridor_program() -> float:
+    """1.0 on the devices within WIDTH of the shortest path from the source to the target, 0.0 elsewhere."""
+    distances = neighbors_distances()
+    to_target = distance_to(sense("target"), distances)
+    on_path = collect_or(to_target, sense("source"))
+    return 1.0 if distance_to(on_path, distances) < WIDTH else 0.0
+
+
 def corridor(save: bool = True, suffix: str = "") -> Simulator:
     """The corridor between two opposite corners of a 12x12 lattice."""
-    program = example("corridor")
-    program.WIDTH = 1.6  # devices one apart: a corridor a device or so wide on each side of the path
     simulator = deploy(12, deformation=0.25, sensors=["source", "target"])
     simulator.environment.nodes[0].data["source"] = True
     simulator.environment.nodes[12 * 12 - 1].data["target"] = True
     if save:
         record(simulator, f"channel{suffix}.gif", "Channel", "plasma", vmax=1.0)
-    schedule_program_for_all(simulator, 0.0, ROUND, program.corridor)
+    schedule_program_for_all(simulator, 0.0, ROUND, corridor_program)
     simulator.run(25 * ROUND)
     return simulator
 

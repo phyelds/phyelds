@@ -56,7 +56,7 @@ def test_on_post_build_publishes_the_examples_in_the_order_of_the_tour(tmp_path)
     playground = tmp_path / "playground"
     manifest = json.loads((playground / "manifest.json").read_text())
     names = [example["name"] for example in manifest["examples"]]
-    assert names == ["neighbours", "gradient", "self_healing", "channel", "corridor", "leaders", "bubbles"]
+    assert names == ["neighbours", "gradient", "channel", "leaders", "bubbles"]
     assert manifest["examples"][1]["title"] == "Gradient"
     assert manifest["examples"][1]["summary"].startswith("every device estimates its distance")
     for name in names:

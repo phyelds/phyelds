@@ -7,7 +7,7 @@ import pytest
 
 DOCS = Path(__file__).resolve().parents[3] / "docs"
 EXAMPLES = DOCS / "examples" / "playground"
-NAMES = ["neighbours", "gradient", "self_healing", "channel", "corridor", "leaders", "bubbles"]
+NAMES = sorted(path.stem for path in EXAMPLES.glob("*.py"))
 # A 6x6 grid one apart, in the arena of the page, and the sensors the examples read.
 GRID = [(float(x), float(y)) for y in range(6) for x in range(6)]
 SENSORS = {"source": [0], "target": [35], "alarm": [14]}
