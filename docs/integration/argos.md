@@ -125,10 +125,10 @@ Some ARGoS models need care:
 
 - Frames are `[u32 sender][u16 payload length][Device bytes]`, using ARGoS
   `CByteArray` for the header. On the range-and-bearing radio they are padded with
-  zeros to `rab_data_size`: use `rab_data_size="4096"` as a starting point; the codec's
-  JSON exports are larger than FCPP's binary exports. The host reports an error on
-  overflow rather than truncating the message. It does not fragment frames. Simple
-  radios send each frame once on every interface, such as each face of a block.
+  zeros to `rab_data_size`: use `rab_data_size="4096"` as a starting point. The host
+  reports an error on overflow rather than truncating the message. It does not
+  fragment frames. Simple radios send each frame once on every interface, such as
+  each face of a block.
 - Compact paths are the default. For debugging set `paths="debug"` on **every**
   communicating controller; program versions and path modes must match.
 - Each robot has independent aggregate state. A reset clears state, queued messages,
