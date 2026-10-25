@@ -1,3 +1,9 @@
+## [8.8.6](https://github.com/phyelds/phyelds/compare/8.8.5...8.8.6) (2026-10-25)
+
+### Documentation
+
+* only the p in the logo square, and whole nodes in the wordmark ([010af14](https://github.com/phyelds/phyelds/commit/010af14190a47b9b6b5c8e9bb6e1ead006e791bb))
+
 ## [8.8.5](https://github.com/phyelds/phyelds/compare/8.8.4...8.8.5) (2026-10-25)
 
 ### Documentation

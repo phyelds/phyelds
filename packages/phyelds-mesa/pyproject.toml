@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "phyelds-mesa"
-version = "8.8.5"
+version = "8.8.6"
 description = "Mesa integration for phyelds: aggregate programs on the agents of a Mesa model"
 license = "Apache-2.0"
 authors = [
