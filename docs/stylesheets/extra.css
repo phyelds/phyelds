@@ -396,10 +396,15 @@
 }
 
 .ph-actions {
+  margin: 1.4em 0;
+}
+
+/* Markdown wraps the buttons in a paragraph: that is the row they wrap in. */
+.ph-actions > p {
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem;
-  margin: 1.4em 0;
+  margin: 0;
 }
 
 .ph-actions .md-button {
