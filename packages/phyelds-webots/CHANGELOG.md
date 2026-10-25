@@ -1,3 +1,9 @@
+## [8.8.2](https://github.com/phyelds/phyelds/compare/8.8.1...8.8.2) (2026-10-25)
+
+### Documentation
+
+* a simpler, bolder p for the logo at small sizes ([886e0fe](https://github.com/phyelds/phyelds/commit/886e0fe609b3e57ead0ac04c74c128493db33ef2))
+
 ## [8.8.1](https://github.com/phyelds/phyelds/compare/8.8.0...8.8.1) (2026-10-25)
 
 ### Documentation
