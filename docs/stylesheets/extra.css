@@ -421,9 +421,11 @@
   width: 100%;
 }
 
+/* The nodes of the P touch the corners of the image: the rounded corners of the page images would cut them. */
 .ph-hero .ph-wordmark {
   width: auto;
   height: 3.6rem;
+  border-radius: 0;
 }
 
 /* The animation of the hero has the background of the page: it needs no frame. */
