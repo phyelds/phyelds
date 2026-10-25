@@ -101,9 +101,15 @@
   letter-spacing: -0.01em;
 }
 
-/* The symbol is a network of thin links: at the default 1.2rem it fades. */
 .md-header__button.md-logo img {
-  height: 1.6rem;
+  height: 1.5rem;
+}
+
+/* The name right after the P of the logo, as one mark. */
+@media screen and (min-width: 76.25em) {
+  .md-header__button.md-logo ~ .md-header__title {
+    margin-left: 0;
+  }
 }
 
 @media screen and (min-width: 60em) {
