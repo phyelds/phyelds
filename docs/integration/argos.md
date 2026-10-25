@@ -137,9 +137,3 @@ Some ARGoS models need care:
   each round, so ARGoS may use multiple threads but Python rounds run serially.
 - Python failures include the traceback, program name and robot ID. `trace="true"`
   logs the label at every round; it is off by default.
-
-The native host does not need FCPP, Boost.Python, pybind11 or phyelds-simulator.
-Simulation-specific code stays in this optional package; the core calculus and codec
-are reused unchanged. See the companion `phyelds-argos-example` project for metric
-gradients, election/counting, dispersion, gathering and flocking with matching FCPP
-arenas.
