@@ -7,12 +7,6 @@
 #include <argos3/core/simulator/simulator.h>
 #include <argos3/core/simulator/space/space.h>
 #include <argos3/core/utility/logging/argos_log.h>
-#include <argos3/plugins/robots/foot-bot/control_interface/ci_footbot_proximity_sensor.h>
-#include <argos3/plugins/robots/generic/control_interface/ci_differential_steering_actuator.h>
-#include <argos3/plugins/robots/generic/control_interface/ci_leds_actuator.h>
-#include <argos3/plugins/robots/generic/control_interface/ci_positioning_sensor.h>
-#include <argos3/plugins/robots/generic/control_interface/ci_range_and_bearing_actuator.h>
-#include <argos3/plugins/robots/generic/control_interface/ci_range_and_bearing_sensor.h>
 
 using namespace argos;
 using namespace phyelds_argos;
@@ -31,6 +25,7 @@ void CPhyeldsController::Init(TConfigurationNode& node) {
         GetNodeAttributeOrDefault(node, "source", m_source, m_source);
         GetNodeAttributeOrDefault(node, "max_speed", m_max_speed, m_max_speed);
         GetNodeAttributeOrDefault(node, "paths", m_paths, m_paths);
+        GetNodeAttributeOrDefault(node, "gps", m_gps, m_gps);
         GetNodeAttributeOrDefault(node, "trace", m_trace, m_trace);
         if (!std::isfinite(m_max_speed) || m_max_speed < 0)
             throw std::runtime_error("max_speed must be finite and nonnegative");
@@ -43,12 +38,7 @@ void CPhyeldsController::Init(TConfigurationNode& node) {
         auto uid = std::stoull(match[1].str());
         if (uid > std::numeric_limits<UInt32>::max()) throw std::runtime_error("robot UID exceeds u32");
         m_uid = static_cast<UInt32>(uid);
-        m_wheels = GetActuator<CCI_DifferentialSteeringActuator>("differential_steering");
-        m_leds = GetActuator<CCI_LEDsActuator>("leds");
-        m_radio_out = GetActuator<CCI_RangeAndBearingActuator>("range_and_bearing");
-        m_radio_in = GetSensor<CCI_RangeAndBearingSensor>("range_and_bearing");
-        m_compass = GetSensor<CCI_PositioningSensor>("positioning");
-        m_proximity = GetSensor<CCI_FootBotProximitySensor>("footbot_proximity");
+        m_devices = FindDevices(*this);
         InitializePython();
         Reset();
     } catch (std::exception& error) {
@@ -74,11 +64,9 @@ void CPhyeldsController::Reset() {
         m_device = replacement.release();
         Label.clear();
         Color = CColor::BLACK;
-        m_wheels->SetLinearVelocity(0, 0);
-        m_leds->SetAllColors(Color);
-        CByteArray empty;
-        empty.Resize(m_radio_out->GetSize());
-        m_radio_out->SetData(empty);
+        if (m_devices.Drive) m_devices.Drive(CVector3::ZERO);
+        if (m_devices.Light) m_devices.Light(Color);
+        m_devices.Send(CByteArray());
     } catch (std::exception& error) {
         THROW_ARGOSEXCEPTION_NESTED(GetId() << " resetting " << m_program, error);
     }
@@ -94,12 +82,13 @@ void CPhyeldsController::ControlStep() {
 }
 
 void CPhyeldsController::Step() {
+    auto const& pose = m_devices.Positioning->GetReading();
     CRadians yaw, pitch, roll;
-    m_compass->GetReading().Orientation.ToEulerAngles(yaw, pitch, roll);
+    pose.Orientation.ToEulerAngles(yaw, pitch, roll);
     auto ranges = Checked(PyDict_New());
     auto vectors = Checked(PyDict_New());
-    for (auto const& packet : m_radio_in->GetReadings()) {
-        CByteArray data(packet.Data);
+    for (auto& heard : m_devices.Receive()) {
+        CByteArray& data = heard.Data;
         if (data.Size() < 6) continue;
         UInt32 sender;
         UInt16 length;
@@ -107,36 +96,42 @@ void CPhyeldsController::Step() {
         if (!length || length > data.Size() || sender == m_uid) continue;
         auto received = Checked(PyObject_CallMethod(m_device, "receive", "Iy#", sender,
             reinterpret_cast<char const*>(data.ToCArray()), static_cast<Py_ssize_t>(length)));
-        Real range = packet.Range / 100; // ARGoS RAB range is cm; programs use metres.
-        CRadians bearing = packet.HorizontalBearing + yaw;
+        if (!heard.Offset) continue;
+        CVector3 offset = heard.Offset->Rotate(pose.Orientation);
         auto key = Checked(PyLong_FromUnsignedLong(sender));
-        auto distance = Checked(PyFloat_FromDouble(range));
-        auto offset = Checked(Py_BuildValue("(ddd)", range * Cos(bearing), range * Sin(bearing), 0.0));
+        auto distance = Checked(PyFloat_FromDouble(offset.Length()));
+        auto vector = Checked(Py_BuildValue("(ddd)", offset.GetX(), offset.GetY(), offset.GetZ()));
         Check(PyDict_SetItem(ranges.get(), key.get(), distance.get()));
-        Check(PyDict_SetItem(vectors.get(), key.get(), offset.get()));
+        Check(PyDict_SetItem(vectors.get(), key.get(), vector.get()));
     }
-    CVector2 obstacle;
-    for (auto const& reading : m_proximity->GetReadings())
-        obstacle -= CVector2(reading.Value, reading.Angle + yaw);
     auto sensors = Checked(PyDict_New());
     Real time = CSimulator::GetInstance().GetSpace().GetSimulationClock()
         * CPhysicsEngine::GetSimulationClockTick();
     Put(sensors.get(), "time", Checked(PyFloat_FromDouble(time)));
     Put(sensors.get(), "source", Checked(PyBool_FromLong(m_source == m_uid)));
     Put(sensors.get(), "heading", Checked(Py_BuildValue("(ddd)", Cos(yaw), Sin(yaw), 0.0)));
-    Put(sensors.get(), "obstacle", Checked(Py_BuildValue("(ddd)", obstacle.GetX(), obstacle.GetY(), 0.0)));
-    Put(sensors.get(), "neighbors_distances", std::move(ranges));
-    Put(sensors.get(), "neighbors_vectors", std::move(vectors));
+    if (m_devices.Obstacle) {
+        CVector2 obstacle = m_devices.Obstacle().Rotate(yaw);
+        Put(sensors.get(), "obstacle", Checked(Py_BuildValue("(ddd)", obstacle.GetX(), obstacle.GetY(), 0.0)));
+    }
+    if (m_devices.Measures) {
+        Put(sensors.get(), "neighbors_distances", std::move(ranges));
+        Put(sensors.get(), "neighbors_vectors", std::move(vectors));
+    }
+    if (m_gps) {
+        auto const& position = pose.Position;
+        Put(sensors.get(), "position",
+            Checked(Py_BuildValue("(ddd)", position.GetX(), position.GetY(), position.GetZ())));
+    }
     auto payload = Checked(PyObject_CallMethod(m_device, "run_round", "O", sensors.get()));
     if (!PyBytes_Check(payload.get())) throw std::runtime_error("Device.run_round must return bytes");
     auto length = static_cast<size_t>(PyBytes_Size(payload.get()));
-    if (length > std::numeric_limits<UInt16>::max() || length + 6 > m_radio_out->GetSize())
-        throw std::runtime_error("payload of " + std::to_string(length) + " bytes exceeds rab_data_size (including 6-byte header)");
+    if (length > std::numeric_limits<UInt16>::max())
+        throw std::runtime_error("payload of " + std::to_string(length) + " bytes exceeds the 16-bit frame length");
     CByteArray data;
     data << m_uid << static_cast<UInt16>(length);
     data.AddBuffer(reinterpret_cast<UInt8 const*>(PyBytes_AsString(payload.get())), length);
-    data.Resize(m_radio_out->GetSize());
-    m_radio_out->SetData(data);
+    m_devices.Send(data);
 
     auto outputs = Checked(PyObject_GetAttrString(m_device, "outputs"));
     Label.clear();
@@ -158,29 +153,19 @@ void CPhyeldsController::Step() {
         }
         Color = CColor(rgb[0], rgb[1], rgb[2]);
     }
-    m_leds->SetAllColors(Color);
-    CVector2 velocity;
+    if (m_devices.Light) m_devices.Light(Color);
+    CVector3 velocity;
     if (auto value = PyDict_GetItemString(outputs.get(), "velocity")) {
         auto components = Checked(PySequence_Fast(value, "velocity must be an iterable"));
         auto size = PySequence_Fast_GET_SIZE(components.get());
         if (size != 2 && size != 3) throw std::runtime_error("velocity must have two or three components");
         velocity.Set(Number(PySequence_Fast_GET_ITEM(components.get(), 0)),
-                     Number(PySequence_Fast_GET_ITEM(components.get(), 1)));
+                     Number(PySequence_Fast_GET_ITEM(components.get(), 1)),
+                     size == 3 ? Number(PySequence_Fast_GET_ITEM(components.get(), 2)) : 0);
+        if (velocity.Length() > m_max_speed) velocity *= m_max_speed / velocity.Length();
     }
-    SetWheels(velocity.Rotate(-yaw));
+    if (m_devices.Drive) m_devices.Drive(velocity);
     if (m_trace) LOG << GetId() << " round: " << Label << std::endl;
-}
-
-void CPhyeldsController::SetWheels(CVector2 velocity) {
-    Real speed = std::min(velocity.Length(), m_max_speed) * 100; // m/s -> cm/s
-    if (speed < 0.5) {
-        m_wheels->SetLinearVelocity(0, 0);
-        return;
-    }
-    Real angle = velocity.Angle().GetValue();
-    Real forward = speed * std::max<Real>(0, std::cos(angle));
-    Real turn = speed * angle;
-    m_wheels->SetLinearVelocity(forward - turn, forward + turn);
 }
 
 void CPhyeldsController::Destroy() {

@@ -7,6 +7,8 @@ import subprocess
 
 import pytest
 
+from robots import ROBOTS, Robot, experiment
+
 
 @pytest.fixture(scope="session")
 def plugin(tmp_path_factory):
@@ -24,7 +26,12 @@ def run_experiment(tmp_path, plugin, *, replacements=(), runner=None):
     xml = experiment.read_text().replace("@PLUGIN@", str(plugin.with_suffix("")))
     for old, new in replacements:
         xml = xml.replace(old, new)
-    configuration = tmp_path / "line.argos"
+    return run_configuration(tmp_path, xml, runner=runner)
+
+
+def run_configuration(tmp_path, xml, *, runner=None):
+    """Run an experiment configuration, retaining all failure diagnostics."""
+    configuration = tmp_path / "experiment.argos"
     configuration.write_text(xml)
     environment = dict(os.environ)
     environment["PYTHONPATH"] = os.pathsep.join([
@@ -114,3 +121,75 @@ def test_native_ignores_malformed_radio_frame_lengths(tmp_path, plugin, native_t
     ])
     assert result.returncode == 0, result.stdout + result.stderr
     assert "fb4 final: 4" in result.stdout
+
+
+@pytest.mark.parametrize("name", ROBOTS)
+def test_native_metric_gradient_runs_on_every_robot(tmp_path, plugin, name):
+    robot = ROBOTS[name]
+    gps = "" if "range_and_bearing" in robot.sensors else 'gps="true"'
+    xml = experiment(robot, plugin.with_suffix(""), "programs:metric_gradient", params=gps)
+
+    result = run_configuration(tmp_path, xml)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    finals = final_labels(result)
+    # Hovering drones wobble by about a centimetre.
+    assert {key: float(value) for key, value in finals.items()} == pytest.approx(
+        {f"r{index}": index * robot.spacing for index in range(5)}, abs=0.03)
+
+
+def final_labels(result):
+    """The label each robot shows at the end of the experiment, by robot ID."""
+    return dict(line.split(" final: ") for line in result.stdout.splitlines() if " final: " in line)
+
+
+@pytest.mark.parametrize("name", [name for name, robot in ROBOTS.items() if robot.mobile])
+def test_native_velocity_moves_every_mobile_robot_in_the_global_frame(tmp_path, plugin, name):
+    xml = experiment(ROBOTS[name], plugin.with_suffix(""), "programs:drive", count=1, yaw=90,
+                     params='gps="true"', seconds=6)
+
+    result = run_configuration(tmp_path, xml)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    x, y, _ = json.loads(final_labels(result)["r0"])
+    assert 0.05 < x < 0.32
+    assert abs(y) < x
+
+
+def _wall(distance):
+    return (f'<box id="wall" size="0.02,1,1" movable="false"><body position="{distance},0,0"'
+            ' orientation="0,0,0" /></box>')
+
+
+@pytest.mark.parametrize("name", [name for name, robot in ROBOTS.items() if robot.wall])
+def test_native_obstacle_points_away_from_a_wall_the_robot_senses(tmp_path, plugin, name):
+    robot = ROBOTS[name]
+    xml = experiment(robot, plugin.with_suffix(""), "programs:avoid", count=1, yaw=90, arena=_wall(robot.wall))
+
+    result = run_configuration(tmp_path, xml)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    x, y, _ = json.loads(final_labels(result)["r0"])
+    assert x < 0
+    assert abs(y) < -x
+
+
+@pytest.mark.parametrize("name", [name for name, robot in ROBOTS.items() if not robot.wall])
+def test_native_obstacle_is_absent_without_proximity_sensors(tmp_path, plugin, name):
+    xml = experiment(ROBOTS[name], plugin.with_suffix(""), "programs:avoid", count=1)
+
+    result = run_configuration(tmp_path, xml)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert final_labels(result)["r0"] == "null"
+
+
+def test_native_requires_a_radio(tmp_path, plugin):
+    robot = ROBOTS["foot-bot"]
+    radioless = Robot(**{**robot.__dict__, "actuators": robot.actuators.replace(
+        '<range_and_bearing implementation="default" />', "")})
+
+    result = run_configuration(tmp_path, experiment(radioless, plugin.with_suffix(""), "programs:gradient"))
+
+    assert result.returncode != 0
+    assert "needs a range_and_bearing or a simple_radios radio" in result.stdout + result.stderr

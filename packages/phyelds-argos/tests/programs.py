@@ -19,6 +19,14 @@ def gradient() -> float:
 
 
 @aggregate
+def metric_gradient() -> None:
+    """The distance from the source in metres, lit blue on the source and red elsewhere."""
+    distance = float(distance_to(sense("source"), neighbors_distances()))
+    store("label", f"{distance:.3f}")
+    store("led", (0, 0, 255) if sense("source") else (255, 0, 0))
+
+
+@aggregate
 def probe() -> None:
     """Report only locally available state, including the absence of GPS."""
     store("label", json.dumps({
@@ -27,6 +35,17 @@ def probe() -> None:
         "ranges": neighbors_distances().data,
         "vectors": {node_id: tuple(value) for node_id, value in neighbors_vectors().data.items()},
     }))
+
+
+def drive() -> None:
+    """Head along the global x axis at 5 cm/s, and report where the robot is."""
+    store("velocity", (0.05, 0))
+    store("label", json.dumps(sense("position")))
+
+
+def avoid() -> None:
+    """Report the repulsion of the obstacles the robot senses, if it can."""
+    store("label", json.dumps(sense("obstacle")))
 
 
 def broken() -> None:

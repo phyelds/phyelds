@@ -19,12 +19,14 @@ endif()
 include_directories(${ARGOS_INCLUDE_DIRS})
 link_directories(${ARGOS_LIBRARY_DIR})
 
-add_library(phyelds_argos SHARED controller.cpp)
+add_library(phyelds_argos SHARED controller.cpp devices.cpp)
 target_compile_definitions(phyelds_argos PRIVATE
     PHYELDS_PYTHON_EXECUTABLE="${Python3_EXECUTABLE}")
 target_compile_options(phyelds_argos PRIVATE -Wall -Wextra)
 target_link_libraries(phyelds_argos PRIVATE Python3::Python
-    argos3core_simulator argos3plugin_simulator_footbot
+    argos3core_simulator argos3plugin_simulator_footbot argos3plugin_simulator_epuck
+    argos3plugin_simulator_eyebot argos3plugin_simulator_pipuck argos3plugin_simulator_builderbot
+    argos3plugin_simulator_drone
     argos3plugin_simulator_genericrobot ${ARGOS_LDFLAGS})
 
 option(PHYELDS_ARGOS_GUI "Build Qt/OpenGL halo and label renderer" ON)
