@@ -66,6 +66,7 @@ def test_native_rounds_are_isolated_and_radio_geometry_uses_the_compass(tmp_path
     one = [row for row in rounds if row["id"] == 1][-1]
     assert one["vectors"]["0"] == pytest.approx([-0.5, 0, 0])
     assert one["vectors"]["2"] == pytest.approx([0.5, 0, 0])
+    assert one["heading"] == pytest.approx([0, 1, 0], abs=1e-9)
 
 
 def test_native_rounds_work_on_argos_worker_threads(tmp_path, plugin):

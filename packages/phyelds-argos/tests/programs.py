@@ -1,6 +1,7 @@
 """Small programs loaded by the native integration tests."""
 import math
 import json
+from phyelds.argos import heading, label, led, obstacle, source, time, velocity
 from phyelds.calculus import aggregate
 from phyelds.libraries.device import sense, store
 from phyelds.libraries.distances import neighbors_distances
@@ -13,24 +14,24 @@ from phyelds.experimental.swarm import neighbors_vectors
 @aggregate
 def gradient() -> float:
     """A metric gradient with no position sensor."""
-    distance = float(distance_to(sense("source"), neighbors_distances()))
-    store("label", str(round(distance * 2)) if math.isfinite(distance) else "?")
+    distance = float(distance_to(source.sense(), neighbors_distances()))
+    label.send(str(round(distance * 2)) if math.isfinite(distance) else "?")
     return distance
 
 
 @aggregate
 def metric_gradient() -> None:
     """The distance from the source in metres, lit blue on the source and red elsewhere."""
-    distance = float(distance_to(sense("source"), neighbors_distances()))
-    store("label", f"{distance:.3f}")
-    store("led", (0, 0, 255) if sense("source") else (255, 0, 0))
+    distance = float(distance_to(source.sense(), neighbors_distances()))
+    label.send(f"{distance:.3f}")
+    led.send((0, 0, 255) if source.sense() else (255, 0, 0))
 
 
 @aggregate
 def probe() -> None:
     """Report only locally available state, including the absence of GPS."""
-    store("label", json.dumps({
-        "id": local_id(), "round": int(counter()), "time": sense("time"),
+    label.send(json.dumps({
+        "id": local_id(), "round": int(counter()), "time": time.sense(), "heading": heading.sense(),
         "position": sense("position"),
         "ranges": neighbors_distances().data,
         "vectors": {node_id: tuple(value) for node_id, value in neighbors_vectors().data.items()},
@@ -39,18 +40,21 @@ def probe() -> None:
 
 def drive() -> None:
     """Head along the global x axis at 5 cm/s, and report where the robot is."""
-    store("velocity", (0.05, 0))
-    store("label", json.dumps(sense("position")))
+    velocity.send((0.05, 0))
+    label.send(json.dumps(sense("position")))
 
 
 def avoid() -> None:
     """Report the repulsion of the obstacles the robot senses, if it can."""
-    store("label", json.dumps(sense("obstacle")))
+    label.send(json.dumps(obstacle.sense()))
 
 
 def broken() -> None:
     """Fail inside Python so the original traceback must cross the native host."""
     raise ValueError("deliberate program error")
+
+
+# The programs below write with store, which checks nothing: the host checks every output.
 
 
 def bad_velocity() -> None:
