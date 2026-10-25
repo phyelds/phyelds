@@ -93,8 +93,8 @@ builds the gradient beneath it step by step from `remember` and `neighbors`.
   [Mesa](https://mesa.readthedocs.io) model.
 * **Webots** (`phyelds-webots`): phyelds programs on the robots of a
   [Webots](https://cyberbotics.com) simulation, talking over their simulated radios.
-* **ARGoS** (`phyelds-argos`): phyelds programs embedded in native foot-bot
-  controllers, using range-and-bearing radios and compass geometry without GPS.
+* **ARGoS** (`phyelds-argos`): phyelds programs embedded in native controllers for
+  any ARGoS robot, using range-and-bearing radios and compass geometry without GPS.
 * **MicroPython**: the same programs run on microcontrollers such as the ESP32
   (`python -m phyelds.micropython`), and talk with devices running CPython.
 * **Experimental** (`phyelds.experimental`): studies in progress, whose API will
