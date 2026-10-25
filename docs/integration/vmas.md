@@ -60,7 +60,9 @@ simulator.run(10)
 ```
 
 The offset of `vmas_runner` (0.2 here) makes sure every device has run its round,
-and stored its action, before VMAS steps.
+and sent its action, before VMAS steps. Each program must send an action on every
+round. If a node has not run yet or its latest round sent no action, the runner
+raises a `ValueError` naming that node before stepping VMAS.
 
 The same pattern fits any host that can be stepped from Python: map the host's
 entities to nodes, its readings to node data, and the programs' outputs to the

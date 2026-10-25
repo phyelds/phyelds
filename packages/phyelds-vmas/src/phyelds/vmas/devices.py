@@ -22,5 +22,5 @@ infos: Sensor[dict[str, Tensor]] = Sensor("infos")
 agent: Sensor[Agent] = Sensor("agent")
 """The VMAS agent, whose state still contains all environments."""
 
-action: Actuator[Sequence[float] | Tensor | int] = Actuator("action")
+action: Actuator[Sequence[float] | Tensor] = Actuator("action")
 """The scenario's continuous or discrete action, repeated across environments."""

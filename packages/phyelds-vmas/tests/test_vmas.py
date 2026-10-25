@@ -1,4 +1,5 @@
 from vmas import make_env
+import pytest
 
 from phyelds.calculus import aggregate
 from phyelds.libraries.device import store
@@ -6,6 +7,23 @@ from phyelds.simulator import Simulator
 from phyelds.simulator.runner import schedule_program_for_all
 from phyelds.vmas import VmasEnvironment, vmas_runner
 import phyelds.vmas as devices
+
+
+@pytest.mark.parametrize("run_program", [False, True])
+def test_vmas_runner_names_node_when_action_is_missing(run_program):
+    environment = VmasEnvironment(make_env(scenario="flocking", num_envs=1, seed=0))
+    simulator = Simulator(environment)
+
+    @aggregate
+    def send_nothing():
+        return devices.observations.sense()
+
+    if run_program:
+        schedule_program_for_all(simulator, 0.0, 1.0, send_nothing)
+    simulator.schedule_event(0.2, vmas_runner, simulator, 1.0)
+
+    with pytest.raises(ValueError, match=r"node 0.*action"):
+        simulator.run(1)
 
 
 def test_vmas_runner_moves_agents_from_typed_sensors_and_action():

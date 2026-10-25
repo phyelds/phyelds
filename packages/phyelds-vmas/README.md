@@ -37,6 +37,9 @@ its full batched state. `observations` is a tensor, `rewards` a scalar tensor
 of tensors sliced to environment 0 (initially empty). The runner repeats actions
 across all VMAS environments.
 
+Each program must send an action every round. If it has not run yet or sent no
+action, `vmas_runner` raises a `ValueError` naming the node before stepping VMAS.
+
 ## Release
 
 `phyelds-vmas` follows the same version as `phyelds`. The root semantic-release
