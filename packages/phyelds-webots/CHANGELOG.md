@@ -1,3 +1,9 @@
+## [8.8.4](https://github.com/phyelds/phyelds/compare/8.8.3...8.8.4) (2026-10-25)
+
+### Documentation
+
+* a larger p in the wordmark ([24dc87c](https://github.com/phyelds/phyelds/commit/24dc87ce9ac8f984a0144bb8bab32892935b4548))
+
 ## [8.8.3](https://github.com/phyelds/phyelds/compare/8.8.2...8.8.3) (2026-10-25)
 
 ### Documentation
