@@ -1,0 +1,35 @@
+<?xml version="1.0" ?>
+<argos-configuration>
+  <framework>
+    <system threads="0" />
+    <experiment length="3" ticks_per_second="10" random_seed="1" />
+  </framework>
+  <controllers>
+    <phyelds_controller id="phyelds" library="build/argos/libphyelds_argos">
+      <actuators>
+        <differential_steering implementation="default" />
+        <leds implementation="default" medium="leds" />
+        <range_and_bearing implementation="default" />
+      </actuators>
+      <sensors>
+        <range_and_bearing implementation="medium" medium="rab" />
+        <positioning implementation="default" />
+        <footbot_proximity implementation="default" />
+      </sensors>
+      <params program="gradient:main" source="0" />
+    </phyelds_controller>
+  </controllers>
+  <arena size="6,6,1" center="0,0,0.5">
+    <foot-bot id="fb0" rab_range="0.65" rab_data_size="4096"><body position="0,0,0" orientation="0,0,0" /><controller config="phyelds" /></foot-bot>
+    <foot-bot id="fb1" rab_range="0.65" rab_data_size="4096"><body position="0.5,0,0" orientation="90,0,0" /><controller config="phyelds" /></foot-bot>
+    <foot-bot id="fb2" rab_range="0.65" rab_data_size="4096"><body position="1,0,0" orientation="180,0,0" /><controller config="phyelds" /></foot-bot>
+    <foot-bot id="fb3" rab_range="0.65" rab_data_size="4096"><body position="1.5,0,0" orientation="270,0,0" /><controller config="phyelds" /></foot-bot>
+    <foot-bot id="fb4" rab_range="0.65" rab_data_size="4096"><body position="2,0,0" orientation="45,0,0" /><controller config="phyelds" /></foot-bot>
+  </arena>
+  <physics_engines><dynamics2d id="dyn2d" /></physics_engines>
+  <media><range_and_bearing id="rab" check_occlusions="false" /><led id="leds" /></media>
+  <visualization><qt-opengl>
+    <user_functions library="build/argos/libphyelds_argos_qt" label="phyelds_qtuser_functions" />
+    <camera><placements><placement index="0" position="1,0,4" look_at="1,0,0" up="0,1,0" lens_focal_length="30" /></placements></camera>
+  </qt-opengl></visualization>
+</argos-configuration>

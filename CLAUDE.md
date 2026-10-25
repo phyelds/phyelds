@@ -5,8 +5,9 @@ lives in `src/phyelds/` (`calculus`, `data`, `libraries`, `vm`, `experimental`),
 tests in `src/tests/`. `experimental` holds studies in progress, whose API is not
 settled and may change in any release; a study that settles moves to `libraries`. The simulator (`phyelds.simulator`) is a separate package in
 `packages/phyelds-simulator/`, and so are the VMAS extension in
-`packages/phyelds-vmas/`, the Mesa extension in `packages/phyelds-mesa/` and the
-Webots extension in `packages/phyelds-webots/`; all of them share the `phyelds` namespace. The core
+`packages/phyelds-vmas/`, the Mesa extension in `packages/phyelds-mesa/`, the
+Webots extension in `packages/phyelds-webots/` and the ARGoS extension in
+`packages/phyelds-argos/`; all of them share the `phyelds` namespace. The core
 depends only on `wrapt`: the simulator is a development dependency, used by the
 tests, the examples and the playground. The documentation site (MkDocs Material) is in `docs/`,
 with runnable, tested examples in `docs/examples/`.
@@ -23,6 +24,7 @@ PYTHONPATH="packages/phyelds-vmas/src" poetry run pytest packages/phyelds-vmas/t
 poetry run pip install "mesa[network]==3.5.1"   # once, for the Mesa extension
 PYTHONPATH="packages/phyelds-mesa/src" poetry run pytest packages/phyelds-mesa/tests
 PYTHONPATH="packages/phyelds-webots/src" poetry run pytest packages/phyelds-webots/tests  # runs Webots if on the PATH
+PYTHONPATH="packages/phyelds-argos/src" poetry run pytest packages/phyelds-argos/tests    # needs ARGoS3 and CMake
 poetry install --with docs         # documentation dependencies
 poetry run mkdocs build --strict   # build the docs, as in CI (mkdocs serve to preview)
 poetry run python docs/examples/gradient.py   # regenerate the gifs in docs/assets
