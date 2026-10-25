@@ -1,3 +1,9 @@
+## [8.8.1](https://github.com/phyelds/phyelds/compare/8.8.0...8.8.1) (2026-10-25)
+
+### Documentation
+
+* use the svg logos and a wordmark with the network p ([435fe5f](https://github.com/phyelds/phyelds/commit/435fe5f2fceb2db523b3faa8f8891d6e1ce53829))
+
 ## [8.8.0](https://github.com/phyelds/phyelds/compare/8.7.0...8.8.0) (2026-10-20)
 
 ### Features
