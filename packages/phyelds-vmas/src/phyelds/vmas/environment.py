@@ -26,7 +26,7 @@ class VmasEnvironment(Environment):
         for index, agent in enumerate(self.vmas_environment.agents):
             data: dict[str, Any] = {
                 devices.observations.name: observations[index][0],
-                devices.rewards.name: 0.0,
+                devices.rewards.name: agent.state.pos.new_zeros(()),
                 devices.dones.name: False,
                 devices.infos.name: {},
                 devices.agent.name: agent,
@@ -45,6 +45,8 @@ class VmasEnvironment(Environment):
             node.data[devices.observations.name] = observations[index][0]
             node.position = (agent.state.pos[0][0].item(), agent.state.pos[0][1].item())
             node.data[devices.rewards.name] = rewards[index][0]
-            node.data[devices.dones.name] = dones
-            node.data[devices.infos.name] = infos[index]
+            node.data[devices.dones.name] = bool(dones[0].item())
+            node.data[devices.infos.name] = {
+                name: value[0] for name, value in infos[index].items()
+            }
             node.data[devices.agent.name] = agent

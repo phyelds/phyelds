@@ -31,6 +31,12 @@ Programs share the typed sensors `observations`, `rewards`, `dones`, `infos` and
 has the meaning assigned by the VMAS scenario (for example a force or a discrete
 choice).
 
+Readings and positions select environment 0; `agent` exposes the VMAS agent with
+its full batched state. `observations` is a tensor, `rewards` a scalar tensor
+(initially zero), `dones` a Python bool (initially false), and `infos` a dictionary
+of tensors sliced to environment 0 (initially empty). The runner repeats actions
+across all VMAS environments.
+
 ## Release
 
 `phyelds-vmas` follows the same version as `phyelds`. The root semantic-release

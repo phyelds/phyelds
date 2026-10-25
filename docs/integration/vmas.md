@@ -20,6 +20,25 @@ pip install phyelds-vmas
   and schedules itself again.
 - The aggregate program runs with the usual `schedule_program_for_all`.
 
+The host and programs share these objects from `phyelds.vmas`:
+
+| Object | Value returned by `.sense()` |
+| --- | --- |
+| `observations` | The agent's observation tensor |
+| `rewards` | A scalar reward tensor, initially zero |
+| `dones` | A Python `bool` indicating episode completion, initially `False` |
+| `infos` | A dictionary of info tensors, initially `{}` |
+| `agent` | The VMAS `Agent` object |
+
+Readings and node positions select environment 0, including every info tensor's
+first batch entry. The `Agent` object retains its batched state. If VMAS has
+multiple environments, the runner repeats each agent's action across them.
+The sensor value types stay the same after a step. The original names still
+work with `sense("observations")` or `store("action", ...)`.
+
+`action.send(...)` accepts the action defined by the scenario, such as a force
+vector or a discrete choice; it is distinct from the core `velocity` actuator.
+
 ```python
 from vmas import make_env
 
