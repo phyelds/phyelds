@@ -1,3 +1,9 @@
+## [8.8.5](https://github.com/phyelds/phyelds/compare/8.8.4...8.8.5) (2026-10-25)
+
+### Documentation
+
+* the logo square and the name again in the header ([785dfd5](https://github.com/phyelds/phyelds/commit/785dfd514d9031bf6d3352d05c158c85ba5a37e9))
+
 ## [8.8.4](https://github.com/phyelds/phyelds/compare/8.8.3...8.8.4) (2026-10-25)
 
 ### Documentation
