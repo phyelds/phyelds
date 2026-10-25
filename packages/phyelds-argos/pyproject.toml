@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "phyelds-argos"
+version = "8.8.6"
+description = "Aggregate programs on ARGoS robots, communicating over simulated radios"
+license = "Apache-2.0"
+authors = ["Gianluca Aguzzi <gianluca.aguzzi@unibo.it>", "Davide Domini <davide.domini@unibo.it>"]
+repository = "https://github.com/phyelds/phyelds"
+readme = "README.md"
+packages = [{ include = "phyelds/argos", from = "src" }]
+include = [{ path = "src/phyelds/argos/native/**", format = ["sdist", "wheel"] }]
+
+[tool.poetry.dependencies]
+python = ">=3.12,<3.14"
+phyelds = "^8.8.6"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

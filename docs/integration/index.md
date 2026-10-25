@@ -57,3 +57,5 @@ The complete, runnable example, which drives a line of devices with plain Python
 - **Run rounds from another simulator**, when it owns the agents and the time: [Mesa](mesa.md) models do it with `phyelds-mesa`, which runs a round on every agent at each step of the model.
 - **Drive rounds yourself**, as in the example above, when the host owns the loop (a real device, ROS node, or an external simulator calling back into Python).
 - **Run each device on its own**, when every device has its own process and sends its messages as bytes over a radio: `phyelds.vm.device.Device` runs its rounds, and the host only moves the bytes. This is how [MicroPython and the ESP32](micropython.md) and [Webots](webots.md) robots run phyelds.
+
+- **Embed Python in a native simulator**, when it calls C++ controllers in one process: [ARGoS](argos.md) runs a `Device` per robot and transports its messages over the simulated radio.

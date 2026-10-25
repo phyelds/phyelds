@@ -1,0 +1,45 @@
+name: ARGoS integration
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+jobs:
+  argos:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        python: ['3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install native prerequisites
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ libfreeimage-dev libfreeimageplus-dev
+      - name: Build pinned ARGoS without Qt
+        run: bash packages/phyelds-argos/ci/install-argos.sh "$RUNNER_TEMP/argos-build" "$RUNNER_TEMP/argos"
+      - name: Install Python packages
+        run: pip install -e . -e packages/phyelds-argos pytest pylint flake8 build
+      - name: Test the native host
+        env:
+          CMAKE_PREFIX_PATH: ${{ runner.temp }}/argos
+          ARGOS_PLUGIN_PATH: ${{ runner.temp }}/argos/lib/argos3
+          LD_LIBRARY_PATH: ${{ runner.temp }}/argos/lib/argos3
+        run: |
+          export PATH="$RUNNER_TEMP/argos/bin:$pythonLocation/bin:$PATH"
+          python -m pytest packages/phyelds-argos/tests -q
+      - name: Lint
+        run: |
+          python -m pylint packages/phyelds-argos/src packages/phyelds-argos/tests
+          python -m flake8 packages/phyelds-argos/src packages/phyelds-argos/tests
+      - name: Build and inspect distribution
+        env:
+          CMAKE_PREFIX_PATH: ${{ runner.temp }}/argos
+          LD_LIBRARY_PATH: ${{ runner.temp }}/argos/lib/argos3
+        run: |
+          python -m build packages/phyelds-argos
+          python -m venv "$RUNNER_TEMP/wheel-env"
+          "$RUNNER_TEMP/wheel-env/bin/pip" install -e . packages/phyelds-argos/dist/*.whl
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/wheel-env/bin/python" -m phyelds.argos.build --build-dir wheel-plugin --no-gui
