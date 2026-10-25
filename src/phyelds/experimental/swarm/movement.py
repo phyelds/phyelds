@@ -1,8 +1,9 @@
 """
 Movement blocks: what a robot does on its own, or knowing where it is (MacroSwarm, §4.3).
 
-Most need the ``position`` sensor: ``go_to``, ``is_close`` and ``explore`` read it, and
-``neighbors_vectors`` shares it. The others combine with any block, for instance::
+Most need the ``position`` sensor: ``go_to``, ``is_close`` and ``explore`` read it.
+``neighbors_vectors`` uses measured radio offsets when available, or shares position.
+The others combine with any block, for instance::
 
     wander = maintain_trajectory(brownian, period=5.0)
     velocity = (wander + avoid_obstacles(obstacles, 2.0)).normalize()
@@ -14,7 +15,7 @@ import random
 from phyelds.calculus import aggregate, neighbors, remember
 from phyelds.data import NeighborhoodField
 from phyelds.experimental.swarm.vector import Vector
-from phyelds.libraries.device import local_position
+from phyelds.libraries.device import local_id, local_position, sense
 from phyelds.libraries.time import periodic_impulse
 
 
@@ -28,12 +29,21 @@ def neighbors_vectors(position: Sequence[float] | None = None) -> NeighborhoodFi
     The vector from the device to each neighbor, zero to itself.
 
     Args:
-        position: The position of the device; ``local_position()`` if ``None``. Only
-            relative positions matter, so any frame shared by the neighbors works.
+        position: Explicit position of the device. If omitted, use the
+            ``neighbors_vectors`` sensor (an ID-to-coordinate-sequence map),
+            or share ``local_position()`` if that sensor is absent. Vectors
+            must use a frame shared by the neighbors. Measured vectors only
+            include neighbors aligned at this call.
 
     Returns:
         The field of the vectors from the device to its neighbors.
     """
+    measured = sense("neighbors_vectors")
+    if position is None and measured is not None:
+        peers = neighbors(None).exclude_self()
+        data = {node_id: Vector(*measured[node_id]) for node_id in peers if node_id in measured}
+        data[local_id()] = Vector()
+        return NeighborhoodField(data, local_id())
     here = _here() if position is None else Vector(*position)
     return neighbors(here).map(lambda there: there - here)
 
