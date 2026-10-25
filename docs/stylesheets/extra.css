@@ -101,9 +101,21 @@
   letter-spacing: -0.01em;
 }
 
-/* The symbol is a network of thin links: at the default 1.2rem it fades. */
 .md-header__button.md-logo img {
-  height: 1.6rem;
+  height: 1.3rem;
+}
+
+/* The logo is the wordmark: the name beside it would repeat it. Only the title of the page shows, on scroll. */
+@media screen and (min-width: 76.25em) {
+  .md-header__button.md-logo ~ .md-header__title .md-header__topic:first-child {
+    visibility: hidden;
+  }
+}
+
+/* Likewise at the top of the drawer, where the name is a bare text node: only font size hides it. */
+.md-nav--primary > .md-nav__title {
+  height: 3.8rem;
+  font-size: 0;
 }
 
 @media screen and (min-width: 60em) {

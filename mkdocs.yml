@@ -12,7 +12,7 @@ exclude_docs: |
 
 theme:
   name: material
-  logo: assets/phyelds-symbol.svg
+  logo: assets/phyelds-wordmark.svg
   favicon: assets/phyelds-symbol.svg
   # Inter and JetBrains Mono come from extra_css, with all the weights the stylesheet uses.
   font: false
