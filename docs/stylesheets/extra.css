@@ -101,8 +101,14 @@
   letter-spacing: -0.01em;
 }
 
+/* The P of the wordmark rises above the lettering: less padding lets it fill the header. */
+.md-header__button.md-logo {
+  padding-top: 0.15rem;
+  padding-bottom: 0.15rem;
+}
+
 .md-header__button.md-logo img {
-  height: 1.3rem;
+  height: 1.7rem;
 }
 
 /* The logo is the wordmark: the name beside it would repeat it. Only the title of the page shows, on scroll. */
@@ -434,7 +440,7 @@
 
 .ph-hero .ph-wordmark {
   width: auto;
-  height: 2.4rem;
+  height: 3.6rem;
 }
 
 /* The animation of the hero has the background of the page: it needs no frame. */
