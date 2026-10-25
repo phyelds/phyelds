@@ -79,15 +79,25 @@ distances from shared positions.
 
 ## Sensors and outputs
 
+`phyelds.argos` names the sensors and actuators of the host once, as typed
+[`Sensor` and `Actuator`](../concepts/libraries.md) objects: a program reads
+`source.sense()` and sends `led.send(colour)`, and never repeats their names.
+
 | Sensor | Meaning |
 |---|---|
 | `time` | Simulation time in seconds |
 | `source` | Whether this device ID matches the configured `source`; false if omitted |
 | `heading` | Heading unit vector from the compass |
-| `obstacle` | Proximity repulsion vector, with a proximity sensor or rangefinders |
-| `neighbors_distances` | Map from sender ID to RAB range in metres, with `range_and_bearing` |
-| `neighbors_vectors` | Map from sender ID to its relative vector in metres, with `range_and_bearing` |
-| `position` | Position in metres, with `gps="true"` |
+| `obstacle` | Proximity repulsion vector, with a proximity sensor or rangefinders; `None` without |
+
+The host also gives the geometry of the neighbors and, on request, the position; the
+libraries of phyelds read them:
+
+| Host sensor | Meaning | Read by |
+|---|---|---|
+| `neighbors_distances` | Map from sender ID to RAB range in metres, with `range_and_bearing` | `neighbors_distances()` |
+| `neighbors_vectors` | Map from sender ID to its relative vector in metres, with `range_and_bearing` | `neighbors_vectors()` |
+| `position` | Position in metres, with `gps="true"` | `local_position()` |
 
 Vectors are coordinate tuples in the shared compass frame; the vectors to flying
 neighbors have a `z`. Unless `gps="true"`, the positioning sensor supplies
@@ -97,7 +107,7 @@ the measured maps. They respect alignment and remove absent neighbors. Without t
 maps, their existing position-based behavior is unchanged; an explicit `position`
 argument always takes precedence.
 
-| Output through `store` | Meaning |
+| Actuator | Meaning |
 |---|---|
 | `velocity` | Desired global velocity, two or three components, in m/s; capped by `max_speed` (default 0.1). Wheeled robots turn towards it, quadrotors and drones fly it |
 | `led` | RGB iterable with three channels in 0–255 |

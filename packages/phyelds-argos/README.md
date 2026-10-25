@@ -38,7 +38,9 @@ headings share the global compass frame. The standard geometry helpers use the
 measured sensors without GPS.
 
 Programs write `velocity` (an iterable with two or three components, m/s), `led`
-(three integer RGB channels, 0–255) and `label` (text), through `store`. Missing
+(three integer RGB channels, 0–255) and `label` (text). `phyelds.argos` names these
+sensors and actuators once, as typed objects: `source.sense()`, `led.send((255, 0, 0))`,
+`velocity.send(v)`. The maps and `position` are read by the geometry helpers. Missing
 outputs mean zero velocity, black LEDs and an empty label. With the GUI enabled,
 `<user_functions library="build/libphyelds_argos_qt" label="phyelds_qtuser_functions" />`
 draws the LED colour as a halo and the label above each robot.
