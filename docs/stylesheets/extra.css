@@ -101,10 +101,9 @@
   letter-spacing: -0.01em;
 }
 
-/* The logo has a cream square background: round it, and outline it on the cream header. */
+/* The symbol is a network of thin links: at the default 1.2rem it fades. */
 .md-header__button.md-logo img {
-  border-radius: 6px;
-  box-shadow: 0 0 0 1px var(--ph-line);
+  height: 1.6rem;
 }
 
 @media screen and (min-width: 60em) {
@@ -419,6 +418,11 @@
 .ph-split img {
   display: block;
   width: 100%;
+}
+
+.ph-hero .ph-wordmark {
+  width: auto;
+  height: 2.4rem;
 }
 
 /* The animation of the hero has the background of the page: it needs no frame. */

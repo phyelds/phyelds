@@ -7,6 +7,8 @@ hide:
 <div class="ph-hero" markdown>
 <div markdown>
 
+![phyelds](assets/phyelds-wordmark.svg){ .ph-wordmark }
+
 <span class="ph-eyebrow">Aggregate computing for Python</span>
 
 # Program the <span class="ph-gradient-text">collective</span>, not the device

@@ -1,8 +1,6 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/phyelds/phyelds/master/docs/assets/logo.png" alt="phyelds logo" width="96">
-
-# Phyelds
+<h1><img src="https://raw.githubusercontent.com/phyelds/phyelds/master/docs/assets/phyelds-wordmark.svg" alt="phyelds" width="360"></h1>
 
 Lightweight, pythonic aggregate computing & field calculus toolkit for building, simulating, and experimenting with large scale distributed systems.
 
