@@ -1,3 +1,13 @@
+## [8.8.3](https://github.com/phyelds/phyelds/compare/8.8.2...8.8.3) (2026-10-25)
+
+### Documentation
+
+* show the wordmark in the header of the site ([7ac1b73](https://github.com/phyelds/phyelds/commit/7ac1b7317a975400254bdf4b8298eca539118b9a))
+
+### Revert previous changes
+
+* restore the original p of the logo ([2300c6f](https://github.com/phyelds/phyelds/commit/2300c6f844ffc67be279df226761ab8897b8de3d))
+
 ## [8.8.2](https://github.com/phyelds/phyelds/compare/8.8.1...8.8.2) (2026-10-25)
 
 ### Documentation
