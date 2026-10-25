@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "phyelds-simulator"
-version = "8.10.0"
+version = "8.11.0"
 description = "A discrete-event simulator, with live rendering, for phyelds programs"
 license = "Apache-2.0"
 authors = [

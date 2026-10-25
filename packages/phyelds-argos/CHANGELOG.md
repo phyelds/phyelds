@@ -1,3 +1,18 @@
+## [8.11.0](https://github.com/phyelds/phyelds/compare/8.10.0...8.11.0) (2026-10-25)
+
+### Features
+
+* **vmas:** share typed sensors and actions with programs ([ef264e7](https://github.com/phyelds/phyelds/commit/ef264e70a2195b2bbf1eab03f5c344b8e7922b62))
+
+### Bug Fixes
+
+* **vmas:** keep sensor types stable and select environment zero ([b19e58a](https://github.com/phyelds/phyelds/commit/b19e58ab552d1e7df82e9388b201706f913b2a51))
+* **vmas:** name the node when an action is missing ([6c40762](https://github.com/phyelds/phyelds/commit/6c407626feab4bfa920bdca0725e28b0052d1419))
+
+### Refactoring
+
+* **vmas:** document and annotate the sensor adapter ([518e618](https://github.com/phyelds/phyelds/commit/518e61802cca03709a260e8e75ad5b9461c03f09))
+
 ## [8.10.0](https://github.com/phyelds/phyelds/compare/8.9.1...8.10.0) (2026-10-25)
 
 ### Features
