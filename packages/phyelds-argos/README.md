@@ -53,6 +53,5 @@ ignored. Payload/codec errors stop the experiment with the robot ID and Python t
 `trace="true"` logs each robot's label after every round for diagnostics.
 
 See the [integration guide](https://phyelds.github.io/phyelds/integration/argos/) for
-an experiment and the five-example project. The host build needs no Boost.Python,
-pybind11, FCPP or phyelds simulator. Python execution is protected by the GIL even
-when ARGoS uses worker threads; individual rounds are not executed in parallel.
+an experiment. Python execution is protected by the GIL even when ARGoS uses worker
+threads; individual rounds are not executed in parallel.
