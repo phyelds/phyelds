@@ -4,6 +4,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# ARGoSConfig.cmake looks for the modules installed beside it only under the system
+# prefixes: an ARGoS found through CMAKE_PREFIX_PATH would not find its own modules.
+find_path(ARGOS_CMAKE_DIR FindARGoSQTOpenGL.cmake
+    PATHS ${CMAKE_PREFIX_PATH} ENV CMAKE_PREFIX_PATH
+    PATH_SUFFIXES share/argos3/cmake NO_DEFAULT_PATH)
 find_package(ARGoS REQUIRED)
 # Find both together so an interpreter can never be paired with another Python's ABI.
 set(Python3_USE_STATIC_LIBS FALSE)
