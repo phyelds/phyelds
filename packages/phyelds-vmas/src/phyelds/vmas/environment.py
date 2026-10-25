@@ -5,6 +5,7 @@ from typing import Any, Callable, List
 import vmas.simulator.environment
 
 from phyelds.simulator import Environment, Node
+from phyelds.vmas import devices
 
 
 class VmasEnvironment(Environment):
@@ -24,11 +25,11 @@ class VmasEnvironment(Environment):
         observations = self.vmas_environment.reset()
         for index, agent in enumerate(self.vmas_environment.agents):
             data: dict[str, Any] = {
-                "observations": observations[index][0],
-                "rewards": 0.0,
-                "dones": False,
-                "infos": {},
-                "agent": agent,
+                devices.observations.name: observations[index][0],
+                devices.rewards.name: 0.0,
+                devices.dones.name: False,
+                devices.infos.name: {},
+                devices.agent.name: agent,
             }
             node = Node(
                 position=(agent.state.pos[0][0].item(), agent.state.pos[0][1].item()),
@@ -41,9 +42,9 @@ class VmasEnvironment(Environment):
         """Synchronize phyelds nodes with the latest VMAS step result."""
         for index, agent in enumerate(self.vmas_environment.agents):
             node = self.nodes[index]
-            node.data["observations"] = observations[index][0]
+            node.data[devices.observations.name] = observations[index][0]
             node.position = (agent.state.pos[0][0].item(), agent.state.pos[0][1].item())
-            node.data["rewards"] = rewards[index][0]
-            node.data["dones"] = dones
-            node.data["infos"] = infos[index]
-            node.data["agent"] = agent
+            node.data[devices.rewards.name] = rewards[index][0]
+            node.data[devices.dones.name] = dones
+            node.data[devices.infos.name] = infos[index]
+            node.data[devices.agent.name] = agent

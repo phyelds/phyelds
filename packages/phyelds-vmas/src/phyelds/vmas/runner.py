@@ -5,6 +5,7 @@ import torch
 
 from phyelds.simulator import Simulator
 from phyelds.vmas.environment import VmasEnvironment
+from phyelds.vmas.devices import action
 
 
 def vmas_runner(simulator: Simulator, time_delta: float) -> None:
@@ -14,7 +15,7 @@ def vmas_runner(simulator: Simulator, time_delta: float) -> None:
 
     environment = simulator.environment
     actions = [
-        np.array(node.data["outputs"]["action"], dtype=np.float32)
+        np.array(action.read(node.data["outputs"]), dtype=np.float32)
         for node in environment.node_list()
     ]
     actions_single_env = torch.tensor(

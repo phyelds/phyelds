@@ -15,10 +15,21 @@ pip install phyelds-vmas
 ```python
 from phyelds.simulator import Simulator
 from phyelds.simulator.runner import schedule_program_for_all
-from phyelds.vmas import VmasEnvironment, vmas_runner
+from phyelds.calculus import aggregate
+from phyelds.vmas import VmasEnvironment, action, vmas_runner
+
+@aggregate
+def move_right():
+    action.send([1, 0])
 ```
 
-The extension requires `phyelds >=7.0.0,<8.0.0`.
+The extension requires `phyelds >=8.0.0,<9.0.0`.
+
+Programs share the typed sensors `observations`, `rewards`, `dones`, `infos` and
+`agent`, and the actuator `action`, with the host. Existing string names such as
+`sense("observations")` and `store("action", [1, 0])` remain supported. An action
+has the meaning assigned by the VMAS scenario (for example a force or a discrete
+choice).
 
 ## Release
 

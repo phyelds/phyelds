@@ -14,9 +14,9 @@ pip install phyelds-vmas
 - **`VmasEnvironment`** is an `Environment` whose nodes mirror the VMAS agents:
   `initialize_nodes` creates one node per agent, and `update_nodes` copies, after
   every VMAS step, each agent's position, observations, reward and done flag into
-  the node. To the program they are ordinary sensors: `sense("observations")`.
+  the node. Programs read them through typed sensors: `observations.sense()`.
 - **`vmas_runner`** is a recurring simulator event: it reads the `action` output that
-  each program `store`d, steps VMAS with all the actions at once, updates the nodes
+  each program sent through `action.send(...)`, steps VMAS with all the actions at once, updates the nodes
   and schedules itself again.
 - The aggregate program runs with the usual `schedule_program_for_all`.
 
@@ -24,17 +24,16 @@ pip install phyelds-vmas
 from vmas import make_env
 
 from phyelds.calculus import aggregate
-from phyelds.libraries.device import store
 from phyelds.simulator import Simulator
 from phyelds.simulator.runner import schedule_program_for_all
-from phyelds.vmas import VmasEnvironment, vmas_runner
+from phyelds.vmas import VmasEnvironment, action, vmas_runner
 
 environment = VmasEnvironment(make_env(scenario="flocking", num_envs=1))
 simulator = Simulator(environment)
 
 @aggregate
 def move_right():
-    store("action", [1, 0])
+    action.send([1, 0])
 
 schedule_program_for_all(simulator, 0.0, 1.0, move_right)
 simulator.schedule_event(0.2, vmas_runner, simulator, 1.0)   # VMAS steps after the programs
