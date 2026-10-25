@@ -101,27 +101,10 @@
   letter-spacing: -0.01em;
 }
 
-/* The P of the wordmark rises above the lettering: less padding lets it fill the header. */
-.md-header__button.md-logo {
-  padding-top: 0.15rem;
-  padding-bottom: 0.15rem;
-}
-
+/* The logo has a cream square background: round it, and outline it on the cream header. */
 .md-header__button.md-logo img {
-  height: 1.7rem;
-}
-
-/* The logo is the wordmark: the name beside it would repeat it. Only the title of the page shows, on scroll. */
-@media screen and (min-width: 76.25em) {
-  .md-header__button.md-logo ~ .md-header__title .md-header__topic:first-child {
-    visibility: hidden;
-  }
-}
-
-/* Likewise at the top of the drawer, where the name is a bare text node: only font size hides it. */
-.md-nav--primary > .md-nav__title {
-  height: 3.8rem;
-  font-size: 0;
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px var(--ph-line);
 }
 
 @media screen and (min-width: 60em) {

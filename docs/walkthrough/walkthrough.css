@@ -108,6 +108,10 @@ button {
   letter-spacing: -0.01em;
 }
 
+.wt-home img {
+  border-radius: 5px;
+}
+
 .wt-steps {
   display: flex;
   gap: 0.15rem;
