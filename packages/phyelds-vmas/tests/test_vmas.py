@@ -1,12 +1,12 @@
-from vmas import make_env
 import pytest
+from vmas import make_env
 
+import phyelds.vmas as devices
 from phyelds.calculus import aggregate
 from phyelds.libraries.device import store
 from phyelds.simulator import Simulator
 from phyelds.simulator.runner import schedule_program_for_all
 from phyelds.vmas import VmasEnvironment, vmas_runner
-import phyelds.vmas as devices
 
 
 @pytest.mark.parametrize("run_program", [False, True])

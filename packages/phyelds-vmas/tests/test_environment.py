@@ -1,5 +1,5 @@
-import torch
 import pytest
+import torch
 from vmas import make_env
 
 from phyelds.vmas import VmasEnvironment

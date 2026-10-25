@@ -1,7 +1,9 @@
 """Adapter between VMAS environments and the phyelds simulator."""
 
-from typing import Any, Callable, List
+from collections.abc import Callable, Sequence
+from typing import Any
 
+from torch import Tensor
 import vmas.simulator.environment
 
 from phyelds.simulator import Environment, Node
@@ -9,13 +11,18 @@ from phyelds.vmas import devices
 
 
 class VmasEnvironment(Environment):
-    """Wrap a VMAS environment as a phyelds simulator environment."""
+    """Wrap VMAS agents as nodes with readings and positions from environment zero.
+
+    Args:
+        vmas_environment: The VMAS host, reset when the adapter is initialized.
+        neighborhood_function: How to select each node's neighbors.
+    """
 
     def __init__(
         self,
         vmas_environment: vmas.simulator.environment.Environment,
-        neighborhood_function: Callable[[Node, Environment], List[Node]] = None,
-    ):
+        neighborhood_function: Callable[[Node, Environment], list[Node]] | None = None,
+    ) -> None:
         super().__init__(neighborhood_function)
         self.vmas_environment = vmas_environment
         self.initialize_nodes()
@@ -38,8 +45,21 @@ class VmasEnvironment(Environment):
             )
             self.add_node(node)
 
-    def update_nodes(self, observations, rewards, dones, infos) -> None:
-        """Synchronize phyelds nodes with the latest VMAS step result."""
+    def update_nodes(
+        self,
+        observations: Sequence[Tensor],
+        rewards: Sequence[Tensor],
+        dones: Tensor,
+        infos: Sequence[dict[str, Tensor]],
+    ) -> None:
+        """Synchronize nodes with environment zero of a batched VMAS step result.
+
+        Args:
+            observations: Batched observation tensors, one per agent.
+            rewards: Batched reward tensors, one per agent.
+            dones: Episode completion flags, one per environment.
+            infos: Batched info tensors by name, one dictionary per agent.
+        """
         for index, agent in enumerate(self.vmas_environment.agents):
             node = self.nodes[index]
             node.data[devices.observations.name] = observations[index][0]
