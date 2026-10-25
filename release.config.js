@@ -10,6 +10,8 @@ var prepareCmd = [
     // phyelds-webots needs a core at least as recent as itself (phyelds.vm.device).
     "(cd packages/phyelds-webots && poetry version -- \${nextRelease.version}"
         + " && sed -i 's/^phyelds = .*/phyelds = \"^\${nextRelease.version}\"/' pyproject.toml)",
+    "(cd packages/phyelds-argos && poetry version -- \${nextRelease.version}"
+        + " && sed -i 's/^phyelds = .*/phyelds = \"^\${nextRelease.version}\"/' pyproject.toml)",
     "cd packages/phyelds-vmas && poetry version -- \${nextRelease.version}",
 ].join(" && ");
 var publishOptions = "--build";
@@ -28,6 +30,7 @@ var publishCmd = [
     `(cd packages/phyelds-simulator && poetry publish ${publishOptions} --username ${pypiUsername} --password ${pypiPassword})`,
     `(cd packages/phyelds-mesa && poetry publish ${publishOptions} --username ${pypiUsername} --password ${pypiPassword})`,
     `(cd packages/phyelds-webots && poetry publish ${publishOptions} --username ${pypiUsername} --password ${pypiPassword})`,
+    `(cd packages/phyelds-argos && poetry publish ${publishOptions} --username ${pypiUsername} --password ${pypiPassword})`,
     `cd packages/phyelds-vmas && poetry publish ${publishOptions} --username ${pypiUsername} --password ${pypiPassword}`,
 ].join(" && ");
 
@@ -42,6 +45,9 @@ config.plugins.push(
     }],
     ["@semantic-release/changelog", {
         "changelogFile": "packages/phyelds-webots/CHANGELOG.md",
+    }],
+    ["@semantic-release/changelog", {
+        "changelogFile": "packages/phyelds-argos/CHANGELOG.md",
     }],
     ["@semantic-release/changelog", {
         "changelogFile": "packages/phyelds-vmas/CHANGELOG.md",
@@ -60,6 +66,7 @@ if (!dryRun) {
                 { "path": "packages/phyelds-simulator/dist/*" },
                 { "path": "packages/phyelds-mesa/dist/*" },
                 { "path": "packages/phyelds-webots/dist/*" },
+                { "path": "packages/phyelds-argos/dist/*" },
                 { "path": "packages/phyelds-vmas/dist/*" },
             ]
         }],
@@ -73,6 +80,8 @@ if (!dryRun) {
                 "packages/phyelds-mesa/pyproject.toml",
                 "packages/phyelds-webots/CHANGELOG.md",
                 "packages/phyelds-webots/pyproject.toml",
+                "packages/phyelds-argos/CHANGELOG.md",
+                "packages/phyelds-argos/pyproject.toml",
                 "packages/phyelds-vmas/CHANGELOG.md",
                 "packages/phyelds-vmas/pyproject.toml"
             ],
