@@ -1,3 +1,9 @@
+## [8.8.7](https://github.com/phyelds/phyelds/compare/8.8.6...8.8.7) (2026-10-25)
+
+### Documentation
+
+* space the buttons of the home page when they wrap ([133cf04](https://github.com/phyelds/phyelds/commit/133cf042a3bd7813957c4f31f55955d174a36081))
+
 ## [8.8.6](https://github.com/phyelds/phyelds/compare/8.8.5...8.8.6) (2026-10-25)
 
 ### Documentation
