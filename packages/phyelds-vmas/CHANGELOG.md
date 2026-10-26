@@ -1,3 +1,9 @@
+## [8.13.1](https://github.com/phyelds/phyelds/compare/8.13.0...8.13.1) (2026-10-26)
+
+### Bug Fixes
+
+* **argos:** remove time, which local_time already reads ([#46](https://github.com/phyelds/phyelds/issues/46)) ([8ff9609](https://github.com/phyelds/phyelds/commit/8ff9609fe834466df4dd53bcf102e391c082821c)), closes [#34](https://github.com/phyelds/phyelds/issues/34) [#34](https://github.com/phyelds/phyelds/issues/34) [#34](https://github.com/phyelds/phyelds/issues/34)
+
 ## [8.13.0](https://github.com/phyelds/phyelds/compare/8.12.0...8.13.0) (2026-10-26)
 
 ### Features
