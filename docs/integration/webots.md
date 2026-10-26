@@ -36,6 +36,9 @@ rounds of a robot on [`phyelds.vm.device.Device`](micropython.md#the-device-loop
 - **Sensors**: every robot senses `time` (the simulation time) and, if you pass the name
   of a `GPS` device with `gps=`, its `position`. `sensors=` adds more, from a function
   called at each round.
+- **Distances**: the `Receiver` measures how far each message comes from, so
+  `neighbors_distances()` gives the distance to each neighbor, in metres, without a
+  `GPS`. Its `signalStrengthNoise` field makes the measure noisy.
 - **Outputs**: what the program `store`s is in `outputs`; the controller applies it to the
   robot (motors, LEDs).
 

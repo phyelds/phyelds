@@ -20,7 +20,8 @@ class AggregateController:
     The device id is the name of the robot, so robots must have unique names. The neighbors
     of a robot are the robots its ``Emitter`` reaches; Webots delivers a message in the step
     after it was sent, so with a round at every step of every robot the rounds are
-    synchronous.
+    synchronous. The radio measures how far each neighbor is, so ``neighbors_distances()``
+    needs no positions.
 
     Args:
         robot: The ``controller.Robot`` of this controller.
@@ -28,8 +29,8 @@ class AggregateController:
         emitter: The name of the ``Emitter`` device of the robot.
         receiver: The name of the ``Receiver`` device of the robot.
         gps: The name of a ``GPS`` device, whose values become the ``position`` sensor.
-        sensors: Extra sensors, read at each round, added to ``time`` (the simulation time)
-            and ``position``.
+        sensors: Extra sensors, read at each round, added to ``time`` (the simulation time),
+            ``position`` and ``neighbors_distances`` (from neighbor name to metres).
         paths: The path mode of the engine, ``"debug"`` or ``"compact"``: the same on
             every robot.
 
@@ -78,18 +79,24 @@ class AggregateController:
         Returns:
             The value the program computed.
         """
+        distances = {}
         while self._receiver.getQueueLength() > 0:
-            sender, _, payload = self._receiver.getBytes().partition(b"\n")
-            self._device.receive(json.loads(sender), payload)
+            header, _, payload = self._receiver.getBytes().partition(b"\n")
+            sender = json.loads(header)
+            # Webots gives the signal strength of a packet as 1/r², r the distance from its emitter.
+            distances[sender] = self._receiver.getSignalStrength() ** -0.5
+            self._device.receive(sender, payload)
             self._receiver.nextPacket()
-        payload = self._device.run_round(self._sense())
+        payload = self._device.run_round(self._sense(distances))
         self._emitter.send(json.dumps(self._device.device_id).encode() + b"\n" + payload)
         return self.result
 
-    def _sense(self) -> dict[str, Any]:
-        """The sensors of this round."""
+    def _sense(self, distances: dict[Any, float]) -> dict[str, Any]:
+        """The sensors of this round, given the distances to the robots heard in it."""
         position = None if self._gps is None else tuple(self._gps.getValues())
-        sensors = {"position": position, "time": self.robot.getTime()}
+        sensors = {
+            "position": position, "time": self.robot.getTime(), "neighbors_distances": distances,
+        }
         if self.sensors is not None:
             sensors.update(self.sensors())
         return sensors

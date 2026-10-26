@@ -4,7 +4,7 @@ import pytest
 
 from phyelds.calculus import aggregate, neighbors
 from phyelds.libraries.device import local_position, sense, store
-from phyelds.libraries.distances import hops_distance
+from phyelds.libraries.distances import hops_distance, neighbors_distances
 from phyelds.libraries.spreading import distance_to
 from phyelds.libraries.time import local_time
 from phyelds.webots import AggregateController
@@ -15,6 +15,11 @@ def hops_to_source():
     distance = distance_to(sense("source"), hops_distance())
     store("near", distance < 2)
     return distance
+
+
+@aggregate
+def metres_to_source():
+    return distance_to(sense("source"), neighbors_distances())
 
 
 @aggregate
@@ -36,6 +41,8 @@ class FakeEmitter:
 
 
 class FakeReceiver:
+    """Queues packets with what Webots measures of their sender: 1/r² and its direction."""
+
     def __init__(self):
         self.queue, self.sampling_period = [], None
 
@@ -46,7 +53,13 @@ class FakeReceiver:
         return len(self.queue)
 
     def getBytes(self):  # pylint: disable=invalid-name
-        return self.queue[0]
+        return self.queue[0][0]
+
+    def getSignalStrength(self):  # pylint: disable=invalid-name
+        return self.queue[0][1]
+
+    def getEmitterDirection(self):  # pylint: disable=invalid-name
+        return list(self.queue[0][2])
 
     def nextPacket(self):  # pylint: disable=invalid-name
         self.queue.pop(0)
@@ -95,8 +108,10 @@ class FakeWorld:
         self.time += 0.032
         for sender, packet in self.sent:
             for robot in self.robots:
-                if robot is not sender and math.dist(robot.position, sender.position) <= self.radio_range:
-                    robot.devices["receiver"].queue.append(packet)
+                distance = math.dist(robot.position, sender.position)
+                if robot is not sender and distance <= self.radio_range:
+                    direction = [(there - here) / distance for here, there in zip(robot.position, sender.position)]
+                    robot.devices["receiver"].queue.append((packet, distance ** -2, direction))
         self.sent = []
 
     def line(self, size):
@@ -123,6 +138,18 @@ def test_controller_computes_a_gradient_over_the_radio():
     assert results == [0, 1, 2, 3]
     assert [controller.outputs["near"] for controller in controllers] == [True, True, False, False]
     assert controllers[3].result == 3
+
+
+def test_controller_measures_the_distance_to_its_neighbors_without_a_gps():
+    world = FakeWorld(radio_range=0.15)
+    controllers = [
+        AggregateController(robot, metres_to_source, sensors=lambda robot=robot: {"source": robot.name == "robot(0)"})
+        for robot in world.line(4)
+    ]
+
+    results = _run(controllers, world, steps=6)
+
+    assert results == pytest.approx([0.0, 0.1, 0.2, 0.3])
 
 
 def test_controller_forgets_a_robot_out_of_range_after_one_round():
