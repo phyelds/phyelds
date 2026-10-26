@@ -4,7 +4,9 @@ import pytest
 
 from phyelds import engine
 from phyelds.vm.internal import MutableEngine
-from phyelds.libraries.device import Actuator, Sensor, local_id, local_position, sense, store, velocity
+from phyelds.libraries.device import (
+    Actuator, Sensor, heading, label, led, local_id, local_position, obstacle, sense, source, store, velocity
+)
 from tests.calculus.mock import MockNodeContext
 
 
@@ -59,6 +61,11 @@ def test_actuator_send_rejects_a_value_its_check_refuses():
         servo.send(200)
 
     assert "servo" not in engine.get().node_context.outputs
+
+
+def test_robot_sensors_and_actuators_have_the_names_hosts_give_them():
+    assert [sensor.name for sensor in (source, heading, obstacle)] == ["source", "heading", "obstacle"]
+    assert [actuator.name for actuator in (led, label, velocity)] == ["led", "label", "velocity"]
 
 
 @pytest.mark.parametrize("value", [(1.0, math.nan), (math.inf, 0.0), ("1", "2"), 3.0, None])

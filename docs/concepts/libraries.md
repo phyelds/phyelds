@@ -62,6 +62,8 @@ Every aggregate program interacts with its host device through `phyelds.librarie
 | `Sensor(name).sense()` | The value of the sensor `name`, named once and shared by the program and its host |
 | `Actuator(name).send(value)` | Writes the output `name`; the host reads it with `.read(outputs)`. `check=` refuses invalid values |
 | `velocity.send(v)` | The actuator the robots move by: a sequence of finite numbers, one per axis |
+| `source`, `heading`, `obstacle` | The sensors robot hosts share: whether the device is the configured source, where it faces, away from what it senses near |
+| `led`, `label` | The actuators robot hosts share: the RGB colour of the LEDs (0–255) and a text the host shows or logs |
 
 A string repeated in the program and in its host is checked by nobody: `store("velocty", v)`
 leaves the robot still, without an error. Name sensors and actuators once instead, and
@@ -70,11 +72,11 @@ share the object:
 ```python
 from phyelds.libraries.device import Actuator, Sensor
 
-source: Sensor[bool] = Sensor("source")
-led: Actuator[bool] = Actuator("led")
+alarm: Sensor[bool] = Sensor("alarm")
+buzzer: Actuator[bool] = Actuator("buzzer")
 
-led.send(source.sense())                 # in the program
-led.read(device.outputs, default=False)  # in the host
+buzzer.send(alarm.sense())                  # in the program
+buzzer.read(device.outputs, default=False)  # in the host
 ```
 
 ---
