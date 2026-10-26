@@ -26,3 +26,14 @@ def test_body_turns_the_leds_off_when_the_program_sends_no_colour():
     body.act({})
 
     assert robot.devices["top"].value == 0
+
+
+def test_body_switches_leds_with_a_colour_list_on_unless_the_colour_is_black():
+    robot = _robot(ring=LED())
+    body = Body(robot, rgb_leds=False)
+
+    body.act({led.name: (0, 0, 255)})
+    on = robot.devices["ring"].value
+    body.act({led.name: (0, 0, 0)})
+
+    assert (on, robot.devices["ring"].value) == (1, 0)

@@ -11,10 +11,14 @@ class Body:  # pylint: disable=too-few-public-methods
 
     Args:
         robot: The ``controller.Robot`` whose devices to drive.
+        rgb_leds: Whether the LEDs take any colour (``gradual``, with an empty ``color``
+            list). Otherwise they are on, in the first colour of their list, unless the
+            program sends black: Webots does not tell a controller which kind they are.
     """
 
-    def __init__(self, robot: Any) -> None:
+    def __init__(self, robot: Any, *, rgb_leds: bool = True) -> None:
         self._leds = _devices(robot, "LED")
+        self._rgb_leds = rgb_leds
 
     def act(self, outputs: Mapping[str, Any]) -> None:
         """
@@ -24,8 +28,9 @@ class Body:  # pylint: disable=too-few-public-methods
             outputs: The outputs of the program, such as ``AggregateController.outputs``.
         """
         red, green, blue = (int(channel) for channel in led.read(outputs, default=(0, 0, 0)))
+        colour = red << 16 | green << 8 | blue
         for light in self._leds:
-            light.set(red << 16 | green << 8 | blue)
+            light.set(colour if self._rgb_leds else int(colour != 0))
 
 
 def _devices(robot: Any, kind: str) -> list[Any]:
