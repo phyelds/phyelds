@@ -55,6 +55,7 @@ The program is an importable `module:function`: a module next to the controller,
 | `--emitter NAME`, `--receiver NAME` | The radio, if not the first `Emitter` and `Receiver` of the robot |
 | `--gps` | Sense the `position`, from the `GPS` of the robot |
 | `--wheel-radius R` | The radius of the wheels, in metres: needed to drive them |
+| `--wheels LEFT RIGHT` | The wheel motors, if not `left wheel motor` and `right wheel motor` |
 | `--max-speed V` | The top speed of the robot, in m/s (default 0.1) |
 | `--on-off-leds` | The LEDs have a colour list: switch them on or off, rather than colour them |
 | `--steps-per-round N` | Steps of the world between two rounds (default 1) |
@@ -98,6 +99,14 @@ These wheeled robots of Webots run under the controller, each with a radio, an
 The tests run each of them in Webots (`packages/phyelds-webots/tests/robots.py`): three
 robots in a line measure their distance from the first, one drives along a velocity, and
 one in front of a wall senses away from it.
+
+### A mixed swarm
+
+`worlds/mixed.wbt` runs the program of the line on five kinds of robots, 30 cm apart: an
+e-puck, the `source`, then an Elisa-3, a Khepera IV, a Thymio II and a TurtleBot3. Only
+the arguments of their controllers differ, as the table says. They measure `0.00m`,
+`0.31m`, `0.61m`, `0.91m` and `1.22m`: distances are in space, and the radios of the kinds
+stand at different heights.
 
 ## Sensors and outputs
 
