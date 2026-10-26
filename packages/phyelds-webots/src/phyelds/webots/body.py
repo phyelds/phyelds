@@ -1,6 +1,7 @@
 """The devices of a Webots robot that its program senses and drives."""
 import math
-from collections.abc import Mapping, Sequence
+import re
+from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 from xml.etree import ElementTree
 
@@ -24,20 +25,24 @@ class Body:
         wheel_radius: The radius of the wheels, in metres, to drive them: Webots turns
             them in rad/s.
         max_speed: The fastest the robot moves, in m/s, whatever velocity the program sends.
+        wheels: The names of the left and the right wheel motor.
 
     Raises:
         ValueError: If the robot has wheels, but no ``wheel_radius`` or no ``InertialUnit``
-            to steer by.
+            to steer by, or only one of its ``wheels``.
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self, robot: Any, *, rgb_leds: bool = True, wheel_radius: float | None = None,
-        max_speed: float = 0.1,
+        max_speed: float = 0.1, wheels: Sequence[str] = WHEELS,
     ) -> None:
         self._leds = _devices(robot, "LED")
         self._rgb_leds = rgb_leds
         motors = {motor.getName(): motor for motor in _devices(robot, "Motor")}
-        self._wheels = [motors[name] for name in WHEELS if name in motors]
+        missing = [name for name in wheels if name not in motors]
+        if 0 < len(missing) < len(wheels):
+            raise ValueError(f"robot {robot.getName()!r} has no wheel motor named {missing[0]!r}")
+        self._wheels = [] if missing else [motors[name] for name in wheels]
         self._wheel_radius, self._max_speed = wheel_radius, max_speed
         self._inertial_unit = next(iter(_devices(robot, "InertialUnit")), None)
         if self._wheels and wheel_radius is None:
@@ -45,7 +50,8 @@ class Body:
         if self._wheels and self._inertial_unit is None:
             raise ValueError(f"robot {robot.getName()!r} needs an InertialUnit to steer its wheels")
         sensors = _devices(robot, "DistanceSensor")
-        directions = _directions(robot.getUrdf()) if sensors else {}
+        names = [sensor.getName() for sensor in sensors]
+        directions = _directions(robot.getUrdf(), names) if sensors else {}
         self._distance_sensors = [(sensor, directions[sensor.getName()]) for sensor in sensors]
         for sensor in [self._inertial_unit, *sensors]:
             if sensor is not None:
@@ -139,24 +145,31 @@ def _closeness(sensor: Any) -> float:
     return float(abs(value - nearest_value) < abs(value - farthest_value))
 
 
-def _directions(urdf: str) -> dict[str, tuple[float, float]]:
+def _directions(urdf: str, names: Iterable[str]) -> dict[str, tuple[float, float]]:
     """
-    Where each link of a URDF looks along its x axis, as Webots points its distance sensors.
+    Where each device of ``names`` looks along its x axis, as Webots points distance sensors.
 
-    The direction is horizontal, in the frame of the robot: the x axis of the link turned by
-    the joints from it up to the root.
+    The direction is horizontal, in the frame of the robot: the x axis of the device turned by
+    the joints from it up to the root of the URDF. A device inside a solid of its own name, as
+    on the Elisa-3, is a child link of that solid, ``<name>_<number>``.
     """
     joints = {
         joint.find("child").get("link"): (joint.find("parent").get("link"), _origin(joint))
         for joint in ElementTree.fromstring(urdf).iter("joint")
     }
     directions = {}
-    for link in joints:
-        look, above = (1.0, 0.0, 0.0), link
-        while above in joints:
-            above, rotation = joints[above]
+    for name in names:
+        link = name
+        while nested := [
+            child for child, (parent, _) in joints.items()
+            if parent == link and re.fullmatch(rf"{re.escape(name)}_\d+", child)
+        ]:
+            link = nested[0]
+        look = (1.0, 0.0, 0.0)
+        while link in joints:
+            link, rotation = joints[link]
             look = tuple(sum(row[i] * look[i] for i in range(3)) for row in rotation)
-        directions[link] = look[0], look[1]
+        directions[name] = look[0], look[1]
     return directions
 
 

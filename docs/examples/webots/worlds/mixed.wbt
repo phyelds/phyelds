@@ -1,0 +1,139 @@
+#VRML_SIM R2025a utf8
+# Five robots of five kinds in a line, 30 cm apart: their radios reach 45 cm, so only the next
+# robot. Each runs gradient:main, the program of line.wbt, and measures how far it is from the
+# e-puck named source; only the arguments of the controller change from one kind to the other.
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/gctronic/e-puck/protos/E-puck.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/gctronic/elisa/protos/Elisa3.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/k-team/khepera4/protos/Khepera4.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/mobsya/thymio/protos/Thymio2.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/k-team/khepera3/protos/Khepera3.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/RectangleArena.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackground.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
+
+WorldInfo {
+  basicTimeStep 32
+}
+Viewpoint {
+  orientation -0.1711 0.1711 0.9703 1.601
+  position 0.6 -1.6 0.6
+}
+TexturedBackground {
+}
+TexturedBackgroundLight {
+}
+RectangleArena {
+  translation 0.6 0 0
+  floorSize 2 1
+}
+E-puck {
+  translation 0 0 0
+  name "source"
+  controller "phyelds_controller"
+  controllerArgs [
+    "gradient:main" "--source" "source" "--emitter" "radio_tx" "--receiver" "radio_rx"
+    "--wheel-radius" "0.02" "--on-off-leds"
+  ]
+  turretSlot [
+    Emitter {
+      name "radio_tx"
+      range 0.45
+      channel 7
+    }
+    Receiver {
+      name "radio_rx"
+      channel 7
+    }
+    InertialUnit {
+    }
+  ]
+}
+Elisa3 {
+  translation 0.3 0 0
+  name "elisa"
+  controller "phyelds_controller"
+  controllerArgs [
+    "gradient:main" "--source" "source" "--emitter" "radio_tx" "--receiver" "radio_rx"
+    "--wheel-radius" "0.0045"
+  ]
+  extensionSlot [
+    Emitter {
+      name "radio_tx"
+      range 0.45
+      channel 7
+    }
+    Receiver {
+      name "radio_rx"
+      channel 7
+    }
+    InertialUnit {
+    }
+  ]
+}
+Khepera4 {
+  translation 0.6 0 0
+  name "khepera4"
+  controller "phyelds_controller"
+  controllerArgs [
+    "gradient:main" "--source" "source" "--emitter" "radio_tx" "--receiver" "radio_rx"
+    "--wheel-radius" "0.021"
+  ]
+  turretSlot [
+    Emitter {
+      name "radio_tx"
+      range 0.45
+      channel 7
+    }
+    Receiver {
+      name "radio_rx"
+      channel 7
+    }
+    InertialUnit {
+    }
+  ]
+}
+Thymio2 {
+  translation 0.9 0 0
+  name "thymio"
+  controller "phyelds_controller"
+  controllerArgs [
+    "gradient:main" "--source" "source" "--emitter" "radio_tx" "--receiver" "radio_rx"
+    "--wheel-radius" "0.021" "--wheels" "motor.left" "motor.right"
+  ]
+  bodySlot [
+    Emitter {
+      name "radio_tx"
+      range 0.45
+      channel 7
+    }
+    Receiver {
+      name "radio_rx"
+      channel 7
+    }
+    InertialUnit {
+    }
+  ]
+}
+Khepera3 {
+  translation 1.2 0 0
+  name "khepera3"
+  controller "phyelds_controller"
+  controllerArgs [
+    "gradient:main" "--source" "source" "--emitter" "radio_tx" "--receiver" "radio_rx"
+    "--wheel-radius" "0.0212"
+  ]
+  turretSlot [
+    Emitter {
+      name "radio_tx"
+      range 0.45
+      channel 7
+    }
+    Receiver {
+      name "radio_rx"
+      channel 7
+    }
+    InertialUnit {
+    }
+  ]
+}

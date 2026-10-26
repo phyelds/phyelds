@@ -1,19 +1,11 @@
 """Runs the Webots example of the docs in Webots itself, headless."""
-import os
 import shutil
-import signal
-import subprocess
-import sys
-import threading
-from pathlib import Path
 
 import pytest
+from session import ROOT, WEBOTS, run_world
 
-ROOT = Path(__file__).resolve().parents[3]
 EXAMPLE = ROOT / "docs" / "examples" / "webots"
-WEBOTS = shutil.which("webots")
 EXPECTED = {"source": "0.00m", "robot1": "0.10m", "robot2": "0.20m", "robot3": "0.30m", "robot4": "0.40m"}
-TIMEOUT = 120
 
 
 @pytest.mark.skipif(WEBOTS is None, reason="webots is not on the PATH")
@@ -21,31 +13,22 @@ def test_webots_example_measures_the_distance_from_the_source_without_gps(tmp_pa
     # The documented world, with each robot logging its label at every round.
     world = shutil.copytree(EXAMPLE, tmp_path / "webots") / "worlds" / "line.wbt"
     world.write_text(world.read_text().replace('"--source"', '"--trace" "--source"'))
-    # The controllers run on the python3 of this environment, with phyelds from the sources.
-    environment = {
-        **os.environ,
-        "PATH": f"{Path(sys.executable).parent}{os.pathsep}{os.environ['PATH']}",
-        "PYTHONPATH": os.pathsep.join([str(ROOT / "src"), str(ROOT / "packages" / "phyelds-webots" / "src")]),
-    }
-    webots = subprocess.Popen(  # pylint: disable=consider-using-with
-        [WEBOTS, "--batch", "--mode=fast", "--no-rendering", "--minimize", "--stdout", "--stderr", str(world)],
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=environment,
-        start_new_session=True,  # webots is a launcher: webots-bin and the controllers are its children
-    )
-    timer = threading.Timer(TIMEOUT, os.killpg, (webots.pid, signal.SIGKILL))
-    timer.start()
-    labels, output = {}, []
-    try:
-        for line in webots.stdout:
-            output.append(line)
-            name, _, label = line.strip().partition(" round: ")
-            if label:
-                labels[name] = label
-            if labels == EXPECTED:
-                break
-    finally:
-        timer.cancel()
-        os.killpg(webots.pid, signal.SIGKILL)
-        webots.wait()
 
-    assert labels == EXPECTED, "".join(output[-50:])
+    labels, output = run_world(world, done=lambda labels: labels == EXPECTED)
+
+    assert labels == EXPECTED, output
+
+
+@pytest.mark.skipif(WEBOTS is None, reason="webots is not on the PATH")
+def test_webots_mixed_example_measures_the_distance_from_the_source_on_every_kind_of_robot(tmp_path):
+    world = shutil.copytree(EXAMPLE, tmp_path / "webots") / "worlds" / "mixed.wbt"
+    world.write_text(world.read_text().replace('"--source"', '"--trace" "--source"'))
+    robots = ["source", "elisa", "khepera4", "thymio", "khepera3"]
+
+    def metres(labels):
+        return [float(labels.get(name, "inf").removesuffix("m")) for name in robots]
+
+    labels, output = run_world(world, done=lambda labels: max(metres(labels)) < 2)
+
+    # The radios of the kinds stand at different heights, a few centimetres apart.
+    assert metres(labels) == pytest.approx([0.0, 0.3, 0.6, 0.9, 1.2], abs=0.03), output

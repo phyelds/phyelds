@@ -12,7 +12,7 @@ from typing import Any
 
 from phyelds.libraries.device import label, source
 from phyelds.webots.aggregate_controller import AggregateController
-from phyelds.webots.body import Body, _devices
+from phyelds.webots.body import WHEELS, Body, _devices
 
 
 def main() -> None:
@@ -29,7 +29,7 @@ def main() -> None:
     robot = Robot()
     body = Body(
         robot, rgb_leds=not options.on_off_leds,
-        wheel_radius=options.wheel_radius, max_speed=options.max_speed,
+        wheel_radius=options.wheel_radius, max_speed=options.max_speed, wheels=options.wheels,
     )
     aggregate_controller = _aggregate_controller(robot, options, body)
     while robot.step(options.steps_per_round * int(robot.getBasicTimeStep())) != -1:
@@ -68,6 +68,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--receiver", help="the Receiver of the radio, if not the first")
     parser.add_argument("--gps", action="store_true", help="sense the position, from the GPS")
     parser.add_argument("--wheel-radius", type=float, help="the radius of the wheels, in metres")
+    parser.add_argument("--wheels", nargs=2, default=WHEELS, metavar=("LEFT", "RIGHT"),
+                        help="the names of the wheel motors")
     parser.add_argument("--max-speed", type=float, default=0.1, help="the top speed, in m/s")
     parser.add_argument("--on-off-leds", action="store_true",
                         help="the LEDs have a colour list: switch them on or off")

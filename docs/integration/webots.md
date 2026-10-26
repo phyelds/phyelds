@@ -55,6 +55,7 @@ The program is an importable `module:function`: a module next to the controller,
 | `--emitter NAME`, `--receiver NAME` | The radio, if not the first `Emitter` and `Receiver` of the robot |
 | `--gps` | Sense the `position`, from the `GPS` of the robot |
 | `--wheel-radius R` | The radius of the wheels, in metres: needed to drive them |
+| `--wheels LEFT RIGHT` | The wheel motors, if not `left wheel motor` and `right wheel motor` |
 | `--max-speed V` | The top speed of the robot, in m/s (default 0.1) |
 | `--on-off-leds` | The LEDs have a colour list: switch them on or off, rather than colour them |
 | `--steps-per-round N` | Steps of the world between two rounds (default 1) |
@@ -74,12 +75,37 @@ The controller uses the devices the robot has, found by their type:
 | `GPS` | The `position`, with `--gps` |
 | `DistanceSensor` | The `obstacle`, with an `InertialUnit` |
 | `LED` | The `led` output, on every LED |
-| `Motor` named `left wheel motor` and `right wheel motor` | The `velocity` output, as on the e-puck, the Elisa-3 and the Khepera |
+| `Motor` named `left wheel motor` and `right wheel motor`, or as `--wheels` says | The `velocity` output |
 
 The other devices are optional: a robot without them ignores the outputs it cannot act on,
 so one program fits a mixed swarm. Stock robots, such as the e-puck, often have a radio
 of infinite range: add an `Emitter` with a `range` and a `Receiver` to their extension
 slot, with names of their own, and pass them with `--emitter` and `--receiver`.
+
+These wheeled robots of Webots run under the controller, each with a radio, an
+`InertialUnit` and a `GPS` added to the slot of the table:
+
+| Robot | Slot | Arguments | `obstacle` from | LEDs |
+|---|---|---|---|---|
+| e-puck | `turretSlot` | `--wheel-radius 0.02` | its distance sensors | a colour list: `--on-off-leds` |
+| Elisa-3 | `extensionSlot` | `--wheel-radius 0.0045` | its distance sensors | `ledrgb`; its green ones stay off |
+| Khepera III | `turretSlot` | `--wheel-radius 0.0212` | its distance sensors | none |
+| Khepera IV | `turretSlot` | `--wheel-radius 0.021` | its distance sensors | RGB |
+| Thymio II | `bodySlot` | `--wheel-radius 0.021 --wheels motor.left motor.right` | its distance sensors | RGB |
+| Create | `bodySlot` | `--wheel-radius 0.031` | none: its sensors look at the floor | a colour list: `--on-off-leds` |
+| Pioneer 3-DX | `extensionSlot` | `--wheel-radius 0.0975 --wheels "left wheel" "right wheel"` | its sonars | a colour list: `--on-off-leds` |
+
+The tests run each of them in Webots (`packages/phyelds-webots/tests/robots.py`): three
+robots in a line measure their distance from the first, one drives along a velocity, and
+one in front of a wall senses away from it.
+
+### A mixed swarm
+
+`worlds/mixed.wbt` runs the program of the line on five kinds of robots, 30 cm apart: an
+e-puck, the `source`, then an Elisa-3, a Khepera IV, a Thymio II and a Khepera III. Only
+the arguments of their controllers differ, as the table says. They measure `0.00m`,
+`0.31m`, `0.61m`, `0.91m` and `1.21m`: distances are in space, and the radios of the kinds
+stand at different heights.
 
 ## Sensors and outputs
 
