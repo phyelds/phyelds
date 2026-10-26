@@ -27,18 +27,7 @@ def main() -> None:
 
     options = _parser().parse_args(sys.argv[1:])
     robot = Robot()
-    is_source = robot.getName() == options.source
-    emitter, receiver = _name(robot, "Emitter"), _name(robot, "Receiver")
-    if emitter is None or receiver is None:
-        raise ValueError(f"robot {robot.getName()!r} needs an Emitter and a Receiver")
-    gps = _name(robot, "GPS") if options.gps else None
-    if options.gps and gps is None:
-        raise ValueError(f"robot {robot.getName()!r} needs a GPS to sense its position")
-    aggregate_controller = AggregateController(
-        robot, options.program, emitter=emitter, receiver=receiver,
-        gps=gps, inertial_unit=_name(robot, "InertialUnit"),
-        sensors=lambda: {source.name: is_source}, paths=options.paths,
-    )
+    aggregate_controller = _aggregate_controller(robot, options)
     body = Body(
         robot, rgb_leds=not options.on_off_leds,
         wheel_radius=options.wheel_radius, max_speed=options.max_speed,
@@ -49,6 +38,22 @@ def main() -> None:
         if options.trace:
             _log(robot, "round", aggregate_controller.outputs)
     _log(robot, "final", aggregate_controller.outputs)
+
+
+def _aggregate_controller(robot: Any, options: argparse.Namespace) -> AggregateController:
+    """The rounds of the program of ``options`` on ``robot``, with the sensors it has."""
+    emitter, receiver = _name(robot, "Emitter"), _name(robot, "Receiver")
+    if emitter is None or receiver is None:
+        raise ValueError(f"robot {robot.getName()!r} needs an Emitter and a Receiver")
+    gps = _name(robot, "GPS") if options.gps else None
+    if options.gps and gps is None:
+        raise ValueError(f"robot {robot.getName()!r} needs a GPS to sense its position")
+    is_source = robot.getName() == options.source
+    return AggregateController(
+        robot, options.program, emitter=emitter, receiver=receiver,
+        gps=gps, inertial_unit=_name(robot, "InertialUnit"),
+        sensors=lambda: {source.name: is_source}, paths=options.paths,
+    )
 
 
 def _parser() -> argparse.ArgumentParser:
