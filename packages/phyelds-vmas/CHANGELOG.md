@@ -1,3 +1,9 @@
+## [8.13.0](https://github.com/phyelds/phyelds/compare/8.12.0...8.13.0) (2026-10-26)
+
+### Features
+
+* **webots:** run and test the controller on every wheeled robot of webots ([#45](https://github.com/phyelds/phyelds/issues/45)) ([3b9c3bd](https://github.com/phyelds/phyelds/commit/3b9c3bd0f110a903494be4545111914b6363f33b))
+
 ## [8.12.0](https://github.com/phyelds/phyelds/compare/8.11.1...8.12.0) (2026-10-26)
 
 ### Features
