@@ -46,3 +46,15 @@ def test_main_senses_the_heading_from_an_inertial_unit_of_the_robot(robot, monke
     _main(monkeypatch, "programs:says_where")
 
     assert "heading=(1.0, 0.0, 0.0)" in capsys.readouterr().out
+
+
+def test_main_senses_the_position_only_with_gps(robot, monkeypatch, capsys):
+    robot.position = [1.0, 2.0, 0.0]
+
+    _main(monkeypatch, "programs:says_where")
+    robot.world.time = 0.0
+    _main(monkeypatch, "programs:says_where", "--gps")
+
+    without, with_gps = capsys.readouterr().out.splitlines()
+    assert "position=None" in without
+    assert "position=(1.0, 2.0, 0.0)" in with_gps

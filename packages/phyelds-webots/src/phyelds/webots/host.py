@@ -22,10 +22,11 @@ def main() -> None:
     options = _parser().parse_args(sys.argv[1:])
     robot = Robot()
     is_source = robot.getName() == options.source
+    gps = _name(robot, "GPS") if options.gps else None
     aggregate_controller = AggregateController(
         robot, options.program,
         emitter=_name(robot, "Emitter"), receiver=_name(robot, "Receiver"),
-        inertial_unit=_name(robot, "InertialUnit"),
+        gps=gps, inertial_unit=_name(robot, "InertialUnit"),
         sensors=lambda: {source.name: is_source},
     )
     body = Body(robot)
@@ -42,6 +43,7 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="phyelds", description="Run a program on this robot.")
     parser.add_argument("program", type=_program, help="the program to run, as module:function")
     parser.add_argument("--source", help="the name of the robot that senses source")
+    parser.add_argument("--gps", action="store_true", help="sense the position, from the GPS")
     parser.add_argument("--steps-per-round", type=int, default=1,
                         help="steps of the world between two rounds; more run the world faster")
     parser.add_argument("--trace", action="store_true", help="log the label at every round")
