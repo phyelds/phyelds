@@ -2,7 +2,7 @@ import sys
 import types
 
 import pytest
-from fakes import LED, Motor, World
+from fakes import LED, DistanceSensor, Motor, World
 
 from phyelds.webots import main
 
@@ -107,3 +107,11 @@ def test_main_rejects_gps_on_a_robot_without_one(robot, monkeypatch):
 
     with pytest.raises(ValueError, match="GPS"):
         _main(monkeypatch, "programs:says_where", "--gps")
+
+
+def test_main_senses_away_from_what_the_distance_sensors_see(robot, monkeypatch, capsys):
+    robot.add(front=DistanceSensor(yaw=0.0, value=4095.0))
+
+    _main(monkeypatch, "programs:says_obstacle")
+
+    assert "obstacle=(-1.0, 0.0, 0.0)" in capsys.readouterr().out

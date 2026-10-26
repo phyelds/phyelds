@@ -27,11 +27,11 @@ def main() -> None:
 
     options = _parser().parse_args(sys.argv[1:])
     robot = Robot()
-    aggregate_controller = _aggregate_controller(robot, options)
     body = Body(
         robot, rgb_leds=not options.on_off_leds,
         wheel_radius=options.wheel_radius, max_speed=options.max_speed,
     )
+    aggregate_controller = _aggregate_controller(robot, options, body)
     while robot.step(options.steps_per_round * int(robot.getBasicTimeStep())) != -1:
         aggregate_controller.run_round()
         body.act(aggregate_controller.outputs)
@@ -40,8 +40,10 @@ def main() -> None:
     _log(robot, "final", aggregate_controller.outputs)
 
 
-def _aggregate_controller(robot: Any, options: argparse.Namespace) -> AggregateController:
-    """The rounds of the program of ``options`` on ``robot``, with the sensors it has."""
+def _aggregate_controller(
+    robot: Any, options: argparse.Namespace, body: Body
+) -> AggregateController:
+    """The rounds of the program of ``options`` on ``robot``, sensing also through ``body``."""
     emitter, receiver = _name(robot, "Emitter"), _name(robot, "Receiver")
     if emitter is None or receiver is None:
         raise ValueError(f"robot {robot.getName()!r} needs an Emitter and a Receiver")
@@ -52,7 +54,7 @@ def _aggregate_controller(robot: Any, options: argparse.Namespace) -> AggregateC
     return AggregateController(
         robot, options.program, emitter=emitter, receiver=receiver,
         gps=gps, inertial_unit=_name(robot, "InertialUnit"),
-        sensors=lambda: {source.name: is_source}, paths=options.paths,
+        sensors=lambda: {source.name: is_source, **body.sense()}, paths=options.paths,
     )
 
 
