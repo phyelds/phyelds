@@ -24,3 +24,11 @@ def test_main_runs_the_program_its_arguments_name_and_logs_its_label_at_the_end(
     _main(monkeypatch, "programs:says_if_source", "--source", robot.name)
 
     assert capsys.readouterr().out.splitlines() == [f"{robot.name} final: source=True"]
+
+
+def test_main_logs_the_label_at_every_round_with_trace(robot, monkeypatch, capsys):
+    _main(monkeypatch, "programs:says_if_source", "--trace")
+
+    assert capsys.readouterr().out.splitlines() == [f"{robot.name} round: source=False"] * 3 + [
+        f"{robot.name} final: source=False"
+    ]

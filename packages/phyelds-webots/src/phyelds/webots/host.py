@@ -7,7 +7,7 @@ the program and its options in the ``controllerArgs`` of each robot.
 import argparse
 import importlib
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any
 
 from phyelds.libraries.device import label, source
@@ -31,8 +31,9 @@ def main() -> None:
     while robot.step(int(robot.getBasicTimeStep())) != -1:
         aggregate_controller.run_round()
         body.act(aggregate_controller.outputs)
-    final = label.read(aggregate_controller.outputs, default="")
-    print(f"{robot.getName()} final: {final}", flush=True)
+        if options.trace:
+            _log(robot, "round", aggregate_controller.outputs)
+    _log(robot, "final", aggregate_controller.outputs)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -40,6 +41,7 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="phyelds", description="Run a program on this robot.")
     parser.add_argument("program", type=_program, help="the program to run, as module:function")
     parser.add_argument("--source", help="the name of the robot that senses source")
+    parser.add_argument("--trace", action="store_true", help="log the label at every round")
     return parser
 
 
@@ -47,6 +49,11 @@ def _program(spec: str) -> Callable[[], Any]:
     """The function that ``spec``, ``module:function``, names."""
     module, _, function = spec.partition(":")
     return getattr(importlib.import_module(module), function)
+
+
+def _log(robot: Any, when: str, outputs: Mapping[str, Any]) -> None:
+    """Print the label of ``robot``, as the program sent it: Webots draws no text on a robot."""
+    print(f"{robot.getName()} {when}: {label.read(outputs, default='')}", flush=True)
 
 
 def _name(robot: Any, kind: str) -> str:
