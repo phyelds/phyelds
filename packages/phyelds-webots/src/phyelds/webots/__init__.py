@@ -10,8 +10,9 @@ from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 from phyelds.vm.device import Device
+from phyelds.webots.body import Body
 
-__all__ = ["AggregateController"]
+__all__ = ["AggregateController", "Body"]
 
 
 class AggregateController:

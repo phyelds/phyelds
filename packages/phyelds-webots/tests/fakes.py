@@ -120,3 +120,13 @@ def _seen_by(robot, sender):
                for here, there in zip(robot.position, sender.position))
     cos, sin = math.cos(robot.yaw), math.sin(robot.yaw)
     return [cos * x + sin * y, cos * y - sin * x, z]
+
+
+class LED:
+    """Keeps the value it was set to, as Webots reads it: ``0xRRGGBB``, or an index or an intensity."""
+
+    def __init__(self):
+        self.value = None
+
+    def set(self, value):
+        self.value = value
