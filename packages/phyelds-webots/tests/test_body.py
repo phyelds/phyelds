@@ -162,3 +162,12 @@ def test_body_rejects_a_robot_with_only_one_of_its_wheels():
 
     with pytest.raises(ValueError, match="right wheel motor"):
         Body(robot, wheel_radius=0.02)
+
+
+def test_body_follows_a_distance_sensor_inside_a_solid_of_its_own_name():
+    # As on the Elisa-3, whose sensors are turned once by their solid, and back by themselves.
+    body = Body(_robot(front=DistanceSensor(yaw=0.0, value=4095.0, wrapped=True)))
+
+    away = body.sense()[obstacle.name]
+
+    assert away == pytest.approx((-1.0, 0.0, 0.0))

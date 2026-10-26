@@ -114,13 +114,21 @@ class Robot:
         return 0
 
     def getUrdf(self):  # pylint: disable=invalid-name
-        """The links of the distance sensors, turned by ``yaw`` and a roll, as Webots exports them."""
-        joints = "".join(
-            f'<joint name="base_link_{name}_joint" type="fixed"><parent link="base_link"/>'
-            f'<child link="{name}"/><origin xyz="0 0 0" rpy="1.5708 0 {device.yaw}"/></joint>'
-            for name, device in self.devices.items() if isinstance(device, DistanceSensor)
-        )
-        return f'<robot name="{self.name}"><link name="base_link"/>{joints}</robot>'
+        """
+        The links of the distance sensors, turned by ``yaw`` and a roll, as Webots exports them.
+
+        A ``wrapped`` sensor is inside a solid of its own name, turned the other way round, as
+        on the Elisa-3: Webots exports the sensor as a child link, ``<name>_<number>``.
+        """
+        joints = []
+        for name, device in self.devices.items():
+            if not isinstance(device, DistanceSensor):
+                continue
+            yaw = device.yaw + math.pi if device.wrapped else device.yaw
+            joints.append(_joint("base_link", name, f"1.5708 0 {yaw}"))
+            if device.wrapped:
+                joints.append(_joint(name, f"{name}_13", f"0 0 {math.pi}"))
+        return f'<robot name="{self.name}"><link name="base_link"/>{"".join(joints)}</robot>'
 
     def getNumberOfDevices(self):  # pylint: disable=invalid-name
         return len(self.devices)
@@ -186,8 +194,9 @@ class Motor(Device):
 class DistanceSensor(Device):
     """Reads ``value``, mapped from the distance by a lookup table: by default 4095 touching, 0 at 7 cm."""
 
-    def __init__(self, yaw, value=0.0, table=(0.0, 4095.0, 0.0, 0.07, 0.0, 0.0)):
+    def __init__(self, yaw, value=0.0, table=(0.0, 4095.0, 0.0, 0.07, 0.0, 0.0), wrapped=False):
         self.yaw, self.value, self.table, self.sampling_period = yaw, value, list(table), None
+        self.wrapped = wrapped
 
     def enable(self, sampling_period):
         self.sampling_period = sampling_period
@@ -197,3 +206,9 @@ class DistanceSensor(Device):
 
     def getLookupTable(self):  # pylint: disable=invalid-name
         return list(self.table)
+
+
+def _joint(parent, child, rpy):
+    """A fixed URDF joint from ``parent`` to ``child``, turned by ``rpy``."""
+    return (f'<joint name="{parent}_{child}_joint" type="fixed"><parent link="{parent}"/>'
+            f'<child link="{child}"/><origin xyz="0 0 0" rpy="{rpy}"/></joint>')

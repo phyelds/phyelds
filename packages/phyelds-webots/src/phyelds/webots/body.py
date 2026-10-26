@@ -1,6 +1,7 @@
 """The devices of a Webots robot that its program senses and drives."""
 import math
-from collections.abc import Mapping, Sequence
+import re
+from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 from xml.etree import ElementTree
 
@@ -49,7 +50,8 @@ class Body:
         if self._wheels and self._inertial_unit is None:
             raise ValueError(f"robot {robot.getName()!r} needs an InertialUnit to steer its wheels")
         sensors = _devices(robot, "DistanceSensor")
-        directions = _directions(robot.getUrdf()) if sensors else {}
+        names = [sensor.getName() for sensor in sensors]
+        directions = _directions(robot.getUrdf(), names) if sensors else {}
         self._distance_sensors = [(sensor, directions[sensor.getName()]) for sensor in sensors]
         for sensor in [self._inertial_unit, *sensors]:
             if sensor is not None:
@@ -143,24 +145,31 @@ def _closeness(sensor: Any) -> float:
     return float(abs(value - nearest_value) < abs(value - farthest_value))
 
 
-def _directions(urdf: str) -> dict[str, tuple[float, float]]:
+def _directions(urdf: str, names: Iterable[str]) -> dict[str, tuple[float, float]]:
     """
-    Where each link of a URDF looks along its x axis, as Webots points its distance sensors.
+    Where each device of ``names`` looks along its x axis, as Webots points distance sensors.
 
-    The direction is horizontal, in the frame of the robot: the x axis of the link turned by
-    the joints from it up to the root.
+    The direction is horizontal, in the frame of the robot: the x axis of the device turned by
+    the joints from it up to the root of the URDF. A device inside a solid of its own name, as
+    on the Elisa-3, is a child link of that solid, ``<name>_<number>``.
     """
     joints = {
         joint.find("child").get("link"): (joint.find("parent").get("link"), _origin(joint))
         for joint in ElementTree.fromstring(urdf).iter("joint")
     }
     directions = {}
-    for link in joints:
-        look, above = (1.0, 0.0, 0.0), link
-        while above in joints:
-            above, rotation = joints[above]
+    for name in names:
+        link = name
+        while nested := [
+            child for child, (parent, _) in joints.items()
+            if parent == link and re.fullmatch(rf"{re.escape(name)}_\d+", child)
+        ]:
+            link = nested[0]
+        look = (1.0, 0.0, 0.0)
+        while link in joints:
+            link, rotation = joints[link]
             look = tuple(sum(row[i] * look[i] for i in range(3)) for row in rotation)
-        directions[link] = look[0], look[1]
+        directions[name] = look[0], look[1]
     return directions
 
 
