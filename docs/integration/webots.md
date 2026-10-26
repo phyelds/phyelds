@@ -38,7 +38,9 @@ rounds of a robot on [`phyelds.vm.device.Device`](micropython.md#the-device-loop
   called at each round.
 - **Distances**: the `Receiver` measures how far each message comes from, so
   `neighbors_distances()` gives the distance to each neighbor, in metres, without a
-  `GPS`. Its `signalStrengthNoise` field makes the measure noisy.
+  `GPS`. Its `signalStrengthNoise` field makes the measure noisy. With the name of an
+  `InertialUnit` (`inertial_unit=`), aligned with the `Receiver`, `neighbors_vectors()`
+  gives the vector to each neighbor too, in the frame of the world.
 - **Outputs**: what the program `store`s is in `outputs`; the controller applies it to the
   robot (motors, LEDs).
 

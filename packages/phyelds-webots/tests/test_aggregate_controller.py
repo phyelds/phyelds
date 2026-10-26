@@ -3,6 +3,7 @@ import math
 import pytest
 
 from phyelds.calculus import aggregate, neighbors
+from phyelds.experimental.swarm import neighbors_vectors
 from phyelds.libraries.device import local_position, sense, store
 from phyelds.libraries.distances import hops_distance, neighbors_distances
 from phyelds.libraries.spreading import distance_to
@@ -20,6 +21,11 @@ def hops_to_source():
 @aggregate
 def metres_to_source():
     return distance_to(sense("source"), neighbors_distances())
+
+
+@aggregate
+def vectors_to_neighbors():
+    return {name: tuple(vector) for name, vector in neighbors_vectors().exclude_self().items()}
 
 
 @aggregate
@@ -76,13 +82,28 @@ class FakeGPS:
         return list(self.robot.position)
 
 
+class FakeInertialUnit:
+    def __init__(self, robot):
+        self.robot, self.sampling_period = robot, None
+
+    def enable(self, sampling_period):
+        self.sampling_period = sampling_period
+
+    def getQuaternion(self):  # pylint: disable=invalid-name
+        return [0.0, 0.0, math.sin(self.robot.yaw / 2), math.cos(self.robot.yaw / 2)]
+
+    def getRollPitchYaw(self):  # pylint: disable=invalid-name
+        return [0.0, 0.0, self.robot.yaw]
+
+
 class FakeRobot:
     """The part of the Webots ``Robot`` the controller uses."""
 
     def __init__(self, world, name, position):
-        self.world, self.name, self.position = world, name, position
+        self.world, self.name, self.position, self.yaw = world, name, position, 0.0
         self.devices = {
-            "emitter": FakeEmitter(world, self), "receiver": FakeReceiver(), "gps": FakeGPS(self)
+            "emitter": FakeEmitter(world, self), "receiver": FakeReceiver(), "gps": FakeGPS(self),
+            "inertial unit": FakeInertialUnit(self),
         }
 
     def getName(self):  # pylint: disable=invalid-name
@@ -110,13 +131,20 @@ class FakeWorld:
             for robot in self.robots:
                 distance = math.dist(robot.position, sender.position)
                 if robot is not sender and distance <= self.radio_range:
-                    direction = [(there - here) / distance for here, there in zip(robot.position, sender.position)]
-                    robot.devices["receiver"].queue.append((packet, distance ** -2, direction))
+                    robot.devices["receiver"].queue.append((packet, distance ** -2, _seen_by(robot, sender)))
         self.sent = []
 
     def line(self, size):
         self.robots = [FakeRobot(self, f"robot({index})", [0.1 * index, 0, 0]) for index in range(size)]
         return self.robots
+
+
+def _seen_by(robot, sender):
+    """The direction of ``sender`` in the frame of ``robot``, turned by its yaw about z."""
+    x, y, z = ((there - here) / math.dist(robot.position, sender.position)
+               for here, there in zip(robot.position, sender.position))
+    cos, sin = math.cos(robot.yaw), math.sin(robot.yaw)
+    return [cos * x + sin * y, cos * y - sin * x, z]
 
 
 def _run(controllers, world, steps):
@@ -150,6 +178,19 @@ def test_controller_measures_the_distance_to_its_neighbors_without_a_gps():
     results = _run(controllers, world, steps=6)
 
     assert results == pytest.approx([0.0, 0.1, 0.2, 0.3])
+
+
+def test_controller_measures_the_vectors_to_its_neighbors_in_the_world_frame():
+    world = FakeWorld(radio_range=0.15)
+    robots = world.line(3)
+    robots[1].yaw, robots[2].yaw = math.pi / 2, math.pi
+    controllers = [AggregateController(robot, vectors_to_neighbors, inertial_unit="inertial unit") for robot in robots]
+
+    vectors = _run(controllers, world, steps=2)[1]
+
+    assert vectors.keys() == {"robot(0)", "robot(2)"}
+    assert vectors["robot(0)"] == pytest.approx((-0.1, 0.0, 0.0))
+    assert vectors["robot(2)"] == pytest.approx((0.1, 0.0, 0.0))
 
 
 def test_controller_forgets_a_robot_out_of_range_after_one_round():
