@@ -145,10 +145,26 @@ jobs:
     - name: Lint Webots extension
       run: PYTHONPATH="packages/phyelds-webots/src" .venv/bin/python -m pylint packages/phyelds-webots/src packages/phyelds-webots/tests docs/examples/webots/controllers
 
+    # The worlds download their robots from GitHub, which drops connections when many runners
+    # ask at once: keep what Webots downloaded, even from a run that failed half-way.
+    - name: Restore the robots Webots downloaded
+      uses: actions/cache/restore@v4
+      with:
+        path: ~/.cache/Cyberbotics/Webots/assets
+        key: webots-R2025a-assets-${{ github.run_id }}-${{ github.run_attempt }}
+        restore-keys: webots-R2025a-assets-
+
     - name: Test Webots extension, in Webots
       run: |
         command -v webots  # the world test is skipped without it
         PYTHONPATH="packages/phyelds-webots/src" xvfb-run -a .venv/bin/python -m pytest packages/phyelds-webots/tests
+
+    - name: Keep the robots Webots downloaded
+      if: always()
+      uses: actions/cache/save@v4
+      with:
+        path: ~/.cache/Cyberbotics/Webots/assets
+        key: webots-R2025a-assets-${{ github.run_id }}-${{ github.run_attempt }}
 
     - name: Build Webots extension
       run: uv build packages/phyelds-webots
