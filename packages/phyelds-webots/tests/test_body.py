@@ -2,9 +2,9 @@ import math
 
 import pytest
 
-from fakes import LED, Motor, World
+from fakes import LED, DistanceSensor, Motor, World
 
-from phyelds.libraries.device import led, velocity
+from phyelds.libraries.device import led, obstacle, velocity
 from phyelds.webots import Body
 
 
@@ -122,3 +122,27 @@ def _free_wheels(yaw, target):
     robot = _wheeled(yaw=yaw)
     Body(robot, wheel_radius=0.02).act({velocity.name: target})
     return _wheels(robot)
+
+
+def test_body_senses_away_from_what_its_distance_sensors_see_in_the_world_frame():
+    robot = _robot(right=DistanceSensor(yaw=-math.pi / 2, value=4095.0), front=DistanceSensor(yaw=0.0))
+    robot.yaw = math.pi / 2
+    body = Body(robot)
+
+    away = body.sense()[obstacle.name]
+
+    assert away == pytest.approx((-1.0, 0.0, 0.0))
+
+
+def test_body_senses_no_obstacle_without_distance_sensors():
+    assert Body(_robot()).sense()[obstacle.name] is None
+
+
+def test_body_measures_closeness_by_distance_through_the_lookup_table():
+    # The e-puck's: values fall fast with distance, 234.93 is 3 cm of 7.
+    table = (0.0, 4095.0, 0.0, 0.01, 1465.73, 0.0, 0.03, 234.93, 0.0, 0.07, 67.19, 0.0)
+    body = Body(_robot(front=DistanceSensor(yaw=0.0, value=234.93, table=table)))
+
+    away = body.sense()[obstacle.name]
+
+    assert away == pytest.approx((-(1 - 0.03 / 0.07), 0.0, 0.0))
