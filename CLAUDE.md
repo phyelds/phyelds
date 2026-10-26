@@ -87,9 +87,9 @@ its implementation, then a refactor.
   - `test:`, `refactor:`, `docs:`, `style:`, `perf:`, `build:`, `ci:`, `chore:`
     do not release.
 - Subject: imperative mood, lowercase, no trailing period, ≤ 72 characters.
-- Body (when useful): wrap at 72 columns, explain *why* and what the previous
-  behaviour was, not a line-by-line list of the diff. Follow the style of the
-  existing history (`git log`).
+- No body: the subject alone, without an extended description. Only footers
+  (`Closes #<n>`, `Refs #<n>`, `BREAKING CHANGE:`) may follow it, after a
+  blank line.
 - When the work resolves an open issue, close it: add a `Closes #<n>` footer
   to the commit that completes it (GitHub closes the issue when the commit
   reaches `master`), and `Refs #<n>` to the earlier ones. Work that ends
