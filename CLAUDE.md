@@ -45,9 +45,10 @@ their own.
 Every feature and every bug fix follows red → green → refactor. Do not write
 production code that no failing test asks for.
 
-1. **Understand.** Restate the requested behaviour as a short list of observable
-   cases (normal case, edge cases, error cases). If a requirement is ambiguous,
-   ask before writing code.
+1. **Understand.** First check the open issues (`gh issue list`) for one the
+   request addresses, and say which; its text may add requirements. Restate the
+   requested behaviour as a short list of observable cases (normal case, edge
+   cases, error cases). If a requirement is ambiguous, ask before writing code.
 2. **Red.** Write *one* test for the next case and run it. It must fail, and fail
    for the expected reason (an assertion or a missing name, not a typo or an
    import error elsewhere). Do not write the implementation in the same step.
@@ -89,6 +90,11 @@ its implementation, then a refactor.
 - Body (when useful): wrap at 72 columns, explain *why* and what the previous
   behaviour was, not a line-by-line list of the diff. Follow the style of the
   existing history (`git log`).
+- When the work resolves an open issue, close it: add a `Closes #<n>` footer
+  to the commit that completes it (GitHub closes the issue when the commit
+  reaches `master`), and `Refs #<n>` to the earlier ones. Work that ends
+  without a commit (e.g. a spike answered in conversation) closes it with
+  `gh issue close <n> --comment "<outcome>"`.
 - Stage files explicitly (`git add <path>`), never `git add -A` / `git add .`.
 - Never use `--no-verify`; if a pre-commit hook fails, fix the cause.
 - Never amend or rewrite commits that are already pushed, and do not push
