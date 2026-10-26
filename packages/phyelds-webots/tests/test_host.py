@@ -38,3 +38,11 @@ def test_main_runs_a_round_every_few_steps_of_the_world(robot, monkeypatch):
     _main(monkeypatch, "programs:says_if_source", "--steps-per-round", "4")
 
     assert set(robot.durations) == {4 * 32}
+
+
+def test_main_senses_the_heading_from_an_inertial_unit_of_the_robot(robot, monkeypatch, capsys):
+    robot.yaw = 0.0
+
+    _main(monkeypatch, "programs:says_where")
+
+    assert "heading=(1.0, 0.0, 0.0)" in capsys.readouterr().out

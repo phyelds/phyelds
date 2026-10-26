@@ -25,6 +25,7 @@ def main() -> None:
     aggregate_controller = AggregateController(
         robot, options.program,
         emitter=_name(robot, "Emitter"), receiver=_name(robot, "Receiver"),
+        inertial_unit=_name(robot, "InertialUnit"),
         sensors=lambda: {source.name: is_source},
     )
     body = Body(robot)
@@ -58,6 +59,6 @@ def _log(robot: Any, when: str, outputs: Mapping[str, Any]) -> None:
     print(f"{robot.getName()} {when}: {label.read(outputs, default='')}", flush=True)
 
 
-def _name(robot: Any, kind: str) -> str:
-    """The name of the first device of ``robot`` of the class ``kind``."""
-    return _devices(robot, kind)[0].getName()
+def _name(robot: Any, kind: str) -> str | None:
+    """The name of the first device of ``robot`` of the class ``kind``; ``None`` without one."""
+    return next((device.getName() for device in _devices(robot, kind)), None)
