@@ -1,5 +1,5 @@
 """Programs that the tests name in the arguments of the controller, as a world does."""
-from phyelds.calculus import aggregate
+from phyelds.calculus import aggregate, neighbors
 from phyelds.libraries.device import heading, label, led, local_position, source, velocity
 
 
@@ -20,3 +20,9 @@ def drives_blue():
     """Lights the robot blue and drives it east, fast."""
     led.send((0, 0, 255))
     return velocity.send((1.0, 0.0))
+
+
+@aggregate
+def counts_neighbors():
+    """Shares a value with the neighbors, to count them."""
+    return neighbors(1).sum(include_self=False)

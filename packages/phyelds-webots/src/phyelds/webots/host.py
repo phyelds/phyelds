@@ -27,7 +27,7 @@ def main() -> None:
         robot, options.program,
         emitter=_name(robot, "Emitter"), receiver=_name(robot, "Receiver"),
         gps=gps, inertial_unit=_name(robot, "InertialUnit"),
-        sensors=lambda: {source.name: is_source},
+        sensors=lambda: {source.name: is_source}, paths=options.paths,
     )
     body = Body(
         robot, rgb_leds=not options.on_off_leds,
@@ -51,6 +51,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-speed", type=float, default=0.1, help="the top speed, in m/s")
     parser.add_argument("--on-off-leds", action="store_true",
                         help="the LEDs have a colour list: switch them on or off")
+    parser.add_argument("--paths", choices=("compact", "debug"), default="compact",
+                        help="the path mode of the engine: the same on every robot")
     parser.add_argument("--steps-per-round", type=int, default=1,
                         help="steps of the world between two rounds; more run the world faster")
     parser.add_argument("--trace", action="store_true", help="log the label at every round")

@@ -74,3 +74,14 @@ def test_main_switches_leds_with_a_colour_list_on_or_off(robot, monkeypatch):
     _main(monkeypatch, "programs:drives_blue", "--on-off-leds")
 
     assert robot.devices["ring"].value == 1
+
+
+def test_main_sends_compact_paths_unless_asked_for_debug_ones(robot, monkeypatch):
+    _main(monkeypatch, "programs:counts_neighbors")
+    compact = robot.world.sent[-1][1]
+    robot.world.time = 0.0
+    _main(monkeypatch, "programs:counts_neighbors", "--paths", "debug")
+    debug = robot.world.sent[-1][1]
+
+    assert b"counts_neighbors" not in compact
+    assert b"counts_neighbors" in debug
