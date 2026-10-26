@@ -125,3 +125,11 @@ def test_main_talks_over_the_radio_its_arguments_name(robot, monkeypatch):
 
     assert robot.devices["radio_tx"].last is not None and robot.devices["emitter"].last is None
     assert robot.devices["radio_rx"].sampling_period == 32 and robot.devices["receiver"].sampling_period is None
+
+
+def test_main_drives_the_wheels_its_arguments_name(robot, monkeypatch):
+    robot.add(**{"left wheel": Motor(), "right wheel": Motor()})
+
+    _main(monkeypatch, "programs:drives_blue", "--wheel-radius", "0.02", "--wheels", "left wheel", "right wheel")
+
+    assert robot.devices["left wheel"].velocity == robot.devices["right wheel"].velocity == 5.0

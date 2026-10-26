@@ -146,3 +146,12 @@ def test_body_measures_closeness_by_distance_through_the_lookup_table():
     away = body.sense()[obstacle.name]
 
     assert away == pytest.approx((-(1 - 0.03 / 0.07), 0.0, 0.0))
+
+
+def test_body_drives_wheels_of_the_names_it_is_given():
+    robot = _robot(**{"motor.left": Motor(), "motor.right": Motor()})
+    body = Body(robot, wheel_radius=0.02, wheels=("motor.left", "motor.right"))
+
+    body.act({velocity.name: (0.05, 0.0)})
+
+    assert (robot.devices["motor.left"].velocity, robot.devices["motor.right"].velocity) == (2.5, 2.5)

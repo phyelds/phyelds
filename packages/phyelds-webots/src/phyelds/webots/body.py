@@ -24,20 +24,21 @@ class Body:
         wheel_radius: The radius of the wheels, in metres, to drive them: Webots turns
             them in rad/s.
         max_speed: The fastest the robot moves, in m/s, whatever velocity the program sends.
+        wheels: The names of the left and the right wheel motor.
 
     Raises:
         ValueError: If the robot has wheels, but no ``wheel_radius`` or no ``InertialUnit``
             to steer by.
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self, robot: Any, *, rgb_leds: bool = True, wheel_radius: float | None = None,
-        max_speed: float = 0.1,
+        max_speed: float = 0.1, wheels: Sequence[str] = WHEELS,
     ) -> None:
         self._leds = _devices(robot, "LED")
         self._rgb_leds = rgb_leds
         motors = {motor.getName(): motor for motor in _devices(robot, "Motor")}
-        self._wheels = [motors[name] for name in WHEELS if name in motors]
+        self._wheels = [motors[name] for name in wheels if name in motors]
         self._wheel_radius, self._max_speed = wheel_radius, max_speed
         self._inertial_unit = next(iter(_devices(robot, "InertialUnit")), None)
         if self._wheels and wheel_radius is None:
