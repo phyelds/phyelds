@@ -1,3 +1,10 @@
+## [8.11.1](https://github.com/phyelds/phyelds/compare/8.11.0...8.11.1) (2026-10-26)
+
+### Documentation
+
+* ask to check and close related issues ([0679623](https://github.com/phyelds/phyelds/commit/06796236684026cff908adb535905eb0b8483e58))
+* drop the body from commit messages ([128e7d8](https://github.com/phyelds/phyelds/commit/128e7d853621f52917f0b1f8bb4b5c5df1eed13d))
+
 ## [8.11.0](https://github.com/phyelds/phyelds/compare/8.10.0...8.11.0) (2026-10-25)
 
 ### Features
