@@ -1,6 +1,7 @@
 """Runs the Webots example of the docs in Webots itself, headless."""
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import threading
@@ -26,8 +27,9 @@ def test_webots_example_computes_the_hops_from_the_source():
     webots = subprocess.Popen(  # pylint: disable=consider-using-with
         [WEBOTS, "--batch", "--mode=fast", "--no-rendering", "--minimize", "--stdout", "--stderr", str(WORLD)],
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=environment,
+        start_new_session=True,  # webots is a launcher: webots-bin and the controllers are its children
     )
-    timer = threading.Timer(TIMEOUT, webots.kill)
+    timer = threading.Timer(TIMEOUT, os.killpg, (webots.pid, signal.SIGKILL))
     timer.start()
     hops, output = {}, []
     try:
@@ -40,7 +42,7 @@ def test_webots_example_computes_the_hops_from_the_source():
                 break
     finally:
         timer.cancel()
-        webots.kill()
+        os.killpg(webots.pid, signal.SIGKILL)
         webots.wait()
 
     assert hops == EXPECTED, "".join(output[-50:])
