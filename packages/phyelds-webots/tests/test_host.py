@@ -32,3 +32,9 @@ def test_main_logs_the_label_at_every_round_with_trace(robot, monkeypatch, capsy
     assert capsys.readouterr().out.splitlines() == [f"{robot.name} round: source=False"] * 3 + [
         f"{robot.name} final: source=False"
     ]
+
+
+def test_main_runs_a_round_every_few_steps_of_the_world(robot, monkeypatch):
+    _main(monkeypatch, "programs:says_if_source", "--steps-per-round", "4")
+
+    assert set(robot.durations) == {4 * 32}

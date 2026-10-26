@@ -28,7 +28,7 @@ def main() -> None:
         sensors=lambda: {source.name: is_source},
     )
     body = Body(robot)
-    while robot.step(int(robot.getBasicTimeStep())) != -1:
+    while robot.step(options.steps_per_round * int(robot.getBasicTimeStep())) != -1:
         aggregate_controller.run_round()
         body.act(aggregate_controller.outputs)
         if options.trace:
@@ -41,6 +41,8 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="phyelds", description="Run a program on this robot.")
     parser.add_argument("program", type=_program, help="the program to run, as module:function")
     parser.add_argument("--source", help="the name of the robot that senses source")
+    parser.add_argument("--steps-per-round", type=int, default=1,
+                        help="steps of the world between two rounds; more run the world faster")
     parser.add_argument("--trace", action="store_true", help="log the label at every round")
     return parser
 
