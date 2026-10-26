@@ -1,3 +1,9 @@
+## [8.12.0](https://github.com/phyelds/phyelds/compare/8.11.1...8.12.0) (2026-10-26)
+
+### Features
+
+* **webots:** one controller for any robot, with the sensors and actuators of argos ([#44](https://github.com/phyelds/phyelds/issues/44)) ([0cb6876](https://github.com/phyelds/phyelds/commit/0cb6876b03831763aa2b7cee43e1d7c141efef4c)), closes [#33](https://github.com/phyelds/phyelds/issues/33) [#33](https://github.com/phyelds/phyelds/issues/33) [#33](https://github.com/phyelds/phyelds/issues/33) [#33](https://github.com/phyelds/phyelds/issues/33) [#33](https://github.com/phyelds/phyelds/issues/33) [#33](https://github.com/phyelds/phyelds/issues/33) [#33](https://github.com/phyelds/phyelds/issues/33) [#33](https://github.com/phyelds/phyelds/issues/33) [#33](https://github.com/phyelds/phyelds/issues/33) [#33](https://github.com/phyelds/phyelds/issues/33) [#33](https://github.com/phyelds/phyelds/issues/33) [#33](https://github.com/phyelds/phyelds/issues/33) [#33](https://github.com/phyelds/phyelds/issues/33) [#33](https://github.com/phyelds/phyelds/issues/33) [#33](https://github.com/phyelds/phyelds/issues/33) [#33](https://github.com/phyelds/phyelds/issues/33) [#33](https://github.com/phyelds/phyelds/issues/33) [#33](https://github.com/phyelds/phyelds/issues/33) [#33](https://github.com/phyelds/phyelds/issues/33) [#33](https://github.com/phyelds/phyelds/issues/33) [#33](https://github.com/phyelds/phyelds/issues/33) [#33](https://github.com/phyelds/phyelds/issues/33) [#33](https://github.com/phyelds/phyelds/issues/33)
+
 ## [8.11.1](https://github.com/phyelds/phyelds/compare/8.11.0...8.11.1) (2026-10-26)
 
 ### Documentation
