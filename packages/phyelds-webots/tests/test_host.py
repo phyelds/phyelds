@@ -100,3 +100,10 @@ def test_main_rejects_a_robot_without_a_radio(robot, monkeypatch):
 
     with pytest.raises(ValueError, match="Emitter"):
         _main(monkeypatch, "programs:says_if_source")
+
+
+def test_main_rejects_gps_on_a_robot_without_one(robot, monkeypatch):
+    del robot.devices["gps"]
+
+    with pytest.raises(ValueError, match="GPS"):
+        _main(monkeypatch, "programs:says_where", "--gps")

@@ -20,7 +20,8 @@ def main() -> None:
     Run the program that ``controllerArgs`` name on this robot, until the world ends.
 
     Raises:
-        ValueError: If the robot has no ``Emitter`` or no ``Receiver``.
+        ValueError: If the robot has no ``Emitter`` or no ``Receiver``, or no ``GPS`` while
+            ``--gps`` asks for one.
     """
     from controller import Robot  # pylint: disable=import-error,import-outside-toplevel
 
@@ -31,6 +32,8 @@ def main() -> None:
     if emitter is None or receiver is None:
         raise ValueError(f"robot {robot.getName()!r} needs an Emitter and a Receiver")
     gps = _name(robot, "GPS") if options.gps else None
+    if options.gps and gps is None:
+        raise ValueError(f"robot {robot.getName()!r} needs a GPS to sense its position")
     aggregate_controller = AggregateController(
         robot, options.program, emitter=emitter, receiver=receiver,
         gps=gps, inertial_unit=_name(robot, "InertialUnit"),
