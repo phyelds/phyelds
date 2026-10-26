@@ -79,6 +79,7 @@ class Robot:
 
     def __init__(self, world, name, position):
         self.world, self.name, self.position, self.yaw = world, name, position, 0.0
+        self.durations = []
         self.devices = {}
         self.add(**{
             "emitter": Emitter(world, self), "receiver": Receiver(), "gps": GPS(self),
@@ -103,6 +104,14 @@ class Robot:
     def getDevice(self, name):  # pylint: disable=invalid-name
         return self.devices.get(name)
 
+    def step(self, duration):
+        """Step the world, as Webots does after ``duration`` ms; -1 once the world is over."""
+        self.durations.append(duration)
+        if self.world.time >= self.world.end:
+            return -1
+        self.world.step()
+        return 0
+
     def getNumberOfDevices(self):  # pylint: disable=invalid-name
         return len(self.devices)
 
@@ -113,8 +122,8 @@ class Robot:
 class World:
     """Webots radio: what is sent in a step reaches, in the next one, the robots in range."""
 
-    def __init__(self, radio_range):
-        self.radio_range, self.time, self.sent = radio_range, 0.0, []
+    def __init__(self, radio_range, end=math.inf):
+        self.radio_range, self.end, self.time, self.sent = radio_range, end, 0.0, []
 
     def step(self):
         self.time += 0.032

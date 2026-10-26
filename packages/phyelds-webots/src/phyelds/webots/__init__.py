@@ -6,5 +6,6 @@ from its ``Emitter`` to the ``Receiver`` of the robots in range.
 """
 from phyelds.webots.aggregate_controller import AggregateController
 from phyelds.webots.body import Body
+from phyelds.webots.host import main
 
-__all__ = ["AggregateController", "Body"]
+__all__ = ["AggregateController", "Body", "main"]

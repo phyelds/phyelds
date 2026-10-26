@@ -1,0 +1,26 @@
+import sys
+import types
+
+import pytest
+from fakes import World
+
+from phyelds.webots import main
+
+
+@pytest.fixture(name="robot")
+def _robot(monkeypatch):
+    """A robot alone, in a world that ends after three steps, that ``controller.Robot()`` gives."""
+    robot = World(radio_range=0.15, end=0.096).line(1)[0]
+    monkeypatch.setitem(sys.modules, "controller", types.SimpleNamespace(Robot=lambda: robot))
+    return robot
+
+
+def _main(monkeypatch, *args):
+    monkeypatch.setattr(sys, "argv", ["phyelds", *args])
+    main()
+
+
+def test_main_runs_the_program_its_arguments_name_and_logs_its_label_at_the_end(robot, monkeypatch, capsys):
+    _main(monkeypatch, "programs:says_if_source", "--source", robot.name)
+
+    assert capsys.readouterr().out.splitlines() == [f"{robot.name} final: source=True"]
