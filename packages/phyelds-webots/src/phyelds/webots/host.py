@@ -16,16 +16,23 @@ from phyelds.webots.body import Body, _devices
 
 
 def main() -> None:
-    """Run the program that ``controllerArgs`` name on this robot, until the world ends."""
+    """
+    Run the program that ``controllerArgs`` name on this robot, until the world ends.
+
+    Raises:
+        ValueError: If the robot has no ``Emitter`` or no ``Receiver``.
+    """
     from controller import Robot  # pylint: disable=import-error,import-outside-toplevel
 
     options = _parser().parse_args(sys.argv[1:])
     robot = Robot()
     is_source = robot.getName() == options.source
+    emitter, receiver = _name(robot, "Emitter"), _name(robot, "Receiver")
+    if emitter is None or receiver is None:
+        raise ValueError(f"robot {robot.getName()!r} needs an Emitter and a Receiver")
     gps = _name(robot, "GPS") if options.gps else None
     aggregate_controller = AggregateController(
-        robot, options.program,
-        emitter=_name(robot, "Emitter"), receiver=_name(robot, "Receiver"),
+        robot, options.program, emitter=emitter, receiver=receiver,
         gps=gps, inertial_unit=_name(robot, "InertialUnit"),
         sensors=lambda: {source.name: is_source}, paths=options.paths,
     )

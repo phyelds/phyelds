@@ -93,3 +93,10 @@ def test_main_rejects_a_program_that_is_not_module_colon_function(robot, monkeyp
 
     assert "module:function" in capsys.readouterr().err
     assert not robot.durations
+
+
+def test_main_rejects_a_robot_without_a_radio(robot, monkeypatch):
+    del robot.devices["emitter"]
+
+    with pytest.raises(ValueError, match="Emitter"):
+        _main(monkeypatch, "programs:says_if_source")
