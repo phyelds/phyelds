@@ -28,7 +28,7 @@ class Body:
 
     Raises:
         ValueError: If the robot has wheels, but no ``wheel_radius`` or no ``InertialUnit``
-            to steer by.
+            to steer by, or only one of its ``wheels``.
     """
 
     def __init__(  # pylint: disable=too-many-arguments
@@ -38,7 +38,10 @@ class Body:
         self._leds = _devices(robot, "LED")
         self._rgb_leds = rgb_leds
         motors = {motor.getName(): motor for motor in _devices(robot, "Motor")}
-        self._wheels = [motors[name] for name in wheels if name in motors]
+        missing = [name for name in wheels if name not in motors]
+        if 0 < len(missing) < len(wheels):
+            raise ValueError(f"robot {robot.getName()!r} has no wheel motor named {missing[0]!r}")
+        self._wheels = [] if missing else [motors[name] for name in wheels]
         self._wheel_radius, self._max_speed = wheel_radius, max_speed
         self._inertial_unit = next(iter(_devices(robot, "InertialUnit")), None)
         if self._wheels and wheel_radius is None:

@@ -155,3 +155,10 @@ def test_body_drives_wheels_of_the_names_it_is_given():
     body.act({velocity.name: (0.05, 0.0)})
 
     assert (robot.devices["motor.left"].velocity, robot.devices["motor.right"].velocity) == (2.5, 2.5)
+
+
+def test_body_rejects_a_robot_with_only_one_of_its_wheels():
+    robot = _robot(**{"left wheel motor": Motor()})
+
+    with pytest.raises(ValueError, match="right wheel motor"):
+        Body(robot, wheel_radius=0.02)
