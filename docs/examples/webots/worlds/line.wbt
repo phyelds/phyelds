@@ -1,5 +1,6 @@
 #VRML_SIM R2025a utf8
 # Five robots in a line, 10 cm apart: the radio reaches 15 cm, so only the next robot.
+# Each runs gradient:main and measures how far it is from the robot named source.
 
 WorldInfo {
   basicTimeStep 32
@@ -11,7 +12,10 @@ Viewpoint {
 Robot {
   translation 0.0 0 0
   name "source"
-  controller "phyelds_gradient"
+  controller "phyelds_controller"
+  controllerArgs [
+    "gradient:main" "--source" "source"
+  ]
   children [
     Emitter {
       range 0.15
@@ -30,16 +34,18 @@ Robot {
           }
         }
       ]
-      color [
-        1 0.5 0
-      ]
+      color []
+      gradual TRUE
     }
   ]
 }
 Robot {
   translation 0.1 0 0
   name "robot1"
-  controller "phyelds_gradient"
+  controller "phyelds_controller"
+  controllerArgs [
+    "gradient:main" "--source" "source"
+  ]
   children [
     Emitter {
       range 0.15
@@ -58,16 +64,18 @@ Robot {
           }
         }
       ]
-      color [
-        1 0.5 0
-      ]
+      color []
+      gradual TRUE
     }
   ]
 }
 Robot {
   translation 0.2 0 0
   name "robot2"
-  controller "phyelds_gradient"
+  controller "phyelds_controller"
+  controllerArgs [
+    "gradient:main" "--source" "source"
+  ]
   children [
     Emitter {
       range 0.15
@@ -86,16 +94,18 @@ Robot {
           }
         }
       ]
-      color [
-        1 0.5 0
-      ]
+      color []
+      gradual TRUE
     }
   ]
 }
 Robot {
   translation 0.3 0 0
   name "robot3"
-  controller "phyelds_gradient"
+  controller "phyelds_controller"
+  controllerArgs [
+    "gradient:main" "--source" "source"
+  ]
   children [
     Emitter {
       range 0.15
@@ -114,16 +124,18 @@ Robot {
           }
         }
       ]
-      color [
-        1 0.5 0
-      ]
+      color []
+      gradual TRUE
     }
   ]
 }
 Robot {
   translation 0.4 0 0
   name "robot4"
-  controller "phyelds_gradient"
+  controller "phyelds_controller"
+  controllerArgs [
+    "gradient:main" "--source" "source"
+  ]
   children [
     Emitter {
       range 0.15
@@ -142,9 +154,8 @@ Robot {
           }
         }
       ]
-      color [
-        1 0.5 0
-      ]
+      color []
+      gradual TRUE
     }
   ]
 }
