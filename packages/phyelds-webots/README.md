@@ -48,9 +48,9 @@ controller "phyelds_controller"
 controllerArgs [ "gradient:main" "--source" "source" ]
 ```
 
-With an `InertialUnit` the robot also senses its `heading` and the vectors to its
-neighbors; `--gps` adds its `position`. The `led` output colours its LEDs, and the
-`velocity` output drives its wheels, given `--wheel-radius`. `AggregateController` and
-`Body` are there for a controller of your own.
+With an `InertialUnit` the robot also senses its `heading`, the vectors to its
+neighbors and, with distance sensors, the `obstacle`; `--gps` adds its `position`. The
+`led` output colours its LEDs, and the `velocity` output drives its wheels, given
+`--wheel-radius`. `AggregateController` and `Body` are there for a controller of your own.
 
 See the [documentation](https://phyelds.github.io/phyelds/integration/webots/).

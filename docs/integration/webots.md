@@ -71,6 +71,7 @@ The controller uses the devices the robot has, found by their type:
 | `Emitter` and `Receiver` | The radio, needed: the neighbors of a robot are the robots its `Emitter` reaches |
 | `InertialUnit` | The `heading`, the vectors to the neighbors, and steering the wheels |
 | `GPS` | The `position`, with `--gps` |
+| `DistanceSensor` | The `obstacle`, with an `InertialUnit` |
 | `LED` | The `led` output, on every LED |
 | `Motor` named `left wheel motor` and `right wheel motor` | The `velocity` output, as on the e-puck, the Elisa-3 and the Khepera |
 
@@ -88,6 +89,7 @@ Programs read the sensors and send the outputs through the typed
 |---|---|
 | `source` | Whether the robot's name is the `--source` one |
 | `heading` | Where the robot faces, a horizontal unit vector, with an `InertialUnit` |
+| `obstacle` | Away from what the distance sensors see, in the frame of the world; `None` without them or an `InertialUnit` |
 
 The host also gives the time and the geometry of the neighbors; the libraries of phyelds
 read them:
@@ -102,6 +104,11 @@ read them:
 The `Receiver` measures where each message comes from: Webots gives its signal strength,
 1/r², and the direction of its emitter. Its `signalStrengthNoise` and `directionNoise`
 fields make them noisy. The `InertialUnit` must be aligned with the `Receiver`.
+
+Each distance sensor pushes away from where it looks, as its pose in the URDF of the robot
+(`Robot.getUrdf()`) gives it, by how close it sees something: 1 touching and 0 at the end
+of its range, in distance, through its lookup table. Infra-red sensors see the colour of
+what they look at: they miss dark objects.
 
 | Actuator | Meaning |
 |---|---|
@@ -126,8 +133,10 @@ from controller import Robot
 from phyelds.webots import AggregateController, Body
 
 robot = Robot()
-aggregate_controller = AggregateController(robot, program, inertial_unit="inertial unit")
 body = Body(robot, wheel_radius=0.02)
+aggregate_controller = AggregateController(
+    robot, program, inertial_unit="inertial unit", sensors=body.sense
+)
 while robot.step(int(robot.getBasicTimeStep())) != -1:
     aggregate_controller.run_round()
     body.act(aggregate_controller.outputs)
