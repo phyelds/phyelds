@@ -62,6 +62,8 @@ def _parser() -> argparse.ArgumentParser:
 def _program(spec: str) -> Callable[[], Any]:
     """The function that ``spec``, ``module:function``, names."""
     module, _, function = spec.partition(":")
+    if not module or not function:
+        raise argparse.ArgumentTypeError(f"{spec!r} is not module:function")
     return getattr(importlib.import_module(module), function)
 
 

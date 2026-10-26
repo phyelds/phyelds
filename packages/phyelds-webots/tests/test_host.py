@@ -85,3 +85,11 @@ def test_main_sends_compact_paths_unless_asked_for_debug_ones(robot, monkeypatch
 
     assert b"counts_neighbors" not in compact
     assert b"counts_neighbors" in debug
+
+
+def test_main_rejects_a_program_that_is_not_module_colon_function(robot, monkeypatch, capsys):
+    with pytest.raises(SystemExit):
+        _main(monkeypatch, "programs")
+
+    assert "module:function" in capsys.readouterr().err
+    assert not robot.durations
