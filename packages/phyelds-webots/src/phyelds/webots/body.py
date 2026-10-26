@@ -22,6 +22,7 @@ class Body:  # pylint: disable=too-few-public-methods
             program sends black: Webots does not tell a controller which kind they are.
         wheel_radius: The radius of the wheels, in metres, to drive them: Webots turns
             them in rad/s.
+        max_speed: The fastest the robot moves, in m/s, whatever velocity the program sends.
 
     Raises:
         ValueError: If the robot has wheels, but no ``wheel_radius`` or no ``InertialUnit``
@@ -29,13 +30,14 @@ class Body:  # pylint: disable=too-few-public-methods
     """
 
     def __init__(
-        self, robot: Any, *, rgb_leds: bool = True, wheel_radius: float | None = None
+        self, robot: Any, *, rgb_leds: bool = True, wheel_radius: float | None = None,
+        max_speed: float = 0.1,
     ) -> None:
         self._leds = _devices(robot, "LED")
         self._rgb_leds = rgb_leds
         motors = {motor.getName(): motor for motor in _devices(robot, "Motor")}
         self._wheels = [motors[name] for name in WHEELS if name in motors]
-        self._wheel_radius = wheel_radius
+        self._wheel_radius, self._max_speed = wheel_radius, max_speed
         self._inertial_unit = next(iter(_devices(robot, "InertialUnit")), None)
         if self._wheels and wheel_radius is None:
             raise ValueError(f"robot {robot.getName()!r} has wheels: give their wheel_radius")
@@ -54,26 +56,38 @@ class Body:  # pylint: disable=too-few-public-methods
         Args:
             outputs: The outputs of the program, such as ``AggregateController.outputs``.
         """
-        red, green, blue = (int(channel) for channel in led.read(outputs, default=(0, 0, 0)))
+        self._light(led.read(outputs, default=(0, 0, 0)))
+        if self._wheels:
+            self._drive(velocity.read(outputs, default=(0.0, 0.0)))
+
+    def _light(self, rgb: Sequence[int]) -> None:
+        """Light the LEDs with the colour ``rgb``, or switch them on or off."""
+        red, green, blue = (int(channel) for channel in rgb)
         colour = red << 16 | green << 8 | blue
         for light in self._leds:
             light.set(colour if self._rgb_leds else int(colour != 0))
-        if self._wheels:
-            yaw = self._inertial_unit.getRollPitchYaw()[2]
-            speeds = _wheel_speeds(velocity.read(outputs, default=(0.0, 0.0)), yaw)
-            for wheel, speed in zip(self._wheels, speeds):
-                wheel.setVelocity(speed / self._wheel_radius)
+
+    def _drive(self, target: Sequence[float]) -> None:
+        """Turn the wheels to take the robot along ``target``, in m/s."""
+        yaw = self._inertial_unit.getRollPitchYaw()[2]
+        left, right = _wheel_speeds(target, yaw, self._max_speed)
+        speeds = [left / self._wheel_radius, right / self._wheel_radius]
+        reach = [abs(speed) / wheel.getMaxVelocity() for wheel, speed in zip(self._wheels, speeds)]
+        # Webots would cut a wheel alone to its top speed, and so bend the arc: slow both.
+        scale = max(1.0, *reach)
+        for wheel, speed in zip(self._wheels, speeds):
+            wheel.setVelocity(speed / scale)
 
 
-def _wheel_speeds(target: Sequence[float], yaw: float) -> tuple[float, float]:
+def _wheel_speeds(target: Sequence[float], yaw: float, max_speed: float) -> tuple[float, float]:
     """
     The speeds of the left and right wheel, in m/s, that take a robot along ``target``.
 
     As in ARGoS, the robot turns towards the target velocity, in the frame of the world, and
-    drives forward as much as it already faces it, never backwards.
+    drives forward as much as it already faces it, never backwards, at most at ``max_speed``.
     """
     x, y, *_ = target
-    speed = math.hypot(x, y)
+    speed = min(math.hypot(x, y), max_speed)
     if speed < _STILL:
         return 0.0, 0.0
     angle = math.remainder(math.atan2(y, x) - yaw, math.tau)

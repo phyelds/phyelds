@@ -94,3 +94,31 @@ def test_body_rejects_wheels_without_an_inertial_unit_to_steer_by():
 
     with pytest.raises(ValueError, match="InertialUnit"):
         Body(robot, wheel_radius=0.02)
+
+
+def test_body_caps_the_velocity_at_its_max_speed():
+    robot = _wheeled()
+    body = Body(robot, wheel_radius=0.02, max_speed=0.1)
+
+    body.act({velocity.name: (1.0, 0.0)})
+
+    assert _wheels(robot) == (5.0, 5.0)
+
+
+def test_body_slows_both_wheels_alike_to_keep_within_what_the_motors_reach():
+    robot = _wheeled(yaw=math.pi / 4, max_velocity=3.0)
+    body = Body(robot, wheel_radius=0.02)
+
+    body.act({velocity.name: (0.1, 0.0)})
+
+    left, right = _wheels(robot)
+    free_left, free_right = _free_wheels(yaw=math.pi / 4, target=(0.1, 0.0))
+    assert max(abs(left), abs(right)) == pytest.approx(3.0)
+    assert left / right == pytest.approx(free_left / free_right)
+
+
+def _free_wheels(yaw, target):
+    """The wheel speeds of a robot whose motors have no limit in reach."""
+    robot = _wheeled(yaw=yaw)
+    Body(robot, wheel_radius=0.02).act({velocity.name: target})
+    return _wheels(robot)
