@@ -5,6 +5,7 @@ Each robot runs its own controller, so each robot is a device: its messages trav
 from its ``Emitter`` to the ``Receiver`` of the robots in range.
 """
 import json
+import math
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
@@ -30,7 +31,8 @@ class AggregateController:
         receiver: The name of the ``Receiver`` device of the robot.
         gps: The name of a ``GPS`` device, whose values become the ``position`` sensor.
         inertial_unit: The name of an ``InertialUnit``, aligned with the ``Receiver``: with
-            it, the robot also senses ``neighbors_vectors``, in the frame of the world.
+            it, the robot also senses ``neighbors_vectors``, in the frame of the world, and
+            its ``heading``, a horizontal unit vector.
         sensors: Extra sensors, read at each round, added to ``time`` (the simulation time),
             ``position`` and ``neighbors_distances`` (from neighbor name to metres).
         paths: The path mode of the engine, ``"debug"`` or ``"compact"``: the same on
@@ -104,6 +106,8 @@ class AggregateController:
             "neighbors_distances": {sender: distance for sender, (distance, _) in heard.items()},
         }
         if self._inertial_unit is not None:
+            yaw = self._inertial_unit.getRollPitchYaw()[2]
+            sensors["heading"] = (math.cos(yaw), math.sin(yaw), 0.0)
             orientation = self._inertial_unit.getQuaternion()
             sensors["neighbors_vectors"] = {
                 sender: tuple(distance * axis for axis in _rotate(direction, orientation))

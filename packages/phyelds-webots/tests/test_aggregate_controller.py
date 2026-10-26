@@ -29,6 +29,11 @@ def vectors_to_neighbors():
 
 
 @aggregate
+def where_it_faces():
+    return sense("heading")
+
+
+@aggregate
 def neighbour_count():
     return neighbors(1).sum(include_self=False)
 
@@ -191,6 +196,17 @@ def test_controller_measures_the_vectors_to_its_neighbors_in_the_world_frame():
     assert vectors.keys() == {"robot(0)", "robot(2)"}
     assert vectors["robot(0)"] == pytest.approx((-0.1, 0.0, 0.0))
     assert vectors["robot(2)"] == pytest.approx((0.1, 0.0, 0.0))
+
+
+def test_controller_senses_the_heading_from_the_inertial_unit():
+    world = FakeWorld(radio_range=0.15)
+    robot = world.line(1)[0]
+    robot.yaw = math.pi / 2
+    controller = AggregateController(robot, where_it_faces, inertial_unit="inertial unit")
+
+    heading = _run([controller], world, steps=1)[0]
+
+    assert heading == pytest.approx((0.0, 1.0, 0.0))
 
 
 def test_controller_forgets_a_robot_out_of_range_after_one_round():

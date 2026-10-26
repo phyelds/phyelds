@@ -40,7 +40,8 @@ rounds of a robot on [`phyelds.vm.device.Device`](micropython.md#the-device-loop
   `neighbors_distances()` gives the distance to each neighbor, in metres, without a
   `GPS`. Its `signalStrengthNoise` field makes the measure noisy. With the name of an
   `InertialUnit` (`inertial_unit=`), aligned with the `Receiver`, `neighbors_vectors()`
-  gives the vector to each neighbor too, in the frame of the world.
+  gives the vector to each neighbor too, in the frame of the world, and the robot senses
+  its `heading`, a horizontal unit vector.
 - **Outputs**: what the program `store`s is in `outputs`; the controller applies it to the
   robot (motors, LEDs).
 
