@@ -94,7 +94,6 @@ These wheeled robots of Webots run under the controller, each with a radio, an
 | Thymio II | `bodySlot` | `--wheel-radius 0.021 --wheels motor.left motor.right` | its distance sensors | RGB |
 | Create | `bodySlot` | `--wheel-radius 0.031` | none: its sensors look at the floor | a colour list: `--on-off-leds` |
 | Pioneer 3-DX | `extensionSlot` | `--wheel-radius 0.0975 --wheels "left wheel" "right wheel"` | its sonars | a colour list: `--on-off-leds` |
-| TurtleBot3 Burger | `extensionSlot` | `--wheel-radius 0.033` | none | none |
 
 The tests run each of them in Webots (`packages/phyelds-webots/tests/robots.py`): three
 robots in a line measure their distance from the first, one drives along a velocity, and
@@ -103,9 +102,9 @@ one in front of a wall senses away from it.
 ### A mixed swarm
 
 `worlds/mixed.wbt` runs the program of the line on five kinds of robots, 30 cm apart: an
-e-puck, the `source`, then an Elisa-3, a Khepera IV, a Thymio II and a TurtleBot3. Only
+e-puck, the `source`, then an Elisa-3, a Khepera IV, a Thymio II and a Khepera III. Only
 the arguments of their controllers differ, as the table says. They measure `0.00m`,
-`0.31m`, `0.61m`, `0.91m` and `1.22m`: distances are in space, and the radios of the kinds
+`0.31m`, `0.61m`, `0.91m` and `1.21m`: distances are in space, and the radios of the kinds
 stand at different heights.
 
 ## Sensors and outputs

@@ -101,7 +101,4 @@ ROBOTS = {
         "adept/pioneer3/protos/Pioneer3dx.proto", "extensionSlot", 0.0975, 0.8, wall=0.4,
         wheels=("left wheel", "right wheel"),
     ),
-    "turtlebot3-burger": Robot(
-        "robotis/turtlebot/protos/TurtleBot3Burger.proto", "extensionSlot", 0.033, 0.3, wall=None
-    ),
 }

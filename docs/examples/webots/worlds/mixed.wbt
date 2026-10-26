@@ -7,7 +7,7 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/project
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/gctronic/elisa/protos/Elisa3.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/k-team/khepera4/protos/Khepera4.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/mobsya/thymio/protos/Thymio2.proto"
-EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/robotis/turtlebot/protos/TurtleBot3Burger.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/k-team/khepera3/protos/Khepera3.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/RectangleArena.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackground.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
@@ -73,7 +73,7 @@ Elisa3 {
 }
 Khepera4 {
   translation 0.6 0 0
-  name "khepera"
+  name "khepera4"
   controller "phyelds_controller"
   controllerArgs [
     "gradient:main" "--source" "source" "--emitter" "radio_tx" "--receiver" "radio_rx"
@@ -115,15 +115,15 @@ Thymio2 {
     }
   ]
 }
-TurtleBot3Burger {
+Khepera3 {
   translation 1.2 0 0
-  name "turtlebot"
+  name "khepera3"
   controller "phyelds_controller"
   controllerArgs [
     "gradient:main" "--source" "source" "--emitter" "radio_tx" "--receiver" "radio_rx"
-    "--wheel-radius" "0.033"
+    "--wheel-radius" "0.0212"
   ]
-  extensionSlot [
+  turretSlot [
     Emitter {
       name "radio_tx"
       range 0.45

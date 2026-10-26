@@ -23,7 +23,7 @@ def test_webots_example_measures_the_distance_from_the_source_without_gps(tmp_pa
 def test_webots_mixed_example_measures_the_distance_from_the_source_on_every_kind_of_robot(tmp_path):
     world = shutil.copytree(EXAMPLE, tmp_path / "webots") / "worlds" / "mixed.wbt"
     world.write_text(world.read_text().replace('"--source"', '"--trace" "--source"'))
-    robots = ["source", "elisa", "khepera", "thymio", "turtlebot"]
+    robots = ["source", "elisa", "khepera4", "thymio", "khepera3"]
 
     def metres(labels):
         return [float(labels.get(name, "inf").removesuffix("m")) for name in robots]
