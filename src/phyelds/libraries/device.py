@@ -125,3 +125,18 @@ def _finite_numbers(value: Any) -> bool:
 
 velocity: Actuator[Sequence[float]] = Actuator("velocity", check=_finite_numbers)
 """Where the device moves, and how fast: a sequence of finite numbers, one per axis."""
+
+source: Sensor[bool] = Sensor("source")
+"""Whether the device is the source its host is configured with; false if none is."""
+
+heading: Sensor[tuple[float, float, float]] = Sensor("heading")
+"""Where the device faces: a horizontal unit vector, in the frame of the world."""
+
+obstacle: Sensor[tuple[float, float, float] | None] = Sensor("obstacle")
+"""Away from what the proximity sensors of the device see; ``None`` without them."""
+
+led: Actuator[Sequence[int]] = Actuator("led")
+"""The colour of the LEDs of the device: three integer RGB channels, 0–255."""
+
+label: Actuator[str] = Actuator("label")
+"""A text about the device, which its host shows or logs."""
