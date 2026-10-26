@@ -51,6 +51,9 @@ controllerArgs [ "gradient:main" "--source" "source" ]
 With an `InertialUnit` the robot also senses its `heading`, the vectors to its
 neighbors and, with distance sensors, the `obstacle`; `--gps` adds its `position`. The
 `led` output colours its LEDs, and the `velocity` output drives its wheels, given
-`--wheel-radius`. `AggregateController` and `Body` are there for a controller of your own.
+`--wheel-radius` (and `--wheels`, if its motors have other names than `left wheel motor` and
+`right wheel motor`). The e-puck, Elisa-3, Khepera III and IV, Thymio II, Create, Pioneer 3-DX
+and TurtleBot3 Burger are tested in Webots, with the arguments each needs listed in the
+documentation. `AggregateController` and `Body` are there for a controller of your own.
 
 See the [documentation](https://phyelds.github.io/phyelds/integration/webots/).
