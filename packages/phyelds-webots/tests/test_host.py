@@ -2,7 +2,7 @@ import sys
 import types
 
 import pytest
-from fakes import World
+from fakes import LED, Motor, World
 
 from phyelds.webots import main
 
@@ -58,3 +58,19 @@ def test_main_senses_the_position_only_with_gps(robot, monkeypatch, capsys):
     without, with_gps = capsys.readouterr().out.splitlines()
     assert "position=None" in without
     assert "position=(1.0, 2.0, 0.0)" in with_gps
+
+
+def test_main_drives_the_wheels_with_their_radius_and_the_max_speed(robot, monkeypatch):
+    robot.add(**{"left wheel motor": Motor(), "right wheel motor": Motor()})
+
+    _main(monkeypatch, "programs:drives_blue", "--wheel-radius", "0.02", "--max-speed", "0.05")
+
+    assert robot.devices["left wheel motor"].velocity == robot.devices["right wheel motor"].velocity == 2.5
+
+
+def test_main_switches_leds_with_a_colour_list_on_or_off(robot, monkeypatch):
+    robot.add(ring=LED())
+
+    _main(monkeypatch, "programs:drives_blue", "--on-off-leds")
+
+    assert robot.devices["ring"].value == 1

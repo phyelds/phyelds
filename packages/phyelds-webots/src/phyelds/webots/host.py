@@ -29,7 +29,10 @@ def main() -> None:
         gps=gps, inertial_unit=_name(robot, "InertialUnit"),
         sensors=lambda: {source.name: is_source},
     )
-    body = Body(robot)
+    body = Body(
+        robot, rgb_leds=not options.on_off_leds,
+        wheel_radius=options.wheel_radius, max_speed=options.max_speed,
+    )
     while robot.step(options.steps_per_round * int(robot.getBasicTimeStep())) != -1:
         aggregate_controller.run_round()
         body.act(aggregate_controller.outputs)
@@ -44,6 +47,10 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("program", type=_program, help="the program to run, as module:function")
     parser.add_argument("--source", help="the name of the robot that senses source")
     parser.add_argument("--gps", action="store_true", help="sense the position, from the GPS")
+    parser.add_argument("--wheel-radius", type=float, help="the radius of the wheels, in metres")
+    parser.add_argument("--max-speed", type=float, default=0.1, help="the top speed, in m/s")
+    parser.add_argument("--on-off-leds", action="store_true",
+                        help="the LEDs have a colour list: switch them on or off")
     parser.add_argument("--steps-per-round", type=int, default=1,
                         help="steps of the world between two rounds; more run the world faster")
     parser.add_argument("--trace", action="store_true", help="log the label at every round")
