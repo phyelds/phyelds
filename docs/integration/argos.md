@@ -85,16 +85,16 @@ distances from shared positions.
 
 | Sensor | Meaning |
 |---|---|
-| `time` | Simulation time in seconds |
 | `source` | Whether this device ID matches the configured `source`; false if omitted |
 | `heading` | Heading unit vector from the compass |
 | `obstacle` | Proximity repulsion vector, with a proximity sensor or rangefinders; `None` without |
 
-The host also gives the geometry of the neighbors and, on request, the position; the
-libraries of phyelds read them:
+The host also gives the time, the geometry of the neighbors and, on request, the
+position; the libraries of phyelds read them:
 
 | Host sensor | Meaning | Read by |
 |---|---|---|
+| `time` | Simulation time in seconds | `local_time()` |
 | `neighbors_distances` | Map from sender ID to RAB range in metres, with `range_and_bearing` | `neighbors_distances()` |
 | `neighbors_vectors` | Map from sender ID to its relative vector in metres, with `range_and_bearing` | `neighbors_vectors()` |
 | `position` | Position in metres, with `gps="true"` | `local_position()` |

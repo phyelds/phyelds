@@ -30,12 +30,12 @@ declares: it needs the `positioning` sensor and a `range_and_bearing` or
 `drone_flight_system`), proximity sensors and LEDs are optional, and outputs a robot
 cannot act on are ignored. Positioning supplies **yaw only**, unless `gps="true"`.
 
-Programs read `time` (seconds), `source` and `heading`; `obstacle` with a proximity
-sensor or rangefinders; the `neighbors_distances` and `neighbors_vectors` maps, keyed
-by numeric robot ID, with the range-and-bearing radio; and `position` with
-`gps="true"`, which simple radios need for geometry. Distances are metres; vectors and
-headings share the global compass frame. The standard geometry helpers use the
-measured sensors without GPS.
+Programs read `source` and `heading`; the time, in seconds, with `local_time()`;
+`obstacle` with a proximity sensor or rangefinders; the `neighbors_distances` and
+`neighbors_vectors` maps, keyed by numeric robot ID, with the range-and-bearing
+radio; and `position` with `gps="true"`, which simple radios need for geometry.
+Distances are metres; vectors and headings share the global compass frame. The
+standard geometry helpers use the measured sensors without GPS.
 
 Programs write `velocity` (an iterable with two or three components, m/s), `led`
 (three integer RGB channels, 0–255) and `label` (text). `phyelds.argos` names these
