@@ -52,6 +52,7 @@ The program is an importable `module:function`: a module next to the controller,
 | Argument | Meaning |
 |---|---|
 | `--source NAME` | The robot that senses `source`; none if omitted |
+| `--emitter NAME`, `--receiver NAME` | The radio, if not the first `Emitter` and `Receiver` of the robot |
 | `--gps` | Sense the `position`, from the `GPS` of the robot |
 | `--wheel-radius R` | The radius of the wheels, in metres: needed to drive them |
 | `--max-speed V` | The top speed of the robot, in m/s (default 0.1) |
@@ -76,8 +77,9 @@ The controller uses the devices the robot has, found by their type:
 | `Motor` named `left wheel motor` and `right wheel motor` | The `velocity` output, as on the e-puck, the Elisa-3 and the Khepera |
 
 The other devices are optional: a robot without them ignores the outputs it cannot act on,
-so one program fits a mixed swarm. Stock robots often have radios of infinite range: add
-an `Emitter` with a `range`, and a `Receiver`, in their extension slot.
+so one program fits a mixed swarm. Stock robots, such as the e-puck, often have a radio
+of infinite range: add an `Emitter` with a `range` and a `Receiver` to their extension
+slot, with names of their own, and pass them with `--emitter` and `--receiver`.
 
 ## Sensors and outputs
 

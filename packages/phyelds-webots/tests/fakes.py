@@ -18,9 +18,10 @@ class Device:  # pylint: disable=too-few-public-methods
 
 class Emitter(Device):
     def __init__(self, world, robot):
-        self.world, self.robot = world, robot
+        self.world, self.robot, self.last = world, robot, None
 
     def send(self, data):
+        self.last = bytes(data)
         self.world.sent.append((self.robot, bytes(data)))
 
 

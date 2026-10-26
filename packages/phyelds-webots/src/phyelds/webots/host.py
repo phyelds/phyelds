@@ -44,7 +44,8 @@ def _aggregate_controller(
     robot: Any, options: argparse.Namespace, body: Body
 ) -> AggregateController:
     """The rounds of the program of ``options`` on ``robot``, sensing also through ``body``."""
-    emitter, receiver = _name(robot, "Emitter"), _name(robot, "Receiver")
+    emitter = options.emitter or _name(robot, "Emitter")
+    receiver = options.receiver or _name(robot, "Receiver")
     if emitter is None or receiver is None:
         raise ValueError(f"robot {robot.getName()!r} needs an Emitter and a Receiver")
     gps = _name(robot, "GPS") if options.gps else None
@@ -63,6 +64,8 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="phyelds", description="Run a program on this robot.")
     parser.add_argument("program", type=_program, help="the program to run, as module:function")
     parser.add_argument("--source", help="the name of the robot that senses source")
+    parser.add_argument("--emitter", help="the Emitter of the radio, if not the first")
+    parser.add_argument("--receiver", help="the Receiver of the radio, if not the first")
     parser.add_argument("--gps", action="store_true", help="sense the position, from the GPS")
     parser.add_argument("--wheel-radius", type=float, help="the radius of the wheels, in metres")
     parser.add_argument("--max-speed", type=float, default=0.1, help="the top speed, in m/s")

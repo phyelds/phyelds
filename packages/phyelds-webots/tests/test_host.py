@@ -2,7 +2,7 @@ import sys
 import types
 
 import pytest
-from fakes import LED, DistanceSensor, Motor, World
+from fakes import LED, DistanceSensor, Emitter, Motor, Receiver, World
 
 from phyelds.webots import main
 
@@ -115,3 +115,13 @@ def test_main_senses_away_from_what_the_distance_sensors_see(robot, monkeypatch,
     _main(monkeypatch, "programs:says_obstacle")
 
     assert "obstacle=(-1.0, 0.0, 0.0)" in capsys.readouterr().out
+
+
+def test_main_talks_over_the_radio_its_arguments_name(robot, monkeypatch):
+    # Stock robots come with a radio of infinite range: the world adds one with a range.
+    robot.add(radio_tx=Emitter(robot.world, robot), radio_rx=Receiver())
+
+    _main(monkeypatch, "programs:counts_neighbors", "--emitter", "radio_tx", "--receiver", "radio_rx")
+
+    assert robot.devices["radio_tx"].last is not None and robot.devices["emitter"].last is None
+    assert robot.devices["radio_rx"].sampling_period == 32 and robot.devices["receiver"].sampling_period is None
