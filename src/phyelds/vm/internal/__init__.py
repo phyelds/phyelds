@@ -13,9 +13,12 @@ _FNV_PRIME = 0x01000193
 _SLASH = ord("/")
 
 
-def _extend_digest(digest: int, segment: str) -> int:
-    """The FNV-1a hash ``digest`` of a path, followed by ``segment`` and a slash."""
-    for byte in segment.encode():
+def _extend_digest(digest: int, segment: Any) -> int:
+    """
+    The FNV-1a hash ``digest`` of a path, followed by ``segment`` (a name or a number, as
+    ``str`` writes it) and a slash.
+    """
+    for byte in str(segment).encode():
         digest = ((digest ^ byte) * _FNV_PRIME) & 0xFFFFFFFF
     return ((digest ^ _SLASH) * _FNV_PRIME) & 0xFFFFFFFF
 

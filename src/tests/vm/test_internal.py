@@ -103,3 +103,14 @@ def test_mutable_engine_reads_the_messages_of_neighbors_by_whole_path(paths):
     assert engine_.aligned() == [1]
     assert engine_.aligned_values(["a@0"]) == {1: "one"}
     assert engine_.aligned_values(["a@0", "n@0"]) == {1: "one deeper"}
+
+
+@pytest.mark.parametrize("paths", KEYS)
+def test_mutable_engine_keys_paths_made_of_numbers(paths):
+    engine_ = MutableEngine(paths=paths).setup(MockNodeContext(0))
+    numbered = [[1], [1, 2], ["a@0", 3]]
+
+    for value, path in enumerate(numbered):
+        engine_.write_state(value, path)
+
+    assert engine_.state_trace() == {KEYS[paths](path): value for value, path in enumerate(numbered)}
