@@ -117,3 +117,12 @@ def test_prune_keeps_the_definitions_whose_decorators_may_register_them():
 
     assert "class Message" in output and "class Reading" in output
     assert "unused()" not in output and "unused_value" not in output
+
+
+def test_prune_keeps_the_definitions_imported_under_another_name():
+    output = _pruned("""
+        def members():
+            pass
+    """, "from phyelds.library import members as enum_members\n")
+
+    assert "def members" in output

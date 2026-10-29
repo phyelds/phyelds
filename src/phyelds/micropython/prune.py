@@ -87,7 +87,7 @@ def _mentions(tree: ast.AST) -> Counter:
         elif isinstance(node, ast.Attribute):
             words[node.attr] += 1
         elif isinstance(node, ast.alias):
-            words[node.asname or node.name] += 1
+            words.update({node.name.rsplit(".", 1)[-1], node.asname} - {None})
         elif isinstance(node, ast.Constant) and isinstance(node.value, str):
             words.update(_WORD.findall(node.value))
     return words
