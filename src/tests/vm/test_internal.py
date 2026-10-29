@@ -18,6 +18,26 @@ def neighbour_sum():
     return set_total(neighbors(1).sum() + total)
 
 
+def _fnv_key(path: list) -> int:
+    """The compact key of ``path``, as other runtimes compute it: 30 bits of FNV-1a."""
+    digest = 0x811C9DC5
+    for byte in "".join(f"{segment}/" for segment in path).encode():
+        digest = ((digest ^ byte) * 0x01000193) & 0xFFFFFFFF
+    return digest & 0x3FFFFFFF
+
+
+KEYS = {"debug": str, "compact": _fnv_key}
+PATHS = [
+    [],
+    ["a@0"],
+    ["a@0", "b@0"],
+    ["a@0", "b@0", "remember@0"],
+    ["a@0", "c@2"],
+    ["x@3", "y@1"],
+    ["città@0", "b@0"],
+]
+
+
 def _state_after_one_round(paths: str) -> dict:
     engine.set(MutableEngine(paths=paths).setup(MockNodeContext(0)))
     counter()
@@ -52,3 +72,34 @@ def test_mutable_engine_compact_and_debug_paths_compute_the_same_values():
 def test_mutable_engine_rejects_an_unknown_path_mode():
     with pytest.raises(ValueError, match="paths"):
         MutableEngine(paths="short")
+
+
+@pytest.mark.parametrize("paths", KEYS)
+def test_mutable_engine_keys_any_path_as_its_whole_path(paths):
+    engine_ = MutableEngine(paths=paths).setup(MockNodeContext(0))
+    engine_.enter("a")
+    engine_.enter("b")
+
+    for value, path in enumerate(PATHS):
+        engine_.write_state(value, path)
+    engine_.exit()
+    engine_.send("left", PATHS[3])
+    engine_.send("here")
+
+    assert engine_.state_trace() == {KEYS[paths](path): value for value, path in enumerate(PATHS)}
+    assert engine_.cooldown() == {KEYS[paths](PATHS[3]): "left", KEYS[paths](["a@0"]): "here"}
+
+
+@pytest.mark.parametrize("paths", KEYS)
+def test_mutable_engine_reads_the_messages_of_neighbors_by_whole_path(paths):
+    key = KEYS[paths]
+    messages = {
+        1: {key(["a@0"]): "one", key(["a@0", "n@0"]): "one deeper"},
+        2: {key(["a@0", "n@0"]): "two deeper"},
+    }
+    engine_ = MutableEngine(paths=paths).setup(MockNodeContext(0), messages)
+    engine_.enter("a")
+
+    assert engine_.aligned() == [1]
+    assert engine_.aligned_values(["a@0"]) == {1: "one"}
+    assert engine_.aligned_values(["a@0", "n@0"]) == {1: "one deeper"}
