@@ -35,6 +35,22 @@ found by reading the program, so a module imported by a computed name must be na
 
 The output is plain Python: you can check it, or run it on CPython.
 
+### Compiled ahead
+
+With `--mpy`, the build compiles the modules of phyelds to `.mpy` files with
+[`mpy-cross`](https://docs.micropython.org/en/latest/reference/mpyfiles.html), so that the
+board does not compile them when it imports them, which takes more memory than they then
+keep. `mpy-cross` must be on the PATH, in the version of MicroPython the board runs:
+
+```bash
+pip install "mpy-cross==1.29.*"
+poetry run python -m phyelds.micropython main.py -o dist --mpy
+```
+
+`--optimize 3` makes the files about 8% smaller, without line numbers in tracebacks. The
+modules of the program stay `.py`. MicroPython imports a `.py` before a `.mpy` with the same
+name: remove the `.py` files of an older build from the board.
+
 ---
 
 ## The device loop
@@ -102,5 +118,8 @@ On the 64-bit unix port of MicroPython, the calculus with `spreading` and the co
 about 64 KB of heap once imported, and all the libraries about 118 KB. Objects are about
 half as large on the 32-bit ESP32, which without PSRAM has roughly 100 KB free: import
 only the libraries the program uses. Modules are compiled when they are imported, which
-briefly needs more memory than they then keep. The ESP32 example runs, three devices in
-one process, in a 128 KB heap on the unix port.
+briefly needs more memory than they then keep, unless they are [compiled ahead](#compiled-ahead):
+the minimal program of the tests (`src/tests/micropython/minimal.py`, a counter and the ids
+of the neighbors on three devices) starts in about 120 KB of heap as `.py`, and in 64 KB as
+`.mpy`. The ESP32 example runs, three devices in one process, in a 128 KB heap on the unix
+port.

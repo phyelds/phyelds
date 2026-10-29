@@ -13,6 +13,8 @@ that work ahead of time, on the source:
 """
 import ast
 import modulefinder
+import shutil
+import subprocess
 import tempfile
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -38,7 +40,14 @@ _LEFT_OUT = ("micropython", "calculus/internal")
 _HELPERS = ("_aligned_branch", "align_left", "align_right")
 
 
-def build(sources: Sequence[Path], out_dir: Path, *, include: Sequence[str] = ()) -> None:
+def build(
+    sources: Sequence[Path],
+    out_dir: Path,
+    *,
+    include: Sequence[str] = (),
+    mpy: bool = False,
+    optimize: int = 0,
+) -> None:
     """
     Write ``sources`` and the modules of phyelds they import, rewritten for MicroPython,
     into ``out_dir``.
@@ -53,16 +62,31 @@ def build(sources: Sequence[Path], out_dir: Path, *, include: Sequence[str] = ()
         out_dir: Where to write; created if missing.
         include: More modules of phyelds to write, with the modules they import, by name
             (e.g. ``"phyelds.libraries.gossip"``).
+        mpy: Compile the modules of phyelds to ``.mpy`` files with ``mpy-cross``, which
+            must be on the PATH, in the version of the MicroPython of the board. The board
+            then does not compile them, which takes memory. The sources stay ``.py``.
+        optimize: The optimization level of ``mpy-cross``, from 0 to 3; 3 leaves out the
+            line numbers of tracebacks, for smaller files.
 
     Raises:
         ImportError: If a module in ``include`` does not exist.
+        FileNotFoundError: If ``mpy`` is set and ``mpy-cross`` is not on the PATH.
     """
+    mpy_cross = shutil.which("mpy-cross") if mpy else None
+    if mpy and mpy_cross is None:
+        raise FileNotFoundError(
+            "mpy-cross is not on the PATH: install the version of the MicroPython of the board, "
+            "e.g. pip install \"mpy-cross==1.29.*\""
+        )
     library = _library()
     programs = {source.name: transpile(source.read_text(), signatures=True) for source in sources}
     if programs or include:
         library = {path: library[path] for path in _imported(library, programs, include)}
     for relative, content in library.items():
-        _write(out_dir / "phyelds" / relative, content)
+        if mpy_cross:
+            _compile([mpy_cross, f"-O{optimize}"], content, out_dir, Path("phyelds") / relative)
+        else:
+            _write(out_dir / "phyelds" / relative, content)
     for name, content in programs.items():
         _write(out_dir / name, content)
 
@@ -290,6 +314,20 @@ def _parameters(arguments: ast.arguments) -> tuple[tuple[str, int, bool], ...]:
     if arguments.kwarg:
         parameters.append((arguments.kwarg.arg, 4, False))
     return tuple(parameters)
+
+
+def _compile(mpy_cross: list[str], content: str, out_dir: Path, relative: Path) -> None:
+    """
+    Compile the module ``content`` with the ``mpy_cross`` command to ``out_dir / relative``,
+    as a ``.mpy`` file named ``relative`` in tracebacks; create its directory.
+    """
+    target = (out_dir / relative).with_suffix(".mpy")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile("w", suffix=".py", delete_on_close=False) as source:
+        source.write(content)
+        source.close()
+        command = [*mpy_cross, "-s", relative.as_posix(), "-o", target, source.name]
+        subprocess.run(command, check=True)
 
 
 def _write(path: Path, content: str) -> None:

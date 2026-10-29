@@ -1,11 +1,15 @@
 import ast
+import shutil
 import subprocess
 import sys
 import textwrap
+from pathlib import Path
 
 import pytest
 
 from phyelds.micropython.build import build, transpile
+
+needs_mpy_cross = pytest.mark.skipif(shutil.which("mpy-cross") is None, reason="mpy-cross is not on the PATH")
 
 
 def _transpiled(source: str, **options) -> str:
@@ -210,6 +214,44 @@ def test_build_writes_the_modules_included_by_name(tmp_path):
 def test_build_rejects_an_included_module_that_does_not_exist(tmp_path):
     with pytest.raises(ImportError, match="phyelds.libraries.missing"):
         build([], tmp_path, include=["phyelds.libraries.missing"])
+
+
+@needs_mpy_cross
+def test_build_compiles_the_library_but_not_the_program_with_mpy(tmp_path):
+    program = tmp_path / "main.py"
+    program.write_text("from phyelds.libraries.device import local_id\n")
+
+    build([program], tmp_path / "dist", mpy=True)
+
+    library = tmp_path / "dist" / "phyelds"
+    assert (library / "libraries" / "device.mpy").read_bytes().startswith(b"M")
+    assert not list(library.rglob("*.py"))
+    assert (tmp_path / "dist" / "main.py").exists()
+
+
+@needs_mpy_cross
+def test_build_names_the_modules_compiled_with_mpy_by_their_path_in_the_bundle(tmp_path):
+    build([], tmp_path, include=["phyelds.libraries.device"], mpy=True)
+
+    assert b"phyelds/libraries/device.py" in (tmp_path / "phyelds" / "libraries" / "device.mpy").read_bytes()
+
+
+@needs_mpy_cross
+def test_build_compiles_smaller_mpy_files_when_optimizing(tmp_path):
+    build([], tmp_path / "plain", include=["phyelds.data"], mpy=True)
+    build([], tmp_path / "optimized", include=["phyelds.data"], mpy=True, optimize=3)
+
+    module = Path("phyelds") / "data" / "__init__.mpy"
+    assert (tmp_path / "optimized" / module).stat().st_size < (tmp_path / "plain" / module).stat().st_size
+
+
+def test_build_asks_for_mpy_cross_when_it_is_not_on_the_path(tmp_path, monkeypatch):
+    monkeypatch.setenv("PATH", str(tmp_path))
+
+    with pytest.raises(FileNotFoundError, match="mpy-cross"):
+        build([], tmp_path / "dist", mpy=True)
+
+    assert not (tmp_path / "dist").exists()
 
 
 def test_build_output_runs_a_program_like_the_library(tmp_path):

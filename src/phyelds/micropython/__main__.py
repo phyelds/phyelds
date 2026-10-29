@@ -1,4 +1,4 @@
-"""Command line: ``python -m phyelds.micropython program.py [more.py ...] -o dist``."""
+"""Command line: ``python -m phyelds.micropython program.py [more.py ...] -o dist [--mpy]``."""
 import argparse
 from pathlib import Path
 
@@ -17,8 +17,19 @@ def main() -> None:
         "--include", action="append", default=[], metavar="MODULE",
         help="a module of phyelds to write although the program imports it by a computed name",
     )
+    parser.add_argument(
+        "--mpy", action="store_true",
+        help="compile phyelds to .mpy with mpy-cross, of the MicroPython version of the board",
+    )
+    parser.add_argument(
+        "--optimize", type=int, choices=range(4), default=0, metavar="LEVEL",
+        help="optimization level of mpy-cross, 0 to 3 (3: no line numbers in tracebacks)",
+    )
     arguments = parser.parse_args()
-    build(arguments.sources, arguments.out, include=arguments.include)
+    build(
+        arguments.sources, arguments.out,
+        include=arguments.include, mpy=arguments.mpy, optimize=arguments.optimize,
+    )
 
 
 if __name__ == "__main__":

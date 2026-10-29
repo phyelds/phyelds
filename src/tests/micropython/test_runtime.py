@@ -1,8 +1,8 @@
 """
 What runs on MicroPython: the programs of programs.py, on the unix port of MicroPython, and
-how much heap minimal.py needs.
+how much heap minimal.py needs; built as ``.py`` and, with ``mpy-cross``, as ``.mpy``.
 
-Skipped when ``micropython`` is not on the PATH; the CI builds it.
+Skipped when ``micropython`` (or ``mpy-cross``) is not on the PATH; the CI builds them.
 """
 import shutil
 import subprocess
@@ -20,16 +20,18 @@ MICROPYTHON = shutil.which("micropython")
 # the memory on the 64-bit unix port than on an ESP32.
 HEAP = "512k"
 # The heap minimal.py needs, with a margin: the need is not monotonic, as the heap fragments.
-# Lower it when a change saves memory, so that regressions show up.
-MINIMAL_BUDGET = "128k"
+# Lower them when a change saves memory, so that regressions show up.
+MINIMAL_BUDGET = {"py": "128k", "mpy": "72k"}
 
 pytestmark = pytest.mark.skipif(MICROPYTHON is None, reason="micropython is not on the PATH")
+needs_mpy_cross = pytest.mark.skipif(shutil.which("mpy-cross") is None, reason="mpy-cross is not on the PATH")
+BUNDLES = ["py", pytest.param("mpy", marks=needs_mpy_cross)]
 
 
-@pytest.fixture(scope="module", name="bundle")
-def fixture_bundle(tmp_path_factory) -> Path:
+@pytest.fixture(scope="module", name="bundle", params=BUNDLES)
+def fixture_bundle(request, tmp_path_factory) -> Path:
     out_dir = tmp_path_factory.mktemp("bundle")
-    build([Path(programs.__file__)], out_dir)
+    build([Path(programs.__file__)], out_dir, mpy=request.param == "mpy")
     return out_dir
 
 
@@ -118,11 +120,12 @@ def test_micropython_states_are_not_instances_of_their_value_type(bundle):
     assert set(_cpython("state_type")[0].values()) == {True}
 
 
-def test_micropython_runs_a_minimal_program_within_its_heap_budget(tmp_path):
-    build([Path(minimal.__file__)], tmp_path)
+@pytest.mark.parametrize("kind", BUNDLES)
+def test_micropython_runs_a_minimal_program_within_its_heap_budget(tmp_path, kind):
+    build([Path(minimal.__file__)], tmp_path, mpy=kind == "mpy")
 
     completed = subprocess.run(
-        [MICROPYTHON, "-X", f"heapsize={MINIMAL_BUDGET}", "minimal.py"],
+        [MICROPYTHON, "-X", f"heapsize={MINIMAL_BUDGET[kind]}", "minimal.py"],
         cwd=tmp_path, capture_output=True, text=True, check=False,
     )
 
