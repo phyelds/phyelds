@@ -86,6 +86,7 @@ def test_transpile_redirects_modules_missing_on_micropython():
         from typing import Any
         from collections.abc import Callable
         from contextvars import ContextVar
+        used = (wrapt, math, Any, Callable, ContextVar)
     """)
 
     assert output.splitlines() == [
@@ -94,6 +95,7 @@ def test_transpile_redirects_modules_missing_on_micropython():
         "from phyelds._mpy.typing import Any",
         "from phyelds._mpy.typing import Callable",
         "from phyelds._mpy.contextvars import ContextVar",
+        "used = (wrapt, math, Any, Callable, ContextVar)",
     ]
 
 
