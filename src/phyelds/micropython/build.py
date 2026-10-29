@@ -38,6 +38,8 @@ _SHIMMED = {
 _TYPING = ("typing", "collections.abc")
 _LEFT_OUT = ("micropython", "calculus/internal")
 _HELPERS = ("_aligned_branch", "align_left", "align_right")
+# Base classes and decorators that change nothing on MicroPython: their stand-ins do nothing.
+_NO_OPS = {"abc": ("ABC", "abstractmethod"), "functools": ("wraps",)}
 
 
 def build(
@@ -136,10 +138,12 @@ class _Portable(ast.NodeTransformer):
         self.aligned = False
         self.enums = False
         self.typing_names = set()
-        self.abc_names = set()
+        self.no_ops = set()  # dotted names, as they are written in the module
 
     def visit_Import(self, node: ast.Import) -> ast.Import:
         for alias in node.names:
+            for name in _NO_OPS.get(alias.name, ()):
+                self.no_ops.add(f"{alias.asname or alias.name}.{name}")
             if alias.name in _SHIMMED:
                 alias.asname = alias.asname or alias.name
                 alias.name = f"phyelds._mpy.{_SHIMMED[alias.name]}"
@@ -148,8 +152,11 @@ class _Portable(ast.NodeTransformer):
     def visit_ImportFrom(self, node: ast.ImportFrom) -> ast.ImportFrom:
         if node.module in _TYPING:
             self.typing_names.update(alias.asname or alias.name for alias in node.names)
-        if node.module == "abc":
-            self.abc_names.update(alias.asname or alias.name for alias in node.names)
+        self.no_ops.update(
+            alias.asname or alias.name
+            for alias in node.names
+            if alias.name in _NO_OPS.get(node.module, ())
+        )
         if node.module in _SHIMMED:
             node.module = f"phyelds._mpy.{_SHIMMED[node.module]}"
         return node
@@ -165,7 +172,7 @@ class _Portable(ast.NodeTransformer):
             self.aligned = True
         node.returns = None
         node.decorator_list = [
-            decorator for decorator in node.decorator_list if not self._is_abc_name(decorator)
+            decorator for decorator in node.decorator_list if not self._is_no_op(decorator)
         ]
         self.generic_visit(node)
         node.body = node.body or [ast.Pass()]
@@ -205,8 +212,9 @@ class _Portable(ast.NodeTransformer):
     def _is_typing_name(self, node: ast.expr) -> bool:
         return isinstance(node, ast.Name) and node.id in self.typing_names
 
-    def _is_abc_name(self, node: ast.expr) -> bool:
-        return isinstance(node, ast.Name) and node.id in self.abc_names
+    def _is_no_op(self, node: ast.expr) -> bool:
+        """True for a no-op base class or decorator, called (``@wraps(f)``) or not."""
+        return _decorator_name(node) in self.no_ops
 
     def visit_Tuple(self, node: ast.Tuple) -> ast.expr:
         self.generic_visit(node)
@@ -225,13 +233,13 @@ class _Portable(ast.NodeTransformer):
         # Generic[T] and ABC are only markers: their stand-ins do nothing.
         node.bases = [
             base for base in node.bases
-            if not isinstance(base, ast.Subscript) and not self._is_abc_name(base)
+            if not isinstance(base, ast.Subscript) and not self._is_no_op(base)
         ]
         if any(isinstance(base, ast.Name) and base.id == "Enum" for base in node.bases):
             node.decorator_list.append(ast.Name(id="_phyelds_enum_members", ctx=ast.Load()))
             self.enums = True
         self.generic_visit(node)
-        if any(_names(decorator, "dataclass") for decorator in node.decorator_list):
+        if any(_decorator_name(decorator) == "dataclass" for decorator in node.decorator_list):
             declaration = ast.parse(f"__dataclass_fields__ = {tuple(fields)!r}").body[0]
             node.body.insert(_first_statement(node.body), declaration)
         node.body = node.body or [ast.Pass()]
@@ -340,11 +348,19 @@ def _without_unpacking(node: ast.Tuple | ast.List, kind: str) -> ast.expr:
     return ast.copy_location(concatenation, node)
 
 
-def _names(decorator: ast.expr, name: str) -> bool:
-    """True for ``@name`` and ``@name(...)``."""
-    if isinstance(decorator, ast.Call):
-        decorator = decorator.func
-    return isinstance(decorator, ast.Name) and decorator.id == name
+def _dotted(node: ast.expr) -> str | None:
+    """``"a.b.c"`` for the expression ``a.b.c``; ``None`` for other expressions."""
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        prefix = _dotted(node.value)
+        return None if prefix is None else f"{prefix}.{node.attr}"
+    return None
+
+
+def _decorator_name(decorator: ast.expr) -> str | None:
+    """``"a.b"`` for ``@a.b`` and ``@a.b(...)``."""
+    return _dotted(decorator.func if isinstance(decorator, ast.Call) else decorator)
 
 
 def _first_statement(body: list[ast.stmt]) -> int:

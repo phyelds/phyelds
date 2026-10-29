@@ -181,6 +181,23 @@ def test_transpile_drops_abstract_base_classes_and_methods():
     assert output.splitlines() == ["class Engine(Base):", "", "    def run(self):", "        pass"]
 
 
+def test_transpile_drops_the_copies_of_wrapped_function_metadata():
+    output = _transpiled("""
+        import functools
+        from functools import wraps
+        def decorate(function):
+            @functools.wraps(function)
+            def wrapper():
+                return function()
+            @wraps(function)
+            def other():
+                return function()
+            return wrapper, other
+    """)
+
+    assert "wraps" not in output and "functools" not in output
+
+
 def test_transpile_lists_the_fields_of_dataclasses():
     output = _transpiled('''
         @dataclass(frozen=True)
