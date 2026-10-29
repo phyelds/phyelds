@@ -69,6 +69,23 @@ def test_mutable_engine_compact_and_debug_paths_compute_the_same_values():
     assert all(isinstance(key, int) for key in compact.nodes[0].context["messages"])
 
 
+def test_mutable_engine_keys_paths_with_the_encoding_it_is_given():
+    codes = {"counter": 1, "remember": 2}
+
+    def numbered(path):
+        """``["counter@0", "remember@0"]`` as ``(1, 0, 2, 0)``: readable with ``codes``."""
+        key = []
+        for segment in path:
+            name, counter = segment.rsplit("@", 1)
+            key += [codes[name], int(counter)]
+        return tuple(key)
+
+    engine.set(MutableEngine(paths=numbered).setup(MockNodeContext(0)))
+    counter()
+
+    assert engine.get().state_trace() == {(1, 0, 2, 0): 1}
+
+
 def test_mutable_engine_rejects_an_unknown_path_mode():
     with pytest.raises(ValueError, match="paths"):
         MutableEngine(paths="short")

@@ -4,7 +4,7 @@ between different contexts. It provides methods to enter and exit contexts, send
 and manage the state of the system.
 """
 
-from typing import Dict, List, Any, Optional
+from typing import Callable, Dict, List, Any, Optional, Union
 
 from phyelds.vm import Engine, NodeContext, EngineState
 
@@ -66,17 +66,24 @@ class MutableEngine(Engine):
     Args:
         paths: How alignment paths become state and message keys. ``"debug"`` (the
             default) keeps them readable, as strings; ``"compact"`` turns them into
-            small integers, lighter for microcontrollers and their radios. Devices that
-            talk to each other must use the same mode.
+            small integers, lighter for microcontrollers and their radios. Any other
+            encoding is a function from a path (a list of segments, such as
+            ``"neighbors@1"``) to a hashable key, e.g. a tuple of numbers. Devices that
+            talk to each other must use the same encoding.
 
     Raises:
-        ValueError: If ``paths`` is not ``"debug"`` or ``"compact"``.
+        ValueError: If ``paths`` is neither ``"debug"``, ``"compact"`` nor a function.
     """
-    def __init__(self, paths: str = "debug"):
+    def __init__(self, paths: Union[str, Callable[[List[Any]], Any]] = "debug"):
         super().__init__()
-        if paths not in _PATH_KEYS:
-            raise ValueError(f"paths must be one of {sorted(_PATH_KEYS)}, not {paths!r}")
-        self._key = _PATH_KEYS[paths]()
+        if callable(paths):
+            self._key = paths
+        elif paths in _PATH_KEYS:
+            self._key = _PATH_KEYS[paths]()
+        else:
+            raise ValueError(
+                f"paths must be one of {sorted(_PATH_KEYS)} or a function, not {paths!r}"
+            )
         self.engine_state = EngineState()
 
     def setup(

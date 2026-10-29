@@ -60,6 +60,30 @@ lighter on memory and on the radio: in the example a message takes 40 bytes inst
 The hash is the same on every runtime, so a CPython device in compact mode understands a
 board. **All the devices that talk to each other must use the same mode.**
 
+`paths` also takes an encoding of your own: a function from a path (a list of segments
+such as `"neighbors@1"`) to a key that the [wire format](#the-wire-format) can send. Numbers
+from a table of names, for instance, keep keys short and still readable: in the example a
+message takes 53 bytes, against 40 in compact mode and 131 in debug mode.
+
+```python
+CODES = {
+    "gradient": 1, "distance_to": 2, "hops_distance": 3,  # the functions of the example
+    "remember": 4, "neighbors": 5, "left": 6, "right": 7,  # the calculus and its branches
+}
+
+
+def numbered(path):
+    """["gradient@0", "neighbors@1"] as "1.0/5.1"."""
+    return "/".join(f"{CODES[name]}.{counter}" for name, counter in (s.split("@") for s in path))
+
+
+device = Device(device_id, gradient, paths=numbered)
+```
+
+The table must name every alignment point the program enters, those of the libraries and
+of branches (`left`, `right`) included, and all the devices must share it. Keys can be
+tuples too, but the wire format tags them, so they take more room than strings.
+
 ### The wire format
 
 `phyelds.data.codec` turns the messages of a device into bytes and back:
