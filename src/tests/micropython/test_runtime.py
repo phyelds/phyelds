@@ -21,7 +21,7 @@ MICROPYTHON = shutil.which("micropython")
 HEAP = "512k"
 # The heap minimal.py needs, with a margin: the need is not monotonic, as the heap fragments.
 # Lower them when a change saves memory, so that regressions show up.
-MINIMAL_BUDGET = {"py": "128k", "mpy": "72k"}
+MINIMAL_BUDGET = {"py": "100k", "mpy": "72k"}
 
 pytestmark = pytest.mark.skipif(MICROPYTHON is None, reason="micropython is not on the PATH")
 needs_mpy_cross = pytest.mark.skipif(shutil.which("mpy-cross") is None, reason="mpy-cross is not on the PATH")

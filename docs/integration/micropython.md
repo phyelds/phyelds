@@ -26,8 +26,8 @@ found by reading the program, so a module imported by a computed name must be na
 
 - the branches of `@aggregate` functions are aligned ahead of time, exactly as
   `@aggregate` would do at run time, so the alignment paths are the same on every runtime;
-- annotations and type expressions are removed, and unpacking in tuples and lists
-  (`(*hops, last)`) is spelled out;
+- annotations, type expressions and docstrings are removed, and unpacking in tuples and
+  lists (`(*hops, last)`) is spelled out;
 - the modules MicroPython lacks (`typing`, `dataclasses`, `enum`, `contextvars`, `wrapt`,
   ...) are replaced by small stand-ins in `phyelds._mpy`;
 - what MicroPython cannot find out by itself is written down: the fields of dataclasses,
@@ -120,6 +120,6 @@ half as large on the 32-bit ESP32, which without PSRAM has roughly 100 KB free: 
 only the libraries the program uses. Modules are compiled when they are imported, which
 briefly needs more memory than they then keep, unless they are [compiled ahead](#compiled-ahead):
 the minimal program of the tests (`src/tests/micropython/minimal.py`, a counter and the ids
-of the neighbors on three devices) starts in about 120 KB of heap as `.py`, and in 64 KB as
+of the neighbors on three devices) starts in about 90 KB of heap as `.py`, and in 64 KB as
 `.mpy`. The ESP32 example runs, three devices in one process, in a 128 KB heap on the unix
 port.

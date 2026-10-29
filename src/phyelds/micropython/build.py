@@ -54,8 +54,8 @@ def build(
 
     The imports are found by reading the sources, not by running them: modules imported by
     a computed name go in ``include``. Without sources nor ``include``, the whole library
-    is written. Copy the content of ``out_dir`` to the root of the board
-    (e.g. with ``mpremote cp -r out_dir/. :``).
+    is written. Docstrings are left out. Copy the content of ``out_dir`` to the root of the
+    board (e.g. with ``mpremote cp -r out_dir/. :``).
 
     Args:
         sources: The modules of the program, written next to the ``phyelds`` package.
@@ -79,7 +79,10 @@ def build(
             "e.g. pip install \"mpy-cross==1.29.*\""
         )
     library = _library()
-    programs = {source.name: transpile(source.read_text(), signatures=True) for source in sources}
+    programs = {
+        source.name: transpile(source.read_text(), signatures=True, docstrings=False)
+        for source in sources
+    }
     if programs or include:
         library = {path: library[path] for path in _imported(library, programs, include)}
     for relative, content in library.items():
@@ -91,7 +94,7 @@ def build(
         _write(out_dir / name, content)
 
 
-def transpile(source: str, *, signatures: bool = False) -> str:
+def transpile(source: str, *, signatures: bool = False, docstrings: bool = True) -> str:
     """
     Rewrite the source of a module for MicroPython.
 
@@ -100,11 +103,15 @@ def transpile(source: str, *, signatures: bool = False) -> str:
         signatures: Record the parameters of the functions defined at the top of the
             module, which phyelds inspects when they are given as accumulations or
             processes. Meant for programs: the library does not need it.
+        docstrings: Keep the docstrings. MicroPython ignores them, but they take memory
+            while it compiles the module.
 
     Returns:
         The rewritten source.
     """
     tree = ast.parse(source)
+    if not docstrings:
+        _drop_docstrings(tree)
     portable = _Portable()
     tree = portable.visit(tree)
     imports = []
@@ -214,7 +221,7 @@ def _library() -> dict[Path, str]:
     for path in sorted(package.rglob("*.py")):
         relative = path.relative_to(package)
         if not relative.as_posix().startswith(_LEFT_OUT):
-            modules[relative] = transpile(path.read_text())
+            modules[relative] = transpile(path.read_text(), docstrings=False)
     return modules
 
 
@@ -236,6 +243,23 @@ def _imported(
     package = root / "phyelds"
     files = [Path(module.__file__) for module in finder.modules.values() if module.__file__]
     return {file.relative_to(package) for file in files if file.is_relative_to(package)}
+
+
+def _drop_docstrings(tree: ast.Module) -> None:
+    """Remove the docstrings of the module, classes and functions of ``tree``."""
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            if node.body and _is_docstring(node.body[0]):
+                node.body = node.body[1:] or ([] if isinstance(node, ast.Module) else [ast.Pass()])
+
+
+def _is_docstring(statement: ast.stmt) -> bool:
+    """True for a statement made of a string alone."""
+    return (
+        isinstance(statement, ast.Expr)
+        and isinstance(statement.value, ast.Constant)
+        and isinstance(statement.value.value, str)
+    )
 
 
 def _without_unpacking(node: ast.Tuple | ast.List, kind: str) -> ast.expr:
@@ -272,9 +296,7 @@ def _names(decorator: ast.expr, name: str) -> bool:
 
 def _first_statement(body: list[ast.stmt]) -> int:
     """Index after the docstring and the ``__future__`` imports of ``body``."""
-    index = 0
-    if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant):
-        index = 1
+    index = 1 if body and _is_docstring(body[0]) else 0
     while index < len(body) and _is_future_import(body[index]):
         index += 1
     return index

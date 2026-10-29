@@ -177,6 +177,20 @@ def test_transpile_records_the_signatures_of_program_functions():
     assert "inner, " not in output
 
 
+def test_transpile_drops_docstrings_when_asked():
+    output = _transpiled('''
+        """A module."""
+        def first():
+            """A function."""
+
+        class Second:
+            """A class."""
+            size = 1
+    ''', docstrings=False)
+
+    assert output.splitlines() == ["def first():", "    pass", "", "class Second:", "    size = 1"]
+
+
 def test_build_writes_the_library_without_the_parts_needing_cpython(tmp_path):
     build([], tmp_path)
 
@@ -198,6 +212,16 @@ def test_build_writes_only_the_modules_the_sources_import(tmp_path):
     assert (library / "vm" / "__init__.py").exists()
     assert not (library / "libraries" / "gossip.py").exists()
     assert not (library / "experimental").exists()
+
+
+def test_build_writes_the_modules_without_docstrings(tmp_path):
+    program = tmp_path / "program.py"
+    program.write_text('"""A program."""\nimport phyelds\n')
+
+    build([program], tmp_path / "dist")
+
+    assert "A program" not in (tmp_path / "dist" / "program.py").read_text()
+    assert '"""' not in (tmp_path / "dist" / "phyelds" / "__init__.py").read_text()
 
 
 def test_build_writes_the_modules_included_by_name(tmp_path):
