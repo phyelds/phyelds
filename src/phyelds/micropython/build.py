@@ -124,6 +124,7 @@ def transpile(source: str, *, signatures: bool = False, docstrings: bool = True)
         imports.append("from phyelds._mpy.inspect import register as _phyelds_signature")
         tree.body = [statement for node in tree.body for statement in _with_signature(node)]
     tree.body[_first_statement(tree.body):0] = [ast.parse(line).body[0] for line in imports]
+    _drop_unused_stand_ins(tree)
     return ast.unparse(ast.fix_missing_locations(tree)) + "\n"
 
 
@@ -244,6 +245,35 @@ def _imported(
     package = root / "phyelds"
     files = [Path(module.__file__) for module in finder.modules.values() if module.__file__]
     return {file.relative_to(package) for file in files if file.is_relative_to(package)}
+
+
+def _drop_unused_stand_ins(tree: ast.Module) -> None:
+    """
+    Remove the names that ``tree`` imports from the stand-ins and does not use, as the
+    rewriting leaves many: each one takes memory on the board.
+    """
+    used = {node.id for node in ast.walk(tree) if isinstance(node, ast.Name)}
+    body = []
+    for statement in tree.body:
+        if _imports_stand_in(statement):
+            statement.names = [
+                alias for alias in statement.names if (alias.asname or alias.name) in used
+            ]
+            if not statement.names:
+                continue
+        body.append(statement)
+    tree.body = body
+
+
+def _imports_stand_in(statement: ast.stmt) -> bool:
+    """True for an import from ``phyelds._mpy``, whose modules have no side effects."""
+    if isinstance(statement, ast.ImportFrom):
+        return (statement.module or "").startswith("phyelds._mpy.")
+    if isinstance(statement, ast.Import):
+        return all(
+            alias.name.startswith("phyelds._mpy.") and alias.asname for alias in statement.names
+        )
+    return False
 
 
 def _drop_docstrings(tree: ast.Module) -> None:

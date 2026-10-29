@@ -99,6 +99,24 @@ def test_transpile_redirects_modules_missing_on_micropython():
     ]
 
 
+def test_transpile_drops_the_names_imported_from_stand_ins_and_no_longer_used():
+    output = _transpiled("""
+        import functools
+        import math
+        from typing import Any, cast
+        from contextvars import ContextVar
+        value: Any = cast(int, math.floor(1.5))
+        engine = ContextVar("engine")
+    """)
+
+    assert output.splitlines() == [
+        "import math",
+        "from phyelds._mpy.contextvars import ContextVar",
+        "value = math.floor(1.5)",
+        "engine = ContextVar('engine')",
+    ]
+
+
 def test_transpile_spells_out_unpacking_in_tuples_and_lists():
     output = _transpiled("""
         extended = (*hops, last)
@@ -135,7 +153,7 @@ def test_transpile_rewrites_the_values_of_annotated_assignments():
         extended: tuple = (*hops, last)
     """)
 
-    assert output.splitlines()[1:] == ["value = compute()", "extended = tuple(hops) + (last,)"]
+    assert output.splitlines() == ["value = compute()", "extended = tuple(hops) + (last,)"]
 
 
 def test_transpile_drops_generic_base_classes():
