@@ -22,6 +22,7 @@ from pathlib import Path
 import phyelds
 from phyelds.calculus.internal import AggregateTransformer
 from phyelds.calculus.internal.transform import is_aggregate_decorator
+from phyelds.micropython._syntax import decorator_name
 
 _SHIMMED = {
     "abc": "abc",
@@ -214,7 +215,7 @@ class _Portable(ast.NodeTransformer):
 
     def _is_no_op(self, node: ast.expr) -> bool:
         """True for a no-op base class or decorator, called (``@wraps(f)``) or not."""
-        return _decorator_name(node) in self.no_ops
+        return decorator_name(node) in self.no_ops
 
     def visit_Tuple(self, node: ast.Tuple) -> ast.expr:
         self.generic_visit(node)
@@ -239,7 +240,7 @@ class _Portable(ast.NodeTransformer):
             node.decorator_list.append(ast.Name(id="_phyelds_enum_members", ctx=ast.Load()))
             self.enums = True
         self.generic_visit(node)
-        if any(_decorator_name(decorator) == "dataclass" for decorator in node.decorator_list):
+        if any(decorator_name(decorator) == "dataclass" for decorator in node.decorator_list):
             declaration = ast.parse(f"__dataclass_fields__ = {tuple(fields)!r}").body[0]
             node.body.insert(_first_statement(node.body), declaration)
         node.body = node.body or [ast.Pass()]
@@ -346,21 +347,6 @@ def _without_unpacking(node: ast.Tuple | ast.List, kind: str) -> ast.expr:
     for part in parts[1:]:
         concatenation = ast.BinOp(left=concatenation, op=ast.Add(), right=part)
     return ast.copy_location(concatenation, node)
-
-
-def _dotted(node: ast.expr) -> str | None:
-    """``"a.b.c"`` for the expression ``a.b.c``; ``None`` for other expressions."""
-    if isinstance(node, ast.Name):
-        return node.id
-    if isinstance(node, ast.Attribute):
-        prefix = _dotted(node.value)
-        return None if prefix is None else f"{prefix}.{node.attr}"
-    return None
-
-
-def _decorator_name(decorator: ast.expr) -> str | None:
-    """``"a.b"`` for ``@a.b`` and ``@a.b(...)``."""
-    return _dotted(decorator.func if isinstance(decorator, ast.Call) else decorator)
 
 
 def _first_statement(body: list[ast.stmt]) -> int:
