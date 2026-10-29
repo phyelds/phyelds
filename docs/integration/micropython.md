@@ -129,12 +129,43 @@ check that each one gives the same results and messages as on CPython (see
 
 ## Memory
 
-On the 64-bit unix port of MicroPython, the calculus with `spreading` and the codec keep
-about 64 KB of heap once imported, and all the libraries about 118 KB. Objects are about
-half as large on the 32-bit ESP32, which without PSRAM has roughly 100 KB free: import
-only the libraries the program uses. Modules are compiled when they are imported, which
-briefly needs more memory than they then keep, unless they are [compiled ahead](#compiled-ahead):
-the minimal program of the tests (`src/tests/micropython/minimal.py`, a counter and the ids
-of the neighbors on three devices) starts in about 82 KB of heap as `.py`, in 56 KB as
-`.mpy`, and in 52 KB [pruned](#pruning). The ESP32 example runs, three devices in one process, in a 128 KB heap on the unix
-port.
+The heap a board needs depends on how the program is built. For the minimal program of the
+tests (`src/tests/micropython/minimal.py`: a counter and the ids of the neighbors, on three
+devices exchanging bytes), on the 64-bit unix port of MicroPython 1.29:
+
+| Build | phyelds on the board | Heap to start | Heap kept after the rounds |
+|---|---|---|---|
+| `.py` | 29 KB of files | ~82 KB | 43 KB |
+| [`--mpy`](#compiled-ahead) | 15 KB of files | ~56 KB | 43 KB |
+| `--mpy` [`--prune`](#pruning) | 12 KB of files | ~52 KB | 37 KB |
+| [frozen](#frozen-into-the-firmware) | 24 KB of firmware | ~30 KB | 21 KB |
+| frozen, `--prune` | 17 KB of firmware | ~28 KB | 19 KB |
+
+A `.py` module is compiled when it is imported, which briefly needs more memory than it then
+keeps: hence the larger heap to start. Objects are about half as large on the 32-bit ESP32,
+which without PSRAM has roughly 100 KB free. Libraries add to it: the calculus with
+`spreading` and the codec keep about 50 KB of heap once imported as `.mpy`, and all the
+libraries about 90 KB, so import only those the program uses. The ESP32 example runs, three
+devices in one process, in a 128 KB heap on the unix port. The tests keep the heap the
+minimal program needs under a budget, so that regressions show up.
+
+### Frozen into the firmware
+
+The leanest option is a MicroPython firmware of your own, with phyelds frozen into it: its
+bytecode then stays in flash, and the heap only holds the objects the program makes. Build
+without `--mpy` (freezing compiles the modules itself), and write a
+[manifest](https://docs.micropython.org/en/latest/reference/manifest.html) next to `dist`:
+
+```python
+include("$(PORT_DIR)/boards/manifest.py")  # what the board freezes by default
+package("phyelds", base_path="dist")
+```
+
+Then build MicroPython for the board with it, e.g. for an ESP32:
+
+```bash
+make -C ports/esp32 BOARD=ESP32_GENERIC FROZEN_MANIFEST=/absolute/path/to/manifest.py
+```
+
+Copy only the modules of the program to the board: a `phyelds` folder on the board would be
+imported instead of the frozen one.
