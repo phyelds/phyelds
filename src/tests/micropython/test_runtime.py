@@ -1,5 +1,6 @@
 """
-What runs on MicroPython: the programs of programs.py, on the unix port of MicroPython.
+What runs on MicroPython: the programs of programs.py, on the unix port of MicroPython, and
+how much heap minimal.py needs.
 
 Skipped when ``micropython`` is not on the PATH; the CI builds it.
 """
@@ -12,12 +13,15 @@ import pytest
 from phyelds.data import NeighborhoodField
 from phyelds.data.codec import decode, encode
 from phyelds.micropython.build import build
-from tests.micropython import programs
+from tests.micropython import minimal, programs
 
 MICROPYTHON = shutil.which("micropython")
 # Enough for all the libraries and four devices in one process. Objects take about twice
 # the memory on the 64-bit unix port than on an ESP32.
 HEAP = "512k"
+# The heap minimal.py needs, with a margin: the need is not monotonic, as the heap fragments.
+# Lower it when a change saves memory, so that regressions show up.
+MINIMAL_BUDGET = "128k"
 
 pytestmark = pytest.mark.skipif(MICROPYTHON is None, reason="micropython is not on the PATH")
 
@@ -112,3 +116,15 @@ def test_micropython_states_are_not_instances_of_their_value_type(bundle):
 
     assert set(results.values()) == {False}
     assert set(_cpython("state_type")[0].values()) == {True}
+
+
+def test_micropython_runs_a_minimal_program_within_its_heap_budget(tmp_path):
+    build([Path(minimal.__file__)], tmp_path)
+
+    completed = subprocess.run(
+        [MICROPYTHON, "-X", f"heapsize={MINIMAL_BUDGET}", "minimal.py"],
+        cwd=tmp_path, capture_output=True, text=True, check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr + completed.stdout
+    assert completed.stdout.strip() == str(minimal.run())
