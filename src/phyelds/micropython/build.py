@@ -12,7 +12,9 @@ that work ahead of time, on the source:
   members of enums, and the parameters of the functions of the programs.
 """
 import ast
-from collections.abc import Sequence
+import modulefinder
+import tempfile
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import phyelds
@@ -36,24 +38,33 @@ _LEFT_OUT = ("micropython", "calculus/internal/transform.py")
 _HELPERS = ("_aligned_branch", "align_left", "align_right")
 
 
-def build(sources: Sequence[Path], out_dir: Path) -> None:
+def build(sources: Sequence[Path], out_dir: Path, *, include: Sequence[str] = ()) -> None:
     """
-    Write phyelds and ``sources``, rewritten for MicroPython, into ``out_dir``.
+    Write ``sources`` and the modules of phyelds they import, rewritten for MicroPython,
+    into ``out_dir``.
 
-    Copy the content of ``out_dir`` to the root of the board (e.g. with
-    ``mpremote cp -r out_dir/. :``).
+    The imports are found by reading the sources, not by running them: modules imported by
+    a computed name go in ``include``. Without sources nor ``include``, the whole library
+    is written. Copy the content of ``out_dir`` to the root of the board
+    (e.g. with ``mpremote cp -r out_dir/. :``).
 
     Args:
         sources: The modules of the program, written next to the ``phyelds`` package.
         out_dir: Where to write; created if missing.
+        include: More modules of phyelds to write, with the modules they import, by name
+            (e.g. ``"phyelds.libraries.gossip"``).
+
+    Raises:
+        ImportError: If a module in ``include`` does not exist.
     """
-    package = Path(phyelds.__file__).parent
-    for path in sorted(package.rglob("*.py")):
-        relative = path.relative_to(package)
-        if not relative.as_posix().startswith(_LEFT_OUT):
-            _write(out_dir / "phyelds" / relative, transpile(path.read_text()))
-    for source in sources:
-        _write(out_dir / source.name, transpile(source.read_text(), signatures=True))
+    library = _library()
+    programs = {source.name: transpile(source.read_text(), signatures=True) for source in sources}
+    if programs or include:
+        library = {path: library[path] for path in _imported(library, programs, include)}
+    for relative, content in library.items():
+        _write(out_dir / "phyelds" / relative, content)
+    for name, content in programs.items():
+        _write(out_dir / name, content)
 
 
 def transpile(source: str, *, signatures: bool = False) -> str:
@@ -170,6 +181,37 @@ class _Portable(ast.NodeTransformer):
             node.body.insert(_first_statement(node.body), declaration)
         node.body = node.body or [ast.Pass()]
         return node
+
+
+def _library() -> dict[Path, str]:
+    """The modules of phyelds that MicroPython can run, rewritten, by path in the package."""
+    package = Path(phyelds.__file__).parent
+    modules = {}
+    for path in sorted(package.rglob("*.py")):
+        relative = path.relative_to(package)
+        if not relative.as_posix().startswith(_LEFT_OUT):
+            modules[relative] = transpile(path.read_text())
+    return modules
+
+
+def _imported(
+    library: Mapping[Path, str], programs: Mapping[str, str], include: Sequence[str]
+) -> set[Path]:
+    """The modules of ``library`` that ``programs`` and ``include`` import, directly or not."""
+    with tempfile.TemporaryDirectory() as scratch:
+        root = Path(scratch)
+        for relative, content in library.items():
+            _write(root / "phyelds" / relative, content)
+        for name, content in programs.items():
+            _write(root / name, content)
+        finder = modulefinder.ModuleFinder(path=[scratch])
+        for name in programs:
+            finder.run_script(str(root / name))
+        for name in include:
+            finder.import_hook(name)
+    package = root / "phyelds"
+    files = [Path(module.__file__) for module in finder.modules.values() if module.__file__]
+    return {file.relative_to(package) for file in files if file.is_relative_to(package)}
 
 
 def _without_unpacking(node: ast.Tuple | ast.List, kind: str) -> ast.expr:

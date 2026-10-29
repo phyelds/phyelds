@@ -18,8 +18,11 @@ mpremote cp -r dist/. :                                     # copy to the board
 mpremote reset                                              # MicroPython runs main.py
 ```
 
-The build writes into `dist` a copy of phyelds (the core: the simulator is a package of its own) and of the given
-modules, rewritten for MicroPython:
+The build writes into `dist` the given modules and the modules of phyelds they import (the
+core only: the simulator is a package of its own), rewritten for MicroPython. The imports are
+found by reading the program, so a module imported by a computed name must be named with
+`--include phyelds.libraries.gossip` (once per module); with neither modules nor
+`--include`, the whole library is written. Each module is rewritten:
 
 - the branches of `@aggregate` functions are aligned ahead of time, exactly as
   `@aggregate` would do at run time, so the alignment paths are the same on every runtime;

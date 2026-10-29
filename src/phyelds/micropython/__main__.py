@@ -13,8 +13,12 @@ def main() -> None:
     )
     parser.add_argument("sources", nargs="*", type=Path, help="modules of the program")
     parser.add_argument("-o", "--out", type=Path, default=Path("dist"), help="output directory")
+    parser.add_argument(
+        "--include", action="append", default=[], metavar="MODULE",
+        help="a module of phyelds to write although the program imports it by a computed name",
+    )
     arguments = parser.parse_args()
-    build(arguments.sources, arguments.out)
+    build(arguments.sources, arguments.out, include=arguments.include)
 
 
 if __name__ == "__main__":

@@ -3,6 +3,8 @@ import subprocess
 import sys
 import textwrap
 
+import pytest
+
 from phyelds.micropython.build import build, transpile
 
 
@@ -179,6 +181,35 @@ def test_build_writes_the_library_without_the_parts_needing_cpython(tmp_path):
     assert not (tmp_path / "phyelds" / "simulator").exists()
     assert not (tmp_path / "phyelds" / "micropython").exists()
     assert not (tmp_path / "phyelds" / "calculus" / "internal" / "transform.py").exists()
+
+
+def test_build_writes_only_the_modules_the_sources_import(tmp_path):
+    program = tmp_path / "program.py"
+    program.write_text("from phyelds.libraries.device import local_id\n")
+
+    build([program], tmp_path / "dist")
+
+    library = tmp_path / "dist" / "phyelds"
+    assert (library / "libraries" / "device.py").exists()
+    assert (library / "vm" / "__init__.py").exists()
+    assert not (library / "libraries" / "gossip.py").exists()
+    assert not (library / "experimental").exists()
+
+
+def test_build_writes_the_modules_included_by_name(tmp_path):
+    program = tmp_path / "program.py"
+    program.write_text("import importlib\n")
+
+    build([program], tmp_path / "dist", include=["phyelds.libraries.gossip"])
+
+    library = tmp_path / "dist" / "phyelds"
+    assert (library / "libraries" / "gossip.py").exists()
+    assert (library / "calculus" / "__init__.py").exists()
+
+
+def test_build_rejects_an_included_module_that_does_not_exist(tmp_path):
+    with pytest.raises(ImportError, match="phyelds.libraries.missing"):
+        build([], tmp_path, include=["phyelds.libraries.missing"])
 
 
 def test_build_output_runs_a_program_like_the_library(tmp_path):
