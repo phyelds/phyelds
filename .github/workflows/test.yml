@@ -219,4 +219,4 @@ jobs:
       run: |
         micropython -c "import sys; print(sys.implementation)"
         mpy-cross --version
-        poetry run pytest src/tests/micropython -rs
+        poetry run pytest src/tests/micropython src/tests/examples/test_esp32_example.py -rs
