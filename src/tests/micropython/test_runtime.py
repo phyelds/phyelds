@@ -21,18 +21,23 @@ MICROPYTHON = shutil.which("micropython")
 HEAP = "512k"
 # The heap minimal.py needs, with a margin: the need is not monotonic, as the heap fragments.
 # Lower them when a change saves memory, so that regressions show up.
-MINIMAL_BUDGET = {"py": "90k", "mpy": "64k"}
+MINIMAL_BUDGET = {"py": "90k", "mpy": "64k", "pruned": "60k"}
 
 pytestmark = pytest.mark.skipif(MICROPYTHON is None, reason="micropython is not on the PATH")
 needs_mpy_cross = pytest.mark.skipif(shutil.which("mpy-cross") is None, reason="mpy-cross is not on the PATH")
-BUNDLES = ["py", pytest.param("mpy", marks=needs_mpy_cross)]
+# As .py, as .mpy, and as .mpy without the definitions the program never names.
+BUNDLES = ["py", pytest.param("mpy", marks=needs_mpy_cross), pytest.param("pruned", marks=needs_mpy_cross)]
 
 
 @pytest.fixture(scope="module", name="bundle", params=BUNDLES)
 def fixture_bundle(request, tmp_path_factory) -> Path:
     out_dir = tmp_path_factory.mktemp("bundle")
-    build([Path(programs.__file__)], out_dir, mpy=request.param == "mpy")
+    build([Path(programs.__file__)], out_dir, **_options(request.param))
     return out_dir
+
+
+def _options(kind: str) -> dict:
+    return {"mpy": kind != "py", "prune": kind == "pruned"}
 
 
 def _on_micropython(bundle: Path, *arguments: str) -> subprocess.CompletedProcess:
@@ -122,7 +127,7 @@ def test_micropython_states_are_not_instances_of_their_value_type(bundle):
 
 @pytest.mark.parametrize("kind", BUNDLES)
 def test_micropython_runs_a_minimal_program_within_its_heap_budget(tmp_path, kind):
-    build([Path(minimal.__file__)], tmp_path, mpy=kind == "mpy")
+    build([Path(minimal.__file__)], tmp_path, **_options(kind))
 
     completed = subprocess.run(
         [MICROPYTHON, "-X", f"heapsize={MINIMAL_BUDGET[kind]}", "minimal.py"],

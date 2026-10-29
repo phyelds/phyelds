@@ -51,6 +51,21 @@ poetry run python -m phyelds.micropython main.py -o dist --mpy
 modules of the program stay `.py`. MicroPython imports a `.py` before a `.mpy` with the same
 name: remove the `.py` files of an older build from the board.
 
+### Pruning
+
+`--prune` leaves out the functions, classes and methods of phyelds that the program never
+names: a program that sums a field keeps `sum` and what it calls, not the other methods of
+fields. The analysis goes by name and stays on the safe side: a definition stays if its
+name appears anywhere else in the build (as a name, an attribute, an import, or a word in a
+string), and so do special methods and definitions with decorators that may register them.
+So code that is not in the build, such as code typed at the REPL, cannot use what is left
+out, and a name the program only computes must appear in it, for instance in a string. The
+modules given with `--include` are kept whole.
+
+```bash
+poetry run python -m phyelds.micropython main.py -o dist --mpy --prune
+```
+
 ---
 
 ## The device loop
@@ -120,6 +135,6 @@ half as large on the 32-bit ESP32, which without PSRAM has roughly 100 KB free: 
 only the libraries the program uses. Modules are compiled when they are imported, which
 briefly needs more memory than they then keep, unless they are [compiled ahead](#compiled-ahead):
 the minimal program of the tests (`src/tests/micropython/minimal.py`, a counter and the ids
-of the neighbors on three devices) starts in about 82 KB of heap as `.py`, and in 56 KB as
-`.mpy`. The ESP32 example runs, three devices in one process, in a 128 KB heap on the unix
+of the neighbors on three devices) starts in about 82 KB of heap as `.py`, in 56 KB as
+`.mpy`, and in 52 KB [pruned](#pruning). The ESP32 example runs, three devices in one process, in a 128 KB heap on the unix
 port.

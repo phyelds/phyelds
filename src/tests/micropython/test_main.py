@@ -42,3 +42,13 @@ def test_main_compiles_the_library_with_mpy_cross_when_asked(tmp_path, monkeypat
     main()
 
     assert (tmp_path / "dist" / "phyelds" / "__init__.mpy").exists()
+
+
+def test_main_prunes_the_library_when_asked(tmp_path, monkeypatch):
+    program = tmp_path / "program.py"
+    program.write_text("from phyelds.libraries.device import local_id\n")
+    monkeypatch.setattr(sys, "argv", ["phyelds.micropython", str(program), "-o", str(tmp_path / "dist"), "--prune"])
+
+    main()
+
+    assert "def local_position" not in (tmp_path / "dist" / "phyelds" / "libraries" / "device.py").read_text()

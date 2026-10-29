@@ -1,4 +1,4 @@
-"""Command line: ``python -m phyelds.micropython program.py [more.py ...] -o dist [--mpy]``."""
+"""Command line: ``python -m phyelds.micropython program.py [more.py ...] -o dist [options]``."""
 import argparse
 from pathlib import Path
 
@@ -25,10 +25,14 @@ def main() -> None:
         "--optimize", type=int, choices=range(4), default=0, metavar="LEVEL",
         help="optimization level of mpy-cross, 0 to 3 (3: no line numbers in tracebacks)",
     )
+    parser.add_argument(
+        "--prune", action="store_true",
+        help="leave out the functions, classes and methods of phyelds the program never names",
+    )
     arguments = parser.parse_args()
     build(
-        arguments.sources, arguments.out,
-        include=arguments.include, mpy=arguments.mpy, optimize=arguments.optimize,
+        arguments.sources, arguments.out, include=arguments.include,
+        mpy=arguments.mpy, optimize=arguments.optimize, prune=arguments.prune,
     )
 
 

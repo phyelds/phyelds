@@ -22,6 +22,7 @@ from pathlib import Path
 import phyelds
 from phyelds.calculus.internal import AggregateTransformer
 from phyelds.calculus.internal.transform import is_aggregate_decorator
+from phyelds.micropython import prune as pruning
 from phyelds.micropython._syntax import decorator_name
 
 _SHIMMED = {
@@ -43,13 +44,14 @@ _HELPERS = ("_aligned_branch", "align_left", "align_right")
 _NO_OPS = {"abc": ("ABC", "abstractmethod"), "functools": ("wraps",)}
 
 
-def build(
+def build(  # pylint: disable=too-many-arguments
     sources: Sequence[Path],
     out_dir: Path,
     *,
     include: Sequence[str] = (),
     mpy: bool = False,
     optimize: int = 0,
+    prune: bool = False,
 ) -> None:
     """
     Write ``sources`` and the modules of phyelds they import, rewritten for MicroPython,
@@ -70,6 +72,10 @@ def build(
             then does not compile them, which takes memory. The sources stay ``.py``.
         optimize: The optimization level of ``mpy-cross``, from 0 to 3; 3 leaves out the
             line numbers of tracebacks, for smaller files.
+        prune: Leave out the functions, classes and methods of phyelds that nothing in the
+            build names (see ``phyelds.micropython.prune``): code that is not in the build,
+            such as code typed at the REPL, cannot use them. The modules in ``include``
+            are kept whole.
 
     Raises:
         ImportError: If a module in ``include`` does not exist.
@@ -88,6 +94,11 @@ def build(
     }
     if programs or include:
         library = {path: library[path] for path in _imported(library, programs, include)}
+    if prune:
+        whole = {_path_of(module, library) for module in include}
+        roots = {**programs, **{str(path): library[path] for path in whole}}
+        parts = {path: content for path, content in library.items() if path not in whole}
+        library |= pruning.prune(parts, roots)
     for relative, content in library.items():
         if mpy_cross:
             _compile([mpy_cross, f"-O{optimize}"], content, out_dir, Path("phyelds") / relative)
@@ -256,6 +267,13 @@ def _library() -> dict[Path, str]:
         if not relative.as_posix().startswith(_LEFT_OUT):
             modules[relative] = transpile(path.read_text(), docstrings=False)
     return modules
+
+
+def _path_of(module: str, library: Mapping[Path, str]) -> Path:
+    """The path in ``library`` of the module of phyelds named ``module``."""
+    parts = module.split(".")[1:]
+    package = Path(*parts, "__init__.py")
+    return package if package in library else Path(*parts[:-1], f"{parts[-1]}.py")
 
 
 def _imported(

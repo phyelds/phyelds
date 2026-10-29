@@ -298,6 +298,33 @@ def test_build_writes_the_modules_included_by_name(tmp_path):
     assert (library / "calculus" / "__init__.py").exists()
 
 
+def test_build_prunes_the_definitions_of_phyelds_the_program_never_names(tmp_path):
+    program = tmp_path / "program.py"
+    program.write_text(textwrap.dedent("""
+        from phyelds.calculus import neighbors
+        from phyelds.libraries.device import local_id
+        total = neighbors(local_id()).sum()
+    """))
+
+    build([program], tmp_path / "dist", prune=True)
+
+    library = tmp_path / "dist" / "phyelds"
+    device = (library / "libraries" / "device.py").read_text()
+    field = (library / "data" / "__init__.py").read_text()
+    assert "def local_id" in device and "def local_position" not in device
+    assert "def sum" in field and "def fold" in field and "def coerce_in" not in field
+
+
+def test_build_keeps_the_modules_included_by_name_whole_when_pruning(tmp_path):
+    program = tmp_path / "program.py"
+    program.write_text("import importlib\n")
+
+    build([program], tmp_path / "dist", include=["phyelds.libraries.gossip"], prune=True)
+
+    gossip = (tmp_path / "dist" / "phyelds" / "libraries" / "gossip.py").read_text()
+    assert "def gossip_max" in gossip and "def path_coherent_gossip" in gossip
+
+
 def test_build_rejects_an_included_module_that_does_not_exist(tmp_path):
     with pytest.raises(ImportError, match="phyelds.libraries.missing"):
         build([], tmp_path, include=["phyelds.libraries.missing"])
