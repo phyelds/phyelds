@@ -3,20 +3,14 @@ Stand-in for ``wrapt``: an ``ObjectProxy`` that forwards attributes and operator
 
 Unlike ``wrapt``, the proxy does not pretend to be of the type it wraps:
 ``isinstance(proxy, int)`` is false.
+
+Each operator is spelled out: built from closures, they would keep about twice the memory.
 """
 from typing import Any
 
 
 def _unwrap(value: Any) -> Any:
     return value.__wrapped__ if isinstance(value, ObjectProxy) else value
-
-
-def _forward(operator):
-    return lambda self, other: operator(self.__wrapped__, _unwrap(other))
-
-
-def _reflect(operator):
-    return lambda self, other: operator(_unwrap(other), self.__wrapped__)
 
 
 class ObjectProxy:
@@ -28,36 +22,95 @@ class ObjectProxy:
     def __getattr__(self, name: str) -> Any:
         return getattr(self.__wrapped__, name)
 
-    __add__ = _forward(lambda a, b: a + b)
-    __sub__ = _forward(lambda a, b: a - b)
-    __mul__ = _forward(lambda a, b: a * b)
-    __truediv__ = _forward(lambda a, b: a / b)
-    __floordiv__ = _forward(lambda a, b: a // b)
-    __mod__ = _forward(lambda a, b: a % b)
-    __pow__ = _forward(lambda a, b: a ** b)
-    __and__ = _forward(lambda a, b: a & b)
-    __or__ = _forward(lambda a, b: a | b)
-    __xor__ = _forward(lambda a, b: a ^ b)
-    __lshift__ = _forward(lambda a, b: a << b)
-    __rshift__ = _forward(lambda a, b: a >> b)
-    __radd__ = _reflect(lambda a, b: a + b)
-    __rsub__ = _reflect(lambda a, b: a - b)
-    __rmul__ = _reflect(lambda a, b: a * b)
-    __rtruediv__ = _reflect(lambda a, b: a / b)
-    __rfloordiv__ = _reflect(lambda a, b: a // b)
-    __rmod__ = _reflect(lambda a, b: a % b)
-    __rpow__ = _reflect(lambda a, b: a ** b)
-    __rand__ = _reflect(lambda a, b: a & b)
-    __ror__ = _reflect(lambda a, b: a | b)
-    __rxor__ = _reflect(lambda a, b: a ^ b)
-    __eq__ = _forward(lambda a, b: a == b)
-    __ne__ = _forward(lambda a, b: a != b)
-    __lt__ = _forward(lambda a, b: a < b)
-    __le__ = _forward(lambda a, b: a <= b)
-    __gt__ = _forward(lambda a, b: a > b)
-    __ge__ = _forward(lambda a, b: a >= b)
-    __contains__ = _forward(lambda a, b: b in a)
-    __getitem__ = _forward(lambda a, b: a[b])
+    def __add__(self, other: Any) -> Any:
+        return self.__wrapped__ + _unwrap(other)
+
+    def __sub__(self, other: Any) -> Any:
+        return self.__wrapped__ - _unwrap(other)
+
+    def __mul__(self, other: Any) -> Any:
+        return self.__wrapped__ * _unwrap(other)
+
+    def __truediv__(self, other: Any) -> Any:
+        return self.__wrapped__ / _unwrap(other)
+
+    def __floordiv__(self, other: Any) -> Any:
+        return self.__wrapped__ // _unwrap(other)
+
+    def __mod__(self, other: Any) -> Any:
+        return self.__wrapped__ % _unwrap(other)
+
+    def __pow__(self, other: Any) -> Any:
+        return self.__wrapped__ ** _unwrap(other)
+
+    def __and__(self, other: Any) -> Any:
+        return self.__wrapped__ & _unwrap(other)
+
+    def __or__(self, other: Any) -> Any:
+        return self.__wrapped__ | _unwrap(other)
+
+    def __xor__(self, other: Any) -> Any:
+        return self.__wrapped__ ^ _unwrap(other)
+
+    def __lshift__(self, other: Any) -> Any:
+        return self.__wrapped__ << _unwrap(other)
+
+    def __rshift__(self, other: Any) -> Any:
+        return self.__wrapped__ >> _unwrap(other)
+
+    def __radd__(self, other: Any) -> Any:
+        return _unwrap(other) + self.__wrapped__
+
+    def __rsub__(self, other: Any) -> Any:
+        return _unwrap(other) - self.__wrapped__
+
+    def __rmul__(self, other: Any) -> Any:
+        return _unwrap(other) * self.__wrapped__
+
+    def __rtruediv__(self, other: Any) -> Any:
+        return _unwrap(other) / self.__wrapped__
+
+    def __rfloordiv__(self, other: Any) -> Any:
+        return _unwrap(other) // self.__wrapped__
+
+    def __rmod__(self, other: Any) -> Any:
+        return _unwrap(other) % self.__wrapped__
+
+    def __rpow__(self, other: Any) -> Any:
+        return _unwrap(other) ** self.__wrapped__
+
+    def __rand__(self, other: Any) -> Any:
+        return _unwrap(other) & self.__wrapped__
+
+    def __ror__(self, other: Any) -> Any:
+        return _unwrap(other) | self.__wrapped__
+
+    def __rxor__(self, other: Any) -> Any:
+        return _unwrap(other) ^ self.__wrapped__
+
+    def __eq__(self, other: Any) -> Any:
+        return self.__wrapped__ == _unwrap(other)
+
+    def __ne__(self, other: Any) -> Any:
+        return self.__wrapped__ != _unwrap(other)
+
+    def __lt__(self, other: Any) -> Any:
+        return self.__wrapped__ < _unwrap(other)
+
+    def __le__(self, other: Any) -> Any:
+        return self.__wrapped__ <= _unwrap(other)
+
+    def __gt__(self, other: Any) -> Any:
+        return self.__wrapped__ > _unwrap(other)
+
+    def __ge__(self, other: Any) -> Any:
+        return self.__wrapped__ >= _unwrap(other)
+
+    def __contains__(self, other: Any) -> Any:
+        return _unwrap(other) in self.__wrapped__
+
+    def __getitem__(self, other: Any) -> Any:
+        return self.__wrapped__[_unwrap(other)]
 
     def __neg__(self) -> Any:
         return -self.__wrapped__
