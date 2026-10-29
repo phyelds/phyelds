@@ -171,7 +171,8 @@ class _Portable(ast.NodeTransformer):
     def visit_AnnAssign(self, node: ast.AnnAssign) -> ast.Assign | None:
         if node.value is None:
             return None
-        return ast.copy_location(ast.Assign(targets=[node.target], value=node.value), node)
+        value = self.visit(node.value)
+        return ast.copy_location(ast.Assign(targets=[node.target], value=value), node)
 
     def visit_Subscript(self, node: ast.Subscript) -> ast.expr:
         # Type expressions are evaluated at run time in aliases, and MicroPython cannot

@@ -126,6 +126,16 @@ def test_transpile_reduces_type_expressions_to_their_typing_name():
     ]
 
 
+def test_transpile_rewrites_the_values_of_annotated_assignments():
+    output = _transpiled("""
+        from typing import cast
+        value: int = cast(int, compute())
+        extended: tuple = (*hops, last)
+    """)
+
+    assert output.splitlines()[1:] == ["value = compute()", "extended = tuple(hops) + (last,)"]
+
+
 def test_transpile_drops_generic_base_classes():
     output = _transpiled("""
         class Field(Generic[T], Iterator[T], Base):
