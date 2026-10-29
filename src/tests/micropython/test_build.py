@@ -131,16 +131,20 @@ def test_transpile_spells_out_unpacking_in_tuples_and_lists():
     ]
 
 
-def test_transpile_reduces_type_expressions_to_their_typing_name():
+def test_transpile_binds_type_aliases_and_variables_to_none():
     output = _transpiled("""
-        from typing import Callable, cast
+        from typing import Callable, TypeVar, Union, cast
+        T = TypeVar("T")
         Strategy = Callable[[float, Field[float]], int | None]
+        Mark: TypeAlias = Union[T, "State[T]"]
         value = cast(Field[bool], compute())
         size = sizes[0]
     """)
 
-    assert output.splitlines()[1:] == [
-        "Strategy = Callable",
+    assert output.splitlines() == [
+        "T = None",
+        "Strategy = None",
+        "Mark = None",
         "value = compute()",
         "size = sizes[0]",
     ]

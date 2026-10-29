@@ -172,8 +172,17 @@ class _Portable(ast.NodeTransformer):
     def visit_AnnAssign(self, node: ast.AnnAssign) -> ast.Assign | None:
         if node.value is None:
             return None
-        value = self.visit(node.value)
-        return ast.copy_location(ast.Assign(targets=[node.target], value=value), node)
+        assignment = ast.Assign(targets=[node.target], value=node.value)
+        return self.visit(ast.copy_location(assignment, node))
+
+    def visit_Assign(self, node: ast.Assign) -> ast.Assign:
+        self.generic_visit(node)
+        value = node.value.func if isinstance(node.value, ast.Call) else node.value
+        if self._is_typing_name(value):
+            # A type alias or a type variable: other modules may import its name, but its
+            # value is of no use, and would keep the typing stand-in imported.
+            node.value = ast.Constant(None)
+        return node
 
     def visit_Subscript(self, node: ast.Subscript) -> ast.expr:
         # Type expressions are evaluated at run time in aliases, and MicroPython cannot
