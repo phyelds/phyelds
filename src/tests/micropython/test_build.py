@@ -169,6 +169,18 @@ def test_transpile_drops_generic_base_classes():
     assert "class Field(Base):" in output
 
 
+def test_transpile_drops_abstract_base_classes_and_methods():
+    output = _transpiled("""
+        from abc import ABC, abstractmethod
+        class Engine(ABC, Base):
+            @abstractmethod
+            def run(self):
+                pass
+    """)
+
+    assert output.splitlines() == ["class Engine(Base):", "", "    def run(self):", "        pass"]
+
+
 def test_transpile_lists_the_fields_of_dataclasses():
     output = _transpiled('''
         @dataclass(frozen=True)

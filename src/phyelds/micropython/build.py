@@ -136,6 +136,7 @@ class _Portable(ast.NodeTransformer):
         self.aligned = False
         self.enums = False
         self.typing_names = set()
+        self.abc_names = set()
 
     def visit_Import(self, node: ast.Import) -> ast.Import:
         for alias in node.names:
@@ -147,6 +148,8 @@ class _Portable(ast.NodeTransformer):
     def visit_ImportFrom(self, node: ast.ImportFrom) -> ast.ImportFrom:
         if node.module in _TYPING:
             self.typing_names.update(alias.asname or alias.name for alias in node.names)
+        if node.module == "abc":
+            self.abc_names.update(alias.asname or alias.name for alias in node.names)
         if node.module in _SHIMMED:
             node.module = f"phyelds._mpy.{_SHIMMED[node.module]}"
         return node
@@ -161,6 +164,9 @@ class _Portable(ast.NodeTransformer):
             node.body = [AggregateTransformer().visit(statement) for statement in node.body]
             self.aligned = True
         node.returns = None
+        node.decorator_list = [
+            decorator for decorator in node.decorator_list if not self._is_abc_name(decorator)
+        ]
         self.generic_visit(node)
         node.body = node.body or [ast.Pass()]
         return node
@@ -199,6 +205,9 @@ class _Portable(ast.NodeTransformer):
     def _is_typing_name(self, node: ast.expr) -> bool:
         return isinstance(node, ast.Name) and node.id in self.typing_names
 
+    def _is_abc_name(self, node: ast.expr) -> bool:
+        return isinstance(node, ast.Name) and node.id in self.abc_names
+
     def visit_Tuple(self, node: ast.Tuple) -> ast.expr:
         self.generic_visit(node)
         return _without_unpacking(node, "tuple")
@@ -213,7 +222,11 @@ class _Portable(ast.NodeTransformer):
             for statement in node.body
             if isinstance(statement, ast.AnnAssign) and isinstance(statement.target, ast.Name)
         ]
-        node.bases = [base for base in node.bases if not isinstance(base, ast.Subscript)]
+        # Generic[T] and ABC are only markers: their stand-ins do nothing.
+        node.bases = [
+            base for base in node.bases
+            if not isinstance(base, ast.Subscript) and not self._is_abc_name(base)
+        ]
         if any(isinstance(base, ast.Name) and base.id == "Enum" for base in node.bases):
             node.decorator_list.append(ast.Name(id="_phyelds_enum_members", ctx=ast.Load()))
             self.enums = True
