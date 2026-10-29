@@ -10,24 +10,48 @@ from phyelds.vm import Engine, NodeContext, EngineState
 
 _FNV_OFFSET = 0x811C9DC5
 _FNV_PRIME = 0x01000193
+_SLASH = ord("/")
 
 
-def _compact_key(path: List[str]) -> int:
+def _extend_digest(digest: int, segment: str) -> int:
+    """The FNV-1a hash ``digest`` of a path, followed by ``segment`` and a slash."""
+    for byte in segment.encode():
+        digest = ((digest ^ byte) * _FNV_PRIME) & 0xFFFFFFFF
+    return ((digest ^ _SLASH) * _FNV_PRIME) & 0xFFFFFFFF
+
+
+class _CompactKeys:  # pylint: disable=too-few-public-methods
     """
-    FNV-1a hash of ``path``, the same on every runtime (unlike ``hash``, which is salted).
+    The compact key of a path: its FNV-1a hash, the same on every runtime (unlike ``hash``,
+    which is salted), cut to 30 bits so that it stays a small integer on 32-bit MicroPython
+    boards, which would otherwise allocate a big integer for each key.
 
-    Cut to 30 bits so that it stays a small integer on 32-bit MicroPython boards, which
-    would otherwise allocate a big integer for each key.
+    The hash of a path goes on from that of the start it shares with the last path hashed:
+    the paths of a round come one after the other in the program, and share most of it.
     """
-    # ponytail: 30-bit keys, ~1e-3 chance of a collision with 1000 paths; widen if needed
-    digest = _FNV_OFFSET
-    for segment in path:
-        for byte in segment.encode() + b"/":
-            digest = ((digest ^ byte) * _FNV_PRIME) & 0xFFFFFFFF
-    return digest & 0x3FFFFFFF
+
+    def __init__(self):
+        self._hashed: List[str] = []
+        self._hashes: List[int] = [_FNV_OFFSET]
+
+    def __call__(self, path: List[str]) -> int:
+        hashed, hashes = self._hashed, self._hashes
+        shared = 0
+        limit = min(len(path), len(hashed))
+        while shared < limit and path[shared] == hashed[shared]:
+            shared += 1
+        while len(hashed) > shared:
+            hashed.pop()
+            hashes.pop()
+        for index in range(shared, len(path)):
+            hashed.append(path[index])
+            hashes.append(_extend_digest(hashes[-1], path[index]))
+        # ponytail: 30-bit keys, ~1e-3 chance of a collision with 1000 paths; widen if needed
+        return hashes[-1] & 0x3FFFFFFF
 
 
-_PATH_KEYS = {"debug": str, "compact": _compact_key}
+# Debug keys are str(path): built whole, in C, they are faster than from a shared start.
+_PATH_KEYS = {"debug": lambda: str, "compact": _CompactKeys}
 
 
 class MutableEngine(Engine):
@@ -49,7 +73,7 @@ class MutableEngine(Engine):
         super().__init__()
         if paths not in _PATH_KEYS:
             raise ValueError(f"paths must be one of {sorted(_PATH_KEYS)}, not {paths!r}")
-        self._key = _PATH_KEYS[paths]
+        self._key = _PATH_KEYS[paths]()
         self.engine_state = EngineState()
 
     def setup(
