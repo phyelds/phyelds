@@ -34,7 +34,7 @@ _SHIMMED = {
     "wrapt": "wrapt",
 }
 _TYPING = ("typing", "collections.abc")
-_LEFT_OUT = ("micropython", "calculus/internal/transform.py")
+_LEFT_OUT = ("micropython", "calculus/internal")
 _HELPERS = ("_aligned_branch", "align_left", "align_right")
 
 

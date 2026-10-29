@@ -180,7 +180,7 @@ def test_build_writes_the_library_without_the_parts_needing_cpython(tmp_path):
     assert (tmp_path / "phyelds" / "_mpy" / "wrapt.py").exists()
     assert not (tmp_path / "phyelds" / "simulator").exists()
     assert not (tmp_path / "phyelds" / "micropython").exists()
-    assert not (tmp_path / "phyelds" / "calculus" / "internal" / "transform.py").exists()
+    assert not (tmp_path / "phyelds" / "calculus" / "internal").exists()
 
 
 def test_build_writes_only_the_modules_the_sources_import(tmp_path):
