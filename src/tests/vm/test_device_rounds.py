@@ -83,6 +83,61 @@ def test_device_sends_each_neighbor_its_own_value_of_a_field():
     assert _run_line(per_neighbor, rounds=3) == expected
 
 
+def _hear(device: Device, sender: Device) -> None:
+    """A round of ``sender``, all of whose messages ``device`` hears, the addressed ones first."""
+    payload = sender.run_round({})
+    for message in [*sender.addressed.values(), payload]:
+        device.receive(sender.device_id, message)
+
+
+def test_device_ignores_the_messages_addressed_to_other_devices():
+    sender, device, other = (Device(device_id, addressed, per_neighbor=True) for device_id in (1, 2, 3))
+    sender.receive(2, device.run_round({}))
+    sender.receive(3, other.run_round({}))
+
+    payload = sender.run_round({})
+    for message in [payload, sender.addressed[2], sender.addressed[3]]:
+        device.receive(1, message)
+    device.run_round({})
+
+    assert device.result[1] == 21
+
+
+def test_device_takes_the_message_for_every_neighbor_once_none_is_addressed_to_it():
+    sender = Device(1, addressed, per_neighbor=True, lifetime=1)
+    device = Device(2, addressed, per_neighbor=True)
+    sender.receive(2, device.run_round({}))
+    _hear(device, sender)
+    device.run_round({})
+    assert device.result[1] == 21
+
+    _hear(device, sender)  # it no longer hears the device, so it addresses it nothing
+    device.run_round({})
+
+    assert device.result[1] == -1
+
+
+def test_device_addresses_no_message_when_its_program_sends_no_field():
+    devices = [Device(device_id, gradient, per_neighbor=True) for device_id in (10, 20, 30)]
+
+    _run_line(devices, rounds=3)
+
+    assert [device.addressed for device in devices] == [{}, {}, {}]
+
+
+def _payload_sizes(neighbors: int, per_neighbor: bool) -> list[int]:
+    center = Device(0, addressed, per_neighbor=per_neighbor)
+    for neighbor in range(1, neighbors + 1):
+        center.receive(neighbor, Device(neighbor, addressed).run_round({}))
+    payload = center.run_round({})
+    return [len(payload), *map(len, center.addressed.values())]
+
+
+def test_device_messages_do_not_grow_with_the_neighbors_when_addressed():
+    assert max(_payload_sizes(8, per_neighbor=True)) == max(_payload_sizes(2, per_neighbor=True))
+    assert max(_payload_sizes(8, per_neighbor=False)) > max(_payload_sizes(2, per_neighbor=False))
+
+
 def test_device_forgets_a_neighbor_silent_for_longer_than_the_lifetime():
     source = Device(1, gradient)
     device = Device(2, gradient, lifetime=2)
