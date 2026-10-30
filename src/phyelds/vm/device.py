@@ -23,6 +23,8 @@ class Device:  # pylint: disable=too-many-instance-attributes
         paths: How the engine encodes alignment paths: ``"debug"``, ``"compact"``, or an
             encoding of one's own (see ``MutableEngine``); devices that talk to each other
             must use the same.
+        binary: Whether to send the binary format of ``phyelds.data.codec``, smaller, instead
+            of JSON. Devices understand both, whichever they send.
         messages: What the device sends: ``"shared"``, the same message to every neighbor,
             with whole fields; or ``"addressed"``, besides the message for every neighbor,
             one addressed to each neighbor heard from, with its value of each field instead
@@ -42,6 +44,7 @@ class Device:  # pylint: disable=too-many-instance-attributes
         program: Callable[[], Any],
         *,
         paths: Any = "debug",
+        binary: bool = False,
         messages: str = "shared",
         lifetime: int = 1,
     ):
@@ -50,6 +53,7 @@ class Device:  # pylint: disable=too-many-instance-attributes
         self.device_id = device_id
         self.program = program
         self.paths = paths
+        self.binary = binary
         self.messages = messages
         self.lifetime = lifetime
         self.result: Any = None
@@ -122,9 +126,9 @@ class Device:  # pylint: disable=too-many-instance-attributes
             for neighbor in received:
                 message = _for(outbox, neighbor)
                 message[self._recipient_key] = neighbor
-                self.addressed[neighbor] = encode(message)
+                self.addressed[neighbor] = encode(message, self.binary)
             outbox = _for(outbox, None)
-        return encode(outbox)
+        return encode(outbox, self.binary)
 
 
 def _for(outbox: Mapping[Any, Any], neighbor: Any) -> dict[Any, Any]:

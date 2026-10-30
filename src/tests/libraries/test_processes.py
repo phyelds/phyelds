@@ -1,3 +1,5 @@
+import pytest
+
 from phyelds.calculus import aggregate, neighbors
 from phyelds.libraries.collect import count_nodes
 from phyelds.libraries.device import local_id, sense
@@ -17,6 +19,7 @@ from phyelds.libraries.processes import (
 )
 from phyelds.libraries.spreading import broadcast, distance_to
 from phyelds.simulator.runner import schedule_program_for_all
+from phyelds.vm.device import Device
 from tests.libraries.simulator_utils import setup_up_simulator
 
 
@@ -209,3 +212,18 @@ def test_process_with_bubble_context_manager_and_plain_tuple_return():
     assert simulator.environment.nodes[2].data["result"] == {}
     assert simulator.environment.nodes[3].data["result"] == {}
 
+
+
+@pytest.mark.parametrize("paths", ["debug", "compact"])
+def test_spawn_aligns_the_processes_of_devices_whatever_their_paths(paths):
+    @aggregate
+    def program():
+        return spawn(lambda pid: (neighbors(1).sum(), True), {local_id()})
+
+    devices = [Device(device_id, program, paths=paths) for device_id in (1, 2)]
+    for _ in range(3):
+        first, second = (device.run_round({}) for device in devices)
+        devices[0].receive(2, second)
+        devices[1].receive(1, first)
+
+    assert [device.result for device in devices] == [{1: 2, 2: 2}, {1: 2, 2: 2}]

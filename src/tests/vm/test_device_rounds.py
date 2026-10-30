@@ -75,6 +75,18 @@ def test_device_computes_the_same_values_with_an_encoding_of_its_own():
     assert _run_line(devices, rounds=3) == [0, 1, 2]
 
 
+def test_device_sends_smaller_payloads_in_the_binary_format():
+    json, binary = Device(1, gradient), Device(1, gradient, binary=True)
+
+    assert len(binary.run_round({"source": True})) < len(json.run_round({"source": True}))
+
+
+def test_device_understands_neighbors_that_send_the_other_format():
+    devices = [Device(10, gradient, binary=True), Device(20, gradient), Device(30, gradient, binary=True)]
+
+    assert _run_line(devices, rounds=3) == [0, 1, 2]
+
+
 def test_device_sends_each_neighbor_its_own_value_of_a_field():
     shared = [Device(device_id, addressed) for device_id in (10, 20, 30)]
     addressing = [Device(device_id, addressed, messages="addressed") for device_id in (10, 20, 30)]
@@ -83,6 +95,14 @@ def test_device_sends_each_neighbor_its_own_value_of_a_field():
 
     assert expected[1] == {10: 210, 20: 220, 30: 230}
     assert _run_line(addressing, rounds=3) == expected
+
+
+def test_device_addresses_its_messages_in_the_binary_format_too():
+    shared = [Device(device_id, addressed) for device_id in (10, 20, 30)]
+    devices = [Device(device_id, addressed, messages="addressed", binary=True) for device_id in (10, 20, 30)]
+
+    assert _run_line(devices, rounds=3) == _run_line(shared, rounds=3)
+    assert all(payload[:1] != b"{" for device in devices for payload in device.addressed.values())
 
 
 def _hear(device: Device, sender: Device) -> None:

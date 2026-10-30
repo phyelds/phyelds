@@ -84,8 +84,12 @@ class _ProcessTransaction:
         self._saved_to_send = state.to_send.copy()
         self._saved_state_trace = state.state_trace.copy()
         self._saved_reads = state.reads.copy()
-        state.stack.append(f"process:{self.key!r}")
-        state.count_stack.append(0)
+        # The key alone aligns a process, whatever the processes before it: enter it as the
+        # first point of its parent, then give the parent back its count.
+        counter = state.count_stack[-1]
+        state.count_stack[-1] = 0
+        self._engine.enter(f"process:{self.key!r}")
+        state.count_stack[-2] = counter
         _ACTIVE_TRANSACTIONS.append(self)
         return self
 
