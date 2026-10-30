@@ -1,3 +1,13 @@
+## [9.3.0](https://github.com/phyelds/phyelds/compare/9.2.0...9.3.0) (2026-10-30)
+
+### Features
+
+* **codec:** add a compact binary wire format ([#55](https://github.com/phyelds/phyelds/issues/55)) ([0ec5049](https://github.com/phyelds/phyelds/commit/0ec5049549cb76954be2793fa10405753258e677)), closes [#47](https://github.com/phyelds/phyelds/issues/47) [#47](https://github.com/phyelds/phyelds/issues/47) [#47](https://github.com/phyelds/phyelds/issues/47) [#47](https://github.com/phyelds/phyelds/issues/47) [#47](https://github.com/phyelds/phyelds/issues/47) [#47](https://github.com/phyelds/phyelds/issues/47) [#47](https://github.com/phyelds/phyelds/issues/47)
+
+### Bug Fixes
+
+* **processes:** enter the key of a process through the path encoding ([#54](https://github.com/phyelds/phyelds/issues/54)) ([3709159](https://github.com/phyelds/phyelds/commit/3709159bd919467ba814bd50cfc5c84703e5effc))
+
 ## [9.2.0](https://github.com/phyelds/phyelds/compare/9.1.0...9.2.0) (2026-10-30)
 
 ### Features
