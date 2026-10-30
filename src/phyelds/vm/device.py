@@ -26,7 +26,8 @@ class Device:  # pylint: disable=too-many-instance-attributes
         per_neighbor: Whether to send, besides the message for every neighbor, one message
             addressed to each neighbor heard from, with its value of each field instead of
             the whole field (see ``addressed``), so that the messages do not grow with the
-            neighbors. The devices that receive them must run this version or a later one.
+            neighbors. The devices that receive them must have ``per_neighbor`` too: an
+            older version takes a message addressed to another device for its own.
         lifetime: For how many rounds a message is used if its sender does not send a newer
             one. ``1`` keeps only the messages received since the last round.
     """
