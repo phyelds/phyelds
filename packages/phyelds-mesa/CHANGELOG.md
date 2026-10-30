@@ -1,3 +1,9 @@
+## [9.1.0](https://github.com/phyelds/phyelds/compare/9.0.0...9.1.0) (2026-10-30)
+
+### Features
+
+* **micropython:** smaller builds for small targets ([#49](https://github.com/phyelds/phyelds/issues/49)) ([c60532f](https://github.com/phyelds/phyelds/commit/c60532ffc3d74a46617796e09cd09a1c3af9442c)), closes [#48](https://github.com/phyelds/phyelds/issues/48) [#48](https://github.com/phyelds/phyelds/issues/48) [#48](https://github.com/phyelds/phyelds/issues/48) [#48](https://github.com/phyelds/phyelds/issues/48) [#48](https://github.com/phyelds/phyelds/issues/48) [#48](https://github.com/phyelds/phyelds/issues/48) [#48](https://github.com/phyelds/phyelds/issues/48) [#48](https://github.com/phyelds/phyelds/issues/48) [#48](https://github.com/phyelds/phyelds/issues/48) [#48](https://github.com/phyelds/phyelds/issues/48) [#48](https://github.com/phyelds/phyelds/issues/48) [#48](https://github.com/phyelds/phyelds/issues/48) [#48](https://github.com/phyelds/phyelds/issues/48) [#48](https://github.com/phyelds/phyelds/issues/48) [#48](https://github.com/phyelds/phyelds/issues/48) [#48](https://github.com/phyelds/phyelds/issues/48) [#48](https://github.com/phyelds/phyelds/issues/48) [#48](https://github.com/phyelds/phyelds/issues/48) [#48](https://github.com/phyelds/phyelds/issues/48) [#48](https://github.com/phyelds/phyelds/issues/48) [#48](https://github.com/phyelds/phyelds/issues/48) [#48](https://github.com/phyelds/phyelds/issues/48) [#48](https://github.com/phyelds/phyelds/issues/48) [#48](https://github.com/phyelds/phyelds/issues/48)
+
 ## [9.0.0](https://github.com/phyelds/phyelds/compare/8.13.1...9.0.0) (2026-10-30)
 
 ### ⚠ BREAKING CHANGES
