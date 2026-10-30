@@ -1,3 +1,13 @@
+## [9.0.0](https://github.com/phyelds/phyelds/compare/8.13.1...9.0.0) (2026-10-30)
+
+### ⚠ BREAKING CHANGES
+
+* **vm:** compact keys are hashed otherwise, in small integers: devices in compact mode must all run this version or later.
+
+### Features
+
+* **vm:** encode alignment paths as the program enters them ([#51](https://github.com/phyelds/phyelds/issues/51)) ([d12c24a](https://github.com/phyelds/phyelds/commit/d12c24a739af5fa929d85fe4e5360ddf60e7c64b)), closes [#50](https://github.com/phyelds/phyelds/issues/50) [#50](https://github.com/phyelds/phyelds/issues/50) [#50](https://github.com/phyelds/phyelds/issues/50) [#50](https://github.com/phyelds/phyelds/issues/50) [#50](https://github.com/phyelds/phyelds/issues/50)
+
 ## [8.13.1](https://github.com/phyelds/phyelds/compare/8.13.0...8.13.1) (2026-10-26)
 
 ### Bug Fixes
