@@ -23,21 +23,25 @@ class Device:  # pylint: disable=too-many-instance-attributes
         paths: How the engine encodes alignment paths: ``"debug"``, ``"compact"``, or an
             encoding of one's own (see ``MutableEngine``); devices that talk to each other
             must use the same.
+        binary: Whether to send the binary format of ``phyelds.data.codec``, smaller, instead
+            of JSON. Devices understand both, whichever they send.
         lifetime: For how many rounds a message is used if its sender does not send a newer
             one. ``1`` keeps only the messages received since the last round.
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         device_id: Any,
         program: Callable[[], Any],
         *,
         paths: Any = "debug",
+        binary: bool = False,
         lifetime: int = 1,
     ):
         self.device_id = device_id
         self.program = program
         self.paths = paths
+        self.binary = binary
         self.lifetime = lifetime
         self.result: Any = None
         """The value the program computed in the last round."""
@@ -79,4 +83,4 @@ class Device:  # pylint: disable=too-many-instance-attributes
         self._state = engine.get().state_trace()
         self.outputs = context.outputs
         self.result = result.value if isinstance(result, State) else result
-        return encode(outbox)
+        return encode(outbox, self.binary)

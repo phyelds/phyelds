@@ -60,6 +60,18 @@ def test_device_computes_the_same_values_with_an_encoding_of_its_own():
     assert _run_line(devices, rounds=3) == [0, 1, 2]
 
 
+def test_device_sends_smaller_payloads_in_the_binary_format():
+    json, binary = Device(1, gradient), Device(1, gradient, binary=True)
+
+    assert len(binary.run_round({"source": True})) < len(json.run_round({"source": True}))
+
+
+def test_device_understands_neighbors_that_send_the_other_format():
+    devices = [Device(10, gradient, binary=True), Device(20, gradient), Device(30, gradient, binary=True)]
+
+    assert _run_line(devices, rounds=3) == [0, 1, 2]
+
+
 def test_device_forgets_a_neighbor_silent_for_longer_than_the_lifetime():
     source = Device(1, gradient)
     device = Device(2, gradient, lifetime=2)
