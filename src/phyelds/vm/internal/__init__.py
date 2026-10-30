@@ -134,6 +134,18 @@ class MutableEngine(Engine):
         stack.append(self._segment(stack[-1] if stack else None, name, counter))
         self.engine_state.count_stack.append(0)
 
+    def key(self, path: List[Any]) -> Any:
+        """
+        The state and message key of ``path``, as the encoding of the engine makes it.
+
+        Args:
+            path: A list of segments, as ``current_path`` returns it.
+
+        Returns:
+            The key.
+        """
+        return self._key(path)
+
     def forget(self, stack: List[Any]) -> None:
         key = self._key(stack)
         if key in self.engine_state.state_trace:
