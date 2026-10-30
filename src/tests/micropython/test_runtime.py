@@ -1,7 +1,8 @@
 """
-What runs on MicroPython: the programs of programs.py, on the unix port of MicroPython.
+What runs on MicroPython: the programs of programs.py, on the unix port of MicroPython, and
+how much heap minimal.py needs; built as ``.py`` and, with ``mpy-cross``, as ``.mpy``.
 
-Skipped when ``micropython`` is not on the PATH; the CI builds it.
+Skipped when ``micropython`` (or ``mpy-cross``) is not on the PATH; the CI builds them.
 """
 import shutil
 import subprocess
@@ -12,21 +13,31 @@ import pytest
 from phyelds.data import NeighborhoodField
 from phyelds.data.codec import decode, encode
 from phyelds.micropython.build import build
-from tests.micropython import programs
+from tests.micropython import minimal, programs
 
 MICROPYTHON = shutil.which("micropython")
 # Enough for all the libraries and four devices in one process. Objects take about twice
 # the memory on the 64-bit unix port than on an ESP32.
 HEAP = "512k"
+# The heap minimal.py needs, with a margin: the need is not monotonic, as the heap fragments.
+# Lower them when a change saves memory, so that regressions show up.
+MINIMAL_BUDGET = {"py": "90k", "mpy": "64k", "pruned": "60k"}
 
 pytestmark = pytest.mark.skipif(MICROPYTHON is None, reason="micropython is not on the PATH")
+needs_mpy_cross = pytest.mark.skipif(shutil.which("mpy-cross") is None, reason="mpy-cross is not on the PATH")
+# As .py, as .mpy, and as .mpy without the definitions the program never names.
+BUNDLES = ["py", pytest.param("mpy", marks=needs_mpy_cross), pytest.param("pruned", marks=needs_mpy_cross)]
 
 
-@pytest.fixture(scope="module", name="bundle")
-def fixture_bundle(tmp_path_factory) -> Path:
+@pytest.fixture(scope="module", name="bundle", params=BUNDLES)
+def fixture_bundle(request, tmp_path_factory) -> Path:
     out_dir = tmp_path_factory.mktemp("bundle")
-    build([Path(programs.__file__)], out_dir)
+    build([Path(programs.__file__)], out_dir, **_options(request.param))
     return out_dir
+
+
+def _options(kind: str) -> dict:
+    return {"mpy": kind != "py", "prune": kind == "pruned"}
 
 
 def _on_micropython(bundle: Path, *arguments: str) -> subprocess.CompletedProcess:
@@ -112,3 +123,16 @@ def test_micropython_states_are_not_instances_of_their_value_type(bundle):
 
     assert set(results.values()) == {False}
     assert set(_cpython("state_type")[0].values()) == {True}
+
+
+@pytest.mark.parametrize("kind", BUNDLES)
+def test_micropython_runs_a_minimal_program_within_its_heap_budget(tmp_path, kind):
+    build([Path(minimal.__file__)], tmp_path, **_options(kind))
+
+    completed = subprocess.run(
+        [MICROPYTHON, "-X", f"heapsize={MINIMAL_BUDGET[kind]}", "minimal.py"],
+        cwd=tmp_path, capture_output=True, text=True, check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr + completed.stdout
+    assert completed.stdout.strip() == str(minimal.run())

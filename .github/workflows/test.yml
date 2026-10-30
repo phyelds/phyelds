@@ -171,6 +171,9 @@ jobs:
 
   micropython:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # lets codecov authenticate the upload with OIDC, without a token
     env:
       MICROPYTHON_VERSION: v1.29.0
 
@@ -186,8 +189,10 @@ jobs:
       id: cache-micropython
       uses: actions/cache@v4
       with:
-        path: micropython/ports/unix/build-standard/micropython
-        key: micropython-unix-${{ env.MICROPYTHON_VERSION }}
+        path: |
+          micropython/ports/unix/build-standard/micropython
+          micropython/mpy-cross/build/mpy-cross
+        key: micropython-unix-mpy-cross-${{ env.MICROPYTHON_VERSION }}
 
     - name: Build the unix port of MicroPython
       if: steps.cache-micropython.outputs.cache-hit != 'true'
@@ -197,8 +202,10 @@ jobs:
         make -C micropython/ports/unix submodules
         make -C micropython/ports/unix -j4
 
-    - name: Put MicroPython on the PATH
-      run: echo "$GITHUB_WORKSPACE/micropython/ports/unix/build-standard" >> $GITHUB_PATH
+    - name: Put MicroPython and mpy-cross on the PATH
+      run: |
+        echo "$GITHUB_WORKSPACE/micropython/ports/unix/build-standard" >> $GITHUB_PATH
+        echo "$GITHUB_WORKSPACE/micropython/mpy-cross/build" >> $GITHUB_PATH
 
     - name: Install Poetry
       run: |
@@ -214,4 +221,14 @@ jobs:
     - name: Test on MicroPython
       run: |
         micropython -c "import sys; print(sys.implementation)"
-        poetry run pytest src/tests/micropython -rs
+        mpy-cross --version
+        poetry run pytest src/tests/micropython src/tests/examples/test_esp32_example.py -rs \
+          --cov=src/phyelds --cov-report=xml
+
+    # The build job skips the tests that need micropython and mpy-cross: Codecov merges the
+    # coverage of both jobs.
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v5
+      with:
+        files: coverage.xml
+        use_oidc: true

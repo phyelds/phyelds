@@ -1,0 +1,7 @@
+# The build job and the micropython job each upload part of the coverage: report on both,
+# not on the first one to finish.
+codecov:
+  notify:
+    after_n_builds: 2
+comment:
+  after_n_builds: 2

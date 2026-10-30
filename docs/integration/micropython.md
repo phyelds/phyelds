@@ -18,19 +18,53 @@ mpremote cp -r dist/. :                                     # copy to the board
 mpremote reset                                              # MicroPython runs main.py
 ```
 
-The build writes into `dist` a copy of phyelds (the core: the simulator is a package of its own) and of the given
-modules, rewritten for MicroPython:
+The build writes into `dist` the given modules and the modules of phyelds they import (the
+core only: the simulator is a package of its own), rewritten for MicroPython. The imports are
+found by reading the program, so a module imported by a computed name must be named with
+`--include phyelds.libraries.gossip` (once per module); with neither modules nor
+`--include`, the whole library is written. Each module is rewritten:
 
 - the branches of `@aggregate` functions are aligned ahead of time, exactly as
   `@aggregate` would do at run time, so the alignment paths are the same on every runtime;
-- annotations and type expressions are removed, and unpacking in tuples and lists
-  (`(*hops, last)`) is spelled out;
+- annotations, type expressions and docstrings are removed, and unpacking in tuples and
+  lists (`(*hops, last)`) is spelled out;
 - the modules MicroPython lacks (`typing`, `dataclasses`, `enum`, `contextvars`, `wrapt`,
   ...) are replaced by small stand-ins in `phyelds._mpy`;
 - what MicroPython cannot find out by itself is written down: the fields of dataclasses,
   the members of enums, and the parameters of the functions of the program.
 
 The output is plain Python: you can check it, or run it on CPython.
+
+### Compiled ahead
+
+With `--mpy`, the build compiles the modules of phyelds to `.mpy` files with
+[`mpy-cross`](https://docs.micropython.org/en/latest/reference/mpyfiles.html), so that the
+board does not compile them when it imports them, which takes more memory than they then
+keep. `mpy-cross` must be on the PATH, in the version of MicroPython the board runs:
+
+```bash
+pip install "mpy-cross==1.29.*"
+poetry run python -m phyelds.micropython main.py -o dist --mpy
+```
+
+`--optimize 3` makes the files about 8% smaller, without line numbers in tracebacks. The
+modules of the program stay `.py`. MicroPython imports a `.py` before a `.mpy` with the same
+name: remove the `.py` files of an older build from the board.
+
+### Pruning
+
+`--prune` leaves out the functions, classes and methods of phyelds that the program never
+names: a program that sums a field keeps `sum` and what it calls, not the other methods of
+fields. The analysis goes by name and stays on the safe side: a definition stays if its
+name appears anywhere else in the build (as a name, an attribute, an import, or a word in a
+string), and so do special methods and definitions with decorators that may register them.
+So code that is not in the build, such as code typed at the REPL, cannot use what is left
+out, and a name the program only computes must appear in it, for instance in a string. The
+modules given with `--include` are kept whole.
+
+```bash
+poetry run python -m phyelds.micropython main.py -o dist --mpy --prune
+```
 
 ---
 
@@ -130,9 +164,43 @@ check that each one gives the same results and messages as on CPython (see
 
 ## Memory
 
-On the 64-bit unix port of MicroPython, the calculus with `spreading` and the codec keep
-about 64 KB of heap once imported, and all the libraries about 118 KB. Objects are about
-half as large on the 32-bit ESP32, which without PSRAM has roughly 100 KB free: import
-only the libraries the program uses. Modules are compiled when they are imported, which
-briefly needs more memory than they then keep. The ESP32 example runs, three devices in
-one process, in a 128 KB heap on the unix port.
+The heap a board needs depends on how the program is built. For the minimal program of the
+tests (`src/tests/micropython/minimal.py`: a counter and the ids of the neighbors, on three
+devices exchanging bytes), on the 64-bit unix port of MicroPython 1.29:
+
+| Build | phyelds on the board | Heap to start | Heap kept after the rounds |
+|---|---|---|---|
+| `.py` | 29 KB of files | ~82 KB | 43 KB |
+| [`--mpy`](#compiled-ahead) | 15 KB of files | ~56 KB | 43 KB |
+| `--mpy` [`--prune`](#pruning) | 12 KB of files | ~52 KB | 37 KB |
+| [frozen](#frozen-into-the-firmware) | 24 KB of firmware | ~30 KB | 21 KB |
+| frozen, `--prune` | 17 KB of firmware | ~28 KB | 19 KB |
+
+A `.py` module is compiled when it is imported, which briefly needs more memory than it then
+keeps: hence the larger heap to start. Objects are about half as large on the 32-bit ESP32,
+which without PSRAM has roughly 100 KB free. Libraries add to it: the calculus with
+`spreading` and the codec keep about 50 KB of heap once imported as `.mpy`, and all the
+libraries about 90 KB, so import only those the program uses. The ESP32 example runs, three
+devices in one process, in a 128 KB heap on the unix port. The tests keep the heap the
+minimal program needs under a budget, so that regressions show up.
+
+### Frozen into the firmware
+
+The leanest option is a MicroPython firmware of your own, with phyelds frozen into it: its
+bytecode then stays in flash, and the heap only holds the objects the program makes. Build
+without `--mpy` (freezing compiles the modules itself), and write a
+[manifest](https://docs.micropython.org/en/latest/reference/manifest.html) next to `dist`:
+
+```python
+include("$(PORT_DIR)/boards/manifest.py")  # what the board freezes by default
+package("phyelds", base_path="dist")
+```
+
+Then build MicroPython for the board with it, e.g. for an ESP32:
+
+```bash
+make -C ports/esp32 BOARD=ESP32_GENERIC FROZEN_MANIFEST=/absolute/path/to/manifest.py
+```
+
+Copy only the modules of the program to the board: a `phyelds` folder on the board would be
+imported instead of the frozen one.

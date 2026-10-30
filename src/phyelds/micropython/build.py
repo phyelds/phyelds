@@ -12,12 +12,18 @@ that work ahead of time, on the source:
   members of enums, and the parameters of the functions of the programs.
 """
 import ast
-from collections.abc import Sequence
+import modulefinder
+import shutil
+import subprocess
+import tempfile
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import phyelds
 from phyelds.calculus.internal import AggregateTransformer
 from phyelds.calculus.internal.transform import is_aggregate_decorator
+from phyelds.micropython import prune as pruning
+from phyelds.micropython._syntax import decorator_name
 
 _SHIMMED = {
     "abc": "abc",
@@ -32,31 +38,77 @@ _SHIMMED = {
     "wrapt": "wrapt",
 }
 _TYPING = ("typing", "collections.abc")
-_LEFT_OUT = ("micropython", "calculus/internal/transform.py")
+_LEFT_OUT = ("micropython", "calculus/internal")
 _HELPERS = ("_aligned_branch", "align_left", "align_right")
+# Base classes and decorators that change nothing on MicroPython: their stand-ins do nothing.
+_NO_OPS = {"abc": ("ABC", "abstractmethod"), "functools": ("wraps",)}
 
 
-def build(sources: Sequence[Path], out_dir: Path) -> None:
+def build(  # pylint: disable=too-many-arguments
+    sources: Sequence[Path],
+    out_dir: Path,
+    *,
+    include: Sequence[str] = (),
+    mpy: bool = False,
+    optimize: int = 0,
+    prune: bool = False,
+) -> None:
     """
-    Write phyelds and ``sources``, rewritten for MicroPython, into ``out_dir``.
+    Write ``sources`` and the modules of phyelds they import, rewritten for MicroPython,
+    into ``out_dir``.
 
-    Copy the content of ``out_dir`` to the root of the board (e.g. with
-    ``mpremote cp -r out_dir/. :``).
+    The imports are found by reading the sources, not by running them: modules imported by
+    a computed name go in ``include``. Without sources nor ``include``, the whole library
+    is written. Docstrings are left out. Copy the content of ``out_dir`` to the root of the
+    board (e.g. with ``mpremote cp -r out_dir/. :``).
 
     Args:
         sources: The modules of the program, written next to the ``phyelds`` package.
         out_dir: Where to write; created if missing.
+        include: More modules of phyelds to write, with the modules they import, by name
+            (e.g. ``"phyelds.libraries.gossip"``).
+        mpy: Compile the modules of phyelds to ``.mpy`` files with ``mpy-cross``, which
+            must be on the PATH, in the version of the MicroPython of the board. The board
+            then does not compile them, which takes memory. The sources stay ``.py``.
+        optimize: The optimization level of ``mpy-cross``, from 0 to 3; 3 leaves out the
+            line numbers of tracebacks, for smaller files.
+        prune: Leave out the functions, classes and methods of phyelds that nothing in the
+            build names (see ``phyelds.micropython.prune``): code that is not in the build,
+            such as code typed at the REPL, cannot use them. The modules in ``include``
+            are kept whole.
+
+    Raises:
+        ImportError: If a module in ``include`` does not exist.
+        FileNotFoundError: If ``mpy`` is set and ``mpy-cross`` is not on the PATH.
     """
-    package = Path(phyelds.__file__).parent
-    for path in sorted(package.rglob("*.py")):
-        relative = path.relative_to(package)
-        if not relative.as_posix().startswith(_LEFT_OUT):
-            _write(out_dir / "phyelds" / relative, transpile(path.read_text()))
-    for source in sources:
-        _write(out_dir / source.name, transpile(source.read_text(), signatures=True))
+    mpy_cross = shutil.which("mpy-cross") if mpy else None
+    if mpy and mpy_cross is None:
+        raise FileNotFoundError(
+            "mpy-cross is not on the PATH: install the version of the MicroPython of the board, "
+            "e.g. pip install \"mpy-cross==1.29.*\""
+        )
+    library = _library()
+    programs = {
+        source.name: transpile(source.read_text(), signatures=True, docstrings=False)
+        for source in sources
+    }
+    if programs or include:
+        library = {path: library[path] for path in _imported(library, programs, include)}
+    if prune:
+        whole = {_path_of(module, library) for module in include}
+        roots = {**programs, **{str(path): library[path] for path in whole}}
+        parts = {path: content for path, content in library.items() if path not in whole}
+        library |= pruning.prune(parts, roots)
+    for relative, content in library.items():
+        if mpy_cross:
+            _compile([mpy_cross, f"-O{optimize}"], content, out_dir, Path("phyelds") / relative)
+        else:
+            _write(out_dir / "phyelds" / relative, content)
+    for name, content in programs.items():
+        _write(out_dir / name, content)
 
 
-def transpile(source: str, *, signatures: bool = False) -> str:
+def transpile(source: str, *, signatures: bool = False, docstrings: bool = True) -> str:
     """
     Rewrite the source of a module for MicroPython.
 
@@ -65,11 +117,15 @@ def transpile(source: str, *, signatures: bool = False) -> str:
         signatures: Record the parameters of the functions defined at the top of the
             module, which phyelds inspects when they are given as accumulations or
             processes. Meant for programs: the library does not need it.
+        docstrings: Keep the docstrings. MicroPython ignores them, but they take memory
+            while it compiles the module.
 
     Returns:
         The rewritten source.
     """
     tree = ast.parse(source)
+    if not docstrings:
+        _drop_docstrings(tree)
     portable = _Portable()
     tree = portable.visit(tree)
     imports = []
@@ -82,6 +138,7 @@ def transpile(source: str, *, signatures: bool = False) -> str:
         imports.append("from phyelds._mpy.inspect import register as _phyelds_signature")
         tree.body = [statement for node in tree.body for statement in _with_signature(node)]
     tree.body[_first_statement(tree.body):0] = [ast.parse(line).body[0] for line in imports]
+    _drop_unused_stand_ins(tree)
     return ast.unparse(ast.fix_missing_locations(tree)) + "\n"
 
 
@@ -93,9 +150,12 @@ class _Portable(ast.NodeTransformer):
         self.aligned = False
         self.enums = False
         self.typing_names = set()
+        self.no_ops = set()  # dotted names, as they are written in the module
 
     def visit_Import(self, node: ast.Import) -> ast.Import:
         for alias in node.names:
+            for name in _NO_OPS.get(alias.name, ()):
+                self.no_ops.add(f"{alias.asname or alias.name}.{name}")
             if alias.name in _SHIMMED:
                 alias.asname = alias.asname or alias.name
                 alias.name = f"phyelds._mpy.{_SHIMMED[alias.name]}"
@@ -104,6 +164,11 @@ class _Portable(ast.NodeTransformer):
     def visit_ImportFrom(self, node: ast.ImportFrom) -> ast.ImportFrom:
         if node.module in _TYPING:
             self.typing_names.update(alias.asname or alias.name for alias in node.names)
+        self.no_ops.update(
+            alias.asname or alias.name
+            for alias in node.names
+            if alias.name in _NO_OPS.get(node.module, ())
+        )
         if node.module in _SHIMMED:
             node.module = f"phyelds._mpy.{_SHIMMED[node.module]}"
         return node
@@ -118,6 +183,9 @@ class _Portable(ast.NodeTransformer):
             node.body = [AggregateTransformer().visit(statement) for statement in node.body]
             self.aligned = True
         node.returns = None
+        node.decorator_list = [
+            decorator for decorator in node.decorator_list if not self._is_no_op(decorator)
+        ]
         self.generic_visit(node)
         node.body = node.body or [ast.Pass()]
         return node
@@ -129,7 +197,17 @@ class _Portable(ast.NodeTransformer):
     def visit_AnnAssign(self, node: ast.AnnAssign) -> ast.Assign | None:
         if node.value is None:
             return None
-        return ast.copy_location(ast.Assign(targets=[node.target], value=node.value), node)
+        assignment = ast.Assign(targets=[node.target], value=node.value)
+        return self.visit(ast.copy_location(assignment, node))
+
+    def visit_Assign(self, node: ast.Assign) -> ast.Assign:
+        self.generic_visit(node)
+        value = node.value.func if isinstance(node.value, ast.Call) else node.value
+        if self._is_typing_name(value):
+            # A type alias or a type variable: other modules may import its name, but its
+            # value is of no use, and would keep the typing stand-in imported.
+            node.value = ast.Constant(None)
+        return node
 
     def visit_Subscript(self, node: ast.Subscript) -> ast.expr:
         # Type expressions are evaluated at run time in aliases, and MicroPython cannot
@@ -146,6 +224,10 @@ class _Portable(ast.NodeTransformer):
     def _is_typing_name(self, node: ast.expr) -> bool:
         return isinstance(node, ast.Name) and node.id in self.typing_names
 
+    def _is_no_op(self, node: ast.expr) -> bool:
+        """True for a no-op base class or decorator, called (``@wraps(f)``) or not."""
+        return decorator_name(node) in self.no_ops
+
     def visit_Tuple(self, node: ast.Tuple) -> ast.expr:
         self.generic_visit(node)
         return _without_unpacking(node, "tuple")
@@ -160,16 +242,104 @@ class _Portable(ast.NodeTransformer):
             for statement in node.body
             if isinstance(statement, ast.AnnAssign) and isinstance(statement.target, ast.Name)
         ]
-        node.bases = [base for base in node.bases if not isinstance(base, ast.Subscript)]
+        # Generic[T] and ABC are only markers: their stand-ins do nothing.
+        node.bases = [
+            base for base in node.bases
+            if not isinstance(base, ast.Subscript) and not self._is_no_op(base)
+        ]
         if any(isinstance(base, ast.Name) and base.id == "Enum" for base in node.bases):
             node.decorator_list.append(ast.Name(id="_phyelds_enum_members", ctx=ast.Load()))
             self.enums = True
         self.generic_visit(node)
-        if any(_names(decorator, "dataclass") for decorator in node.decorator_list):
+        if any(decorator_name(decorator) == "dataclass" for decorator in node.decorator_list):
             declaration = ast.parse(f"__dataclass_fields__ = {tuple(fields)!r}").body[0]
             node.body.insert(_first_statement(node.body), declaration)
         node.body = node.body or [ast.Pass()]
         return node
+
+
+def _library() -> dict[Path, str]:
+    """The modules of phyelds that MicroPython can run, rewritten, by path in the package."""
+    package = Path(phyelds.__file__).parent
+    modules = {}
+    for path in sorted(package.rglob("*.py")):
+        relative = path.relative_to(package)
+        if not relative.as_posix().startswith(_LEFT_OUT):
+            modules[relative] = transpile(path.read_text(), docstrings=False)
+    return modules
+
+
+def _path_of(module: str, library: Mapping[Path, str]) -> Path:
+    """The path in ``library`` of the module of phyelds named ``module``."""
+    parts = module.split(".")[1:]
+    package = Path(*parts, "__init__.py")
+    return package if package in library else Path(*parts[:-1], f"{parts[-1]}.py")
+
+
+def _imported(
+    library: Mapping[Path, str], programs: Mapping[str, str], include: Sequence[str]
+) -> set[Path]:
+    """The modules of ``library`` that ``programs`` and ``include`` import, directly or not."""
+    with tempfile.TemporaryDirectory() as scratch:
+        root = Path(scratch)
+        for relative, content in library.items():
+            _write(root / "phyelds" / relative, content)
+        for name, content in programs.items():
+            _write(root / name, content)
+        finder = modulefinder.ModuleFinder(path=[scratch])
+        for name in programs:
+            finder.run_script(str(root / name))
+        for name in include:
+            finder.import_hook(name)
+    package = root / "phyelds"
+    files = [Path(module.__file__) for module in finder.modules.values() if module.__file__]
+    return {file.relative_to(package) for file in files if file.is_relative_to(package)}
+
+
+def _drop_unused_stand_ins(tree: ast.Module) -> None:
+    """
+    Remove the names that ``tree`` imports from the stand-ins and does not use, as the
+    rewriting leaves many: each one takes memory on the board.
+    """
+    used = {node.id for node in ast.walk(tree) if isinstance(node, ast.Name)}
+    body = []
+    for statement in tree.body:
+        if _imports_stand_in(statement):
+            statement.names = [
+                alias for alias in statement.names if (alias.asname or alias.name) in used
+            ]
+            if not statement.names:
+                continue
+        body.append(statement)
+    tree.body = body
+
+
+def _imports_stand_in(statement: ast.stmt) -> bool:
+    """True for an import from ``phyelds._mpy``, whose modules have no side effects."""
+    if isinstance(statement, ast.ImportFrom):
+        return (statement.module or "").startswith("phyelds._mpy.")
+    if isinstance(statement, ast.Import):
+        return all(
+            alias.name.startswith("phyelds._mpy.") and alias.asname for alias in statement.names
+        )
+    return False
+
+
+def _drop_docstrings(tree: ast.Module) -> None:
+    """Remove the docstrings of the module, classes and functions of ``tree``."""
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            if node.body and _is_docstring(node.body[0]):
+                node.body = node.body[1:] or ([] if isinstance(node, ast.Module) else [ast.Pass()])
+
+
+def _is_docstring(statement: ast.stmt) -> bool:
+    """True for a statement made of a string alone."""
+    return (
+        isinstance(statement, ast.Expr)
+        and isinstance(statement.value, ast.Constant)
+        and isinstance(statement.value.value, str)
+    )
 
 
 def _without_unpacking(node: ast.Tuple | ast.List, kind: str) -> ast.expr:
@@ -197,18 +367,9 @@ def _without_unpacking(node: ast.Tuple | ast.List, kind: str) -> ast.expr:
     return ast.copy_location(concatenation, node)
 
 
-def _names(decorator: ast.expr, name: str) -> bool:
-    """True for ``@name`` and ``@name(...)``."""
-    if isinstance(decorator, ast.Call):
-        decorator = decorator.func
-    return isinstance(decorator, ast.Name) and decorator.id == name
-
-
 def _first_statement(body: list[ast.stmt]) -> int:
     """Index after the docstring and the ``__future__`` imports of ``body``."""
-    index = 0
-    if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant):
-        index = 1
+    index = 1 if body and _is_docstring(body[0]) else 0
     while index < len(body) and _is_future_import(body[index]):
         index += 1
     return index
@@ -248,6 +409,20 @@ def _parameters(arguments: ast.arguments) -> tuple[tuple[str, int, bool], ...]:
     if arguments.kwarg:
         parameters.append((arguments.kwarg.arg, 4, False))
     return tuple(parameters)
+
+
+def _compile(mpy_cross: list[str], content: str, out_dir: Path, relative: Path) -> None:
+    """
+    Compile the module ``content`` with the ``mpy_cross`` command to ``out_dir / relative``,
+    as a ``.mpy`` file named ``relative`` in tracebacks; create its directory.
+    """
+    target = (out_dir / relative).with_suffix(".mpy")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile("w", suffix=".py", delete_on_close=False) as source:
+        source.write(content)
+        source.close()
+        command = [*mpy_cross, "-s", relative.as_posix(), "-o", target, source.name]
+        subprocess.run(command, check=True)
 
 
 def _write(path: Path, content: str) -> None:
