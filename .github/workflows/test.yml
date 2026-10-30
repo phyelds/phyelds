@@ -171,6 +171,9 @@ jobs:
 
   micropython:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # lets codecov authenticate the upload with OIDC, without a token
     env:
       MICROPYTHON_VERSION: v1.29.0
 
@@ -219,4 +222,13 @@ jobs:
       run: |
         micropython -c "import sys; print(sys.implementation)"
         mpy-cross --version
-        poetry run pytest src/tests/micropython src/tests/examples/test_esp32_example.py -rs
+        poetry run pytest src/tests/micropython src/tests/examples/test_esp32_example.py -rs \
+          --cov=src/phyelds --cov-report=xml
+
+    # The build job skips the tests that need micropython and mpy-cross: Codecov merges the
+    # coverage of both jobs.
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v5
+      with:
+        files: coverage.xml
+        use_oidc: true
