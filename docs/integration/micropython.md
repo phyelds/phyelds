@@ -55,15 +55,21 @@ State and messages are keyed by the alignment path of each value. By default the
 the path itself, readable: `"['gradient@0', 'distance_to@1', 'left@1', 'neighbors@1']"`.
 `MutableEngine(paths="compact")` keys them by a 30-bit hash of the path instead, which is
 lighter on memory and on the radio: in the example a message takes 40 bytes instead of
-131, well under the 250 bytes of an ESP-NOW packet.
+131, well under the 250 bytes of an ESP-NOW packet. The hash is built as the program enters
+each alignment point, from the hash of the point above, so a key costs the same however
+deep the path; and it stays a small integer, which a 32-bit board does not allocate.
 
 The hash is the same on every runtime, so a CPython device in compact mode understands a
-board. **All the devices that talk to each other must use the same mode.**
+board. **All the devices that talk to each other must use the same mode**, and the same
+version of phyelds from 9.0 on: earlier versions hash paths otherwise.
 
-`paths` also takes an encoding of your own: a function from a path (a list of segments
-such as `"neighbors@1"`) to a key that the [wire format](#the-wire-format) can send. Numbers
-from a table of names, for instance, keep keys short and still readable: in the example a
-message takes 53 bytes, against 40 in compact mode and 131 in debug mode.
+`paths` also takes an encoding of your own: an object with the two methods of
+`DebugPaths` and `CompactPaths` (in `phyelds.vm.internal`). `segment(parent, name,
+counter)` encodes an alignment point as the program enters it: its name (the function, the
+branch, or the key given to `align`), how many points its parent entered before it, and
+the segment of its parent. `key(path)` turns the segments of a path into a key that the
+[wire format](#the-wire-format) can send. Numbers from a table of names, for instance, keep
+keys short and still readable: in the example a message takes 53 bytes.
 
 ```python
 CODES = {
@@ -72,12 +78,17 @@ CODES = {
 }
 
 
-def numbered(path):
-    """["gradient@0", "neighbors@1"] as "1.0/5.1"."""
-    return "/".join(f"{CODES[name]}.{counter}" for name, counter in (s.split("@") for s in path))
+class Numbered:
+    """gradient@0, then neighbors@1, as "1.0/5.1"."""
+
+    def segment(self, parent, name, counter):
+        return f"{CODES[name]}.{counter}"
+
+    def key(self, path):
+        return "/".join(path)
 
 
-device = Device(device_id, gradient, paths=numbered)
+device = Device(device_id, gradient, paths=Numbered())
 ```
 
 The table must name every alignment point the program enters, those of the libraries and

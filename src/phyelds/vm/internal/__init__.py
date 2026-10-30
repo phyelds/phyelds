@@ -4,57 +4,78 @@ between different contexts. It provides methods to enter and exit contexts, send
 and manage the state of the system.
 """
 
-from typing import Callable, Dict, List, Any, Optional, Union
+from typing import Dict, List, Any, Optional
 
 from phyelds.vm import Engine, NodeContext, EngineState
 
-_FNV_OFFSET = 0x811C9DC5
-_FNV_PRIME = 0x01000193
-_SLASH = ord("/")
+
+class DebugPaths:
+    """Readable paths: segments such as ``"neighbors@1"``, keyed by ``str`` of the path."""
+
+    def segment(self, parent: Any, name: Any, counter: int) -> str:
+        """
+        The segment of an alignment point.
+
+        Args:
+            parent: The segment above it, ``None`` at the top; unused.
+            name: The name of the point: a function, a branch, or a key given to ``align``.
+            counter: How many points the parent entered before this one.
+
+        Returns:
+            ``"name@counter"``.
+        """
+        del parent
+        return f"{name}@{counter}"
+
+    def key(self, path: List[Any]) -> str:
+        """The key of ``path``, a list of segments: ``str`` of it."""
+        return str(path)
 
 
-def _extend_digest(digest: int, segment: Any) -> int:
+# Two hashes, each below a prime under 2**15: their products stay small integers on 32-bit
+# MicroPython boards (under 2**30), which would otherwise allocate each one on the heap.
+_HIGH, _LOW = 32749, 32719
+_ROOT = 1 << 15 | 1
+
+
+class CompactPaths:
     """
-    The FNV-1a hash ``digest`` of a path, followed by ``segment`` (a name or a number, as
-    ``str`` writes it) and a slash.
-    """
-    for byte in str(segment).encode():
-        digest = ((digest ^ byte) * _FNV_PRIME) & 0xFFFFFFFF
-    return ((digest ^ _SLASH) * _FNV_PRIME) & 0xFFFFFFFF
-
-
-class _CompactKeys:  # pylint: disable=too-few-public-methods
-    """
-    The compact key of a path: its FNV-1a hash, the same on every runtime (unlike ``hash``,
-    which is salted), cut to 30 bits so that it stays a small integer on 32-bit MicroPython
-    boards, which would otherwise allocate a big integer for each key.
-
-    The hash of a path goes on from that of the start it shares with the last path hashed:
-    the paths of a round come one after the other in the program, and share most of it.
+    Compact paths: each segment is the 30-bit key of the path up to it, built on the segment
+    above, so that the key of a path is its last segment. The key is the same on every
+    runtime (unlike ``hash``, which is salted), and a small integer on 32-bit MicroPython
+    boards.
     """
 
-    def __init__(self):
-        self._hashed: List[str] = []
-        self._hashes: List[int] = [_FNV_OFFSET]
+    def segment(self, parent: Any, name: Any, counter: int) -> int:
+        """
+        The segment of an alignment point: two polynomial hashes of the bytes of ``name``
+        and of ``counter``, on from those of ``parent``.
 
-    def __call__(self, path: List[str]) -> int:
-        hashed, hashes = self._hashed, self._hashes
-        shared = 0
-        limit = min(len(path), len(hashed))
-        while shared < limit and path[shared] == hashed[shared]:
-            shared += 1
-        while len(hashed) > shared:
-            hashed.pop()
-            hashes.pop()
-        for index in range(shared, len(path)):
-            hashed.append(path[index])
-            hashes.append(_extend_digest(hashes[-1], path[index]))
+        Args:
+            parent: The segment above it, ``None`` at the top.
+            name: The name of the point: a function, a branch, or a key given to ``align``,
+                hashed as ``str`` writes it.
+            counter: How many points the parent entered before this one.
+
+        Returns:
+            The key of the path up to this point.
+        """
         # ponytail: 30-bit keys, ~1e-3 chance of a collision with 1000 paths; widen if needed
-        return hashes[-1] & 0x3FFFFFFF
+        start = _ROOT if parent is None else parent
+        high, low = start >> 15, start & 0x7FFF
+        for byte in str(name).encode():
+            high = (high * 31 + byte) % _HIGH
+            low = (low * 37 + byte) % _LOW
+        high = (high * 31 + 256 + counter) % _HIGH  # above any byte: it closes the segment
+        low = (low * 37 + 256 + counter) % _LOW
+        return high << 15 | low
+
+    def key(self, path: List[Any]) -> int:
+        """The key of ``path``, a list of segments: its last one."""
+        return path[-1] if path else _ROOT
 
 
-# Debug keys are str(path): built whole, in C, they are faster than from a shared start.
-_PATH_KEYS = {"debug": lambda: str, "compact": _CompactKeys}
+_PATHS = {"debug": DebugPaths(), "compact": CompactPaths()}
 
 
 class MutableEngine(Engine):
@@ -65,25 +86,26 @@ class MutableEngine(Engine):
 
     Args:
         paths: How alignment paths become state and message keys. ``"debug"`` (the
-            default) keeps them readable, as strings; ``"compact"`` turns them into
-            small integers, lighter for microcontrollers and their radios. Any other
-            encoding is a function from a path (a list of segments, such as
-            ``"neighbors@1"``) to a hashable key, e.g. a tuple of numbers. Devices that
-            talk to each other must use the same encoding.
+            default, ``DebugPaths``) keeps them readable, as strings; ``"compact"``
+            (``CompactPaths``) turns them into small integers, lighter for microcontrollers
+            and their radios. Any other encoding is an object with the methods of those:
+            ``segment(parent, name, counter)`` encodes an alignment point as it is entered,
+            ``key(path)`` turns a list of segments into a hashable key. Devices that talk
+            to each other must use the same encoding.
 
     Raises:
-        ValueError: If ``paths`` is neither ``"debug"``, ``"compact"`` nor a function.
+        ValueError: If ``paths`` is a string other than ``"debug"`` and ``"compact"``.
     """
-    def __init__(self, paths: Union[str, Callable[[List[Any]], Any]] = "debug"):
+    def __init__(self, paths: Any = "debug"):
         super().__init__()
-        if callable(paths):
-            self._key = paths
-        elif paths in _PATH_KEYS:
-            self._key = _PATH_KEYS[paths]()
-        else:
-            raise ValueError(
-                f"paths must be one of {sorted(_PATH_KEYS)} or a function, not {paths!r}"
-            )
+        if isinstance(paths, str):
+            if paths not in _PATHS:
+                raise ValueError(
+                    f"paths must be one of {sorted(_PATHS)} or an encoding, not {paths!r}"
+                )
+            paths = _PATHS[paths]
+        self._segment = paths.segment
+        self._key = paths.key
         self.engine_state = EngineState()
 
     def setup(
@@ -108,10 +130,11 @@ class MutableEngine(Engine):
     def enter(self, name: str) -> None:
         counter: int = self.engine_state.count_stack[-1]
         self.engine_state.count_stack[-1] += 1
-        self.engine_state.stack.append(f"{name}@{counter}")
+        stack = self.engine_state.stack
+        stack.append(self._segment(stack[-1] if stack else None, name, counter))
         self.engine_state.count_stack.append(0)
 
-    def forget(self, stack: List[str]) -> None:
+    def forget(self, stack: List[Any]) -> None:
         key = self._key(stack)
         if key in self.engine_state.state_trace:
             del self.engine_state.state_trace[key]
@@ -121,18 +144,18 @@ class MutableEngine(Engine):
             self.engine_state.stack.pop()
             self.engine_state.count_stack.pop()
 
-    def current_path(self) -> list[str]:
+    def current_path(self) -> list:
         return self.engine_state.stack.copy()
 
-    def write_state(self, value: Any, stack: List[str]) -> None:
+    def write_state(self, value: Any, stack: List[Any]) -> None:
         self.engine_state.state_trace[self._key(stack)] = value
 
-    def read_state(self, stack: List[str]) -> Optional[Any]:
+    def read_state(self, stack: List[Any]) -> Optional[Any]:
         key = self._key(stack)
         self.engine_state.reads.add(key)
         return self.engine_state.state_trace.get(key)
 
-    def send(self, data: Any, stack: Optional[List[str]] = None) -> None:
+    def send(self, data: Any, stack: Optional[List[Any]] = None) -> None:
         target_stack = self.engine_state.stack if stack is None else stack
         self.engine_state.to_send[self._key(target_stack)] = data
 
@@ -142,7 +165,7 @@ class MutableEngine(Engine):
             node_id for node_id, messages in self.engine_state.messages.items() if key in messages
         ]
 
-    def aligned_values(self, path: List[str]) -> Dict[int, Any]:
+    def aligned_values(self, path: List[Any]) -> Dict[int, Any]:
         key = self._key(path)
         messages = self.engine_state.messages
         return {

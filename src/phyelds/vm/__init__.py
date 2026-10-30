@@ -77,7 +77,7 @@ class EngineState:
     """
     Inner state of the engine used to process aggregate computation.
     """
-    stack: List[str] = None
+    stack: List[Any] = None
     state_trace: Dict[str, Any] = None
     count_stack: List[int] = None
     to_send: Dict[str, Any] = None
@@ -133,15 +133,16 @@ class Engine(ABC):
         Leave the current alignment point, going back to the enclosing one.
         """
 
-    def current_path(self) -> list[str]:
+    def current_path(self) -> list:
         """
         Return the current alignment path.
 
         Returns:
-            A copy of the alignment points entered so far, outermost first.
+            A copy of the segments of the alignment points entered so far, outermost
+            first, as the engine encodes them: pass it back to the other methods.
         """
 
-    def write_state(self, value: any, stack: list[str]) -> None:
+    def write_state(self, value: any, stack: list) -> None:
         """
         Store a value of the device's state, to be read in the next rounds.
 
@@ -150,7 +151,7 @@ class Engine(ABC):
             stack: The alignment path the value belongs to.
         """
 
-    def read_state(self, stack: list[str]) -> any:
+    def read_state(self, stack: list) -> any:
         """
         Read a value of the device's state, marking it as still in use.
 
@@ -174,10 +175,10 @@ class Engine(ABC):
         Remove a value from the device's state.
 
         Args:
-            _self_path (list[str]): The alignment path of the value to remove.
+            _self_path (list): The alignment path of the value to remove.
         """
 
-    def send(self, data: any, stack: list[str] | None = None) -> None:
+    def send(self, data: any, stack: list | None = None) -> None:
         """
         Queue a value to send to the neighbors at the end of the round.
 
@@ -194,7 +195,7 @@ class Engine(ABC):
             The IDs of the neighbors that sent a value at the current alignment path.
         """
 
-    def aligned_values(self, path: list[str]) -> dict[int, any]:
+    def aligned_values(self, path: list) -> dict[int, any]:
         """
         Return the values the aligned neighbors sent at ``path``.
 

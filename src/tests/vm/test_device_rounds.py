@@ -44,13 +44,18 @@ def test_device_computes_the_same_values_with_compact_paths():
 
 
 def test_device_computes_the_same_values_with_an_encoding_of_its_own():
-    codes = {"gradient": 1, "remember": 2, "neighbors": 3}
+    codes = {"gradient": 1, "remember": 2, "neighbors": 3, "left": 4, "right": 5}
 
-    def numbered(path):
-        """``["gradient@0", "neighbors@1"]`` as ``((1, 0), (3, 1))``: readable with ``codes``."""
-        return tuple((codes[name], int(counter)) for name, counter in (segment.split("@") for segment in path))
+    class Numbered:
+        """``gradient@0`` then ``neighbors@1`` as ``"1.0/3.1"``: readable with ``codes``."""
 
-    devices = [Device(device_id, gradient, paths=numbered) for device_id in (10, 20, 30)]
+        def segment(self, parent, name, counter):  # pylint: disable=unused-argument
+            return f"{codes[name]}.{counter}"
+
+        def key(self, path):
+            return "/".join(path)
+
+    devices = [Device(device_id, gradient, paths=Numbered()) for device_id in (10, 20, 30)]
 
     assert _run_line(devices, rounds=3) == [0, 1, 2]
 
