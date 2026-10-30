@@ -30,6 +30,22 @@ def test_transpile_aligns_the_branches_of_aggregate_functions():
     assert "from phyelds.calculus import _aligned_branch, align_left, align_right" in output
 
 
+def test_transpile_imports_the_helpers_after_the_future_imports():
+    output = _transpiled('''
+        """A module."""
+        from __future__ import annotations
+
+        @aggregate
+        def program(flag):
+            if flag:
+                return 1
+    ''')
+
+    lines = output.splitlines()
+    assert lines[1] == "from __future__ import annotations"
+    assert lines[2] == "from phyelds.calculus import _aligned_branch, align_left, align_right"
+
+
 def test_transpile_aligns_nested_aggregate_functions_once():
     output = _transpiled("""
         @aggregate

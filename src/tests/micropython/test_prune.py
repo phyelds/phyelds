@@ -126,3 +126,13 @@ def test_prune_keeps_the_definitions_imported_under_another_name():
     """, "from phyelds.library import members as enum_members\n")
 
     assert "def members" in output
+
+
+def test_prune_keeps_the_definitions_decorated_by_an_expression():
+    output = _pruned("""
+        @handlers["idle"]
+        def idle():
+            pass
+    """, "")
+
+    assert "def idle" in output
