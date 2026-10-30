@@ -144,6 +144,46 @@ The bytes are JSON, with a tag for what JSON cannot say: tuples, sets, non-strin
 infinities, fields, and the dataclasses and sentinels of the libraries. To send a type of
 your own, register it on every device with `register(MyDataclass)`.
 
+### Messages for each neighbor
+
+A program that exchanges a field, a different value for each neighbor, sends the whole
+field to all of them: the message grows with the neighbors, and with a field of floats it
+no longer fits an ESP-NOW packet beyond about ten. `Device(..., messages="addressed")`
+sends each neighbor only its own value instead; the default, `messages="shared"`, sends
+the same message to all. `run_round` then returns the message for every neighbor, with
+each field at its default, and `device.addressed` maps each neighbor the device heard from
+to the message addressed to it, with each field reduced to its value for that neighbor. A
+neighbor builds its field from the values addressed to it, as it would from the whole
+fields, so the program computes the same:
+
+```python
+payload = device.run_round(sensors)
+for neighbor, addressed in device.addressed.items():  # first: see below
+    espnow.send(BROADCAST, addressed)                   # or to the MAC of the neighbor
+espnow.send(BROADCAST, payload)
+```
+
+A device leaves out the messages addressed to other devices, so all of them can go out on
+broadcast, without registering the neighbors as peers. It also leaves out a message for
+every neighbor while it keeps one addressed to it since its last round: send the addressed
+messages first. `addressed` is empty when the program sends no field, and the message for
+every neighbor then serves them all. The devices that receive these messages need a
+version of phyelds that knows them: an older one would take a message addressed to another
+device for its own.
+
+Each message stays the same size whatever the neighbors, but there is one more for each of
+them. With a field of floats, compact paths and device ids of 3 bytes (with 43 bytes of
+ESP-NOW frame around each message):
+
+| Neighbors | Whole field | Per neighbor: largest message | Messages | Bytes on air, whole / per neighbor |
+|---|---|---|---|---|
+| 2 | 103 B | 44 B | 3 | 146 / 242 |
+| 10 | 245 B | 45 B | 11 | 288 / 939 |
+| 20 | 416 B | 45 B | 21 | 459 / 1814 |
+
+So send the whole field while it fits a packet, and messages for each neighbor when it does
+not: they take more time on air.
+
 ---
 
 ## What works
