@@ -23,13 +23,17 @@ class Device:  # pylint: disable=too-many-instance-attributes
         paths: How the engine encodes alignment paths: ``"debug"``, ``"compact"``, or an
             encoding of one's own (see ``MutableEngine``); devices that talk to each other
             must use the same.
-        per_neighbor: Whether to send, besides the message for every neighbor, one message
-            addressed to each neighbor heard from, with its value of each field instead of
-            the whole field (see ``addressed``), so that the messages do not grow with the
-            neighbors. The devices that receive them must have ``per_neighbor`` too: an
-            older version takes a message addressed to another device for its own.
+        messages: What the device sends: ``"shared"``, the same message to every neighbor,
+            with whole fields; or ``"addressed"``, besides the message for every neighbor,
+            one addressed to each neighbor heard from, with its value of each field instead
+            of the whole field (see ``addressed``), so that the messages do not grow with
+            the neighbors. The devices that receive addressed messages must know them too:
+            an older version takes a message addressed to another device for its own.
         lifetime: For how many rounds a message is used if its sender does not send a newer
             one. ``1`` keeps only the messages received since the last round.
+
+    Raises:
+        ValueError: If ``messages`` is neither ``"shared"`` nor ``"addressed"``.
     """
 
     def __init__(  # pylint: disable=too-many-arguments
@@ -38,13 +42,15 @@ class Device:  # pylint: disable=too-many-instance-attributes
         program: Callable[[], Any],
         *,
         paths: Any = "debug",
-        per_neighbor: bool = False,
+        messages: str = "shared",
         lifetime: int = 1,
     ):
+        if messages not in ("shared", "addressed"):
+            raise ValueError(f"messages must be 'shared' or 'addressed', not {messages!r}")
         self.device_id = device_id
         self.program = program
         self.paths = paths
-        self.per_neighbor = per_neighbor
+        self.messages = messages
         self.lifetime = lifetime
         self.result: Any = None
         """The value the program computed in the last round."""
@@ -52,9 +58,9 @@ class Device:  # pylint: disable=too-many-instance-attributes
         """What the program stored with ``store`` in the last round."""
         self.addressed: dict[Any, bytes] = {}
         """
-        With ``per_neighbor``, the bytes to send to each neighbor heard from, after the last
-        round: empty when the program sends no field, as the bytes for every neighbor then
-        serve them all.
+        With ``"addressed"`` messages, the bytes to send to each neighbor heard from, after
+        the last round: empty when the program sends no field, as the bytes for every
+        neighbor then serve them all.
         """
         self._state: dict[Any, Any] = {}
         # sender -> [messages, rounds since they were received, whether addressed to this device]
@@ -94,17 +100,17 @@ class Device:  # pylint: disable=too-many-instance-attributes
             sensors: The sensors of the device in this round, by name.
 
         Returns:
-            The bytes to send to every neighbor; with ``per_neighbor``, also send those of
-            ``addressed``.
+            The bytes to send to every neighbor; with ``"addressed"`` messages, also send
+            those of ``addressed``, first.
         """
         for sender in list(self._inbox):
             self._inbox[sender][1] += 1
             if self._inbox[sender][1] > self.lifetime:
                 del self._inbox[sender]
-        messages = {sender: entry[0] for sender, entry in self._inbox.items()}
+        received = {sender: entry[0] for sender, entry in self._inbox.items()}
         engine.set(MutableEngine(paths=self.paths))
         context = NodeContext(self.device_id, dict(sensors))
-        engine.get().setup(context, messages, self._state)
+        engine.get().setup(context, received, self._state)
         result = self.program()
         outbox = engine.get().cooldown()  # first: it also drops the state not used
         self._state = engine.get().state_trace()
@@ -112,8 +118,8 @@ class Device:  # pylint: disable=too-many-instance-attributes
         self.result = result.value if isinstance(result, State) else result
         self.addressed = {}
         fields = any(isinstance(value, NeighborhoodField) for value in outbox.values())
-        if self.per_neighbor and fields:
-            for neighbor in messages:
+        if self.messages == "addressed" and fields:
+            for neighbor in received:
                 message = _for(outbox, neighbor)
                 message[self._recipient_key] = neighbor
                 self.addressed[neighbor] = encode(message)

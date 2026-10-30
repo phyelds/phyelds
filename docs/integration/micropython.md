@@ -148,12 +148,13 @@ your own, register it on every device with `register(MyDataclass)`.
 
 A program that exchanges a field, a different value for each neighbor, sends the whole
 field to all of them: the message grows with the neighbors, and with a field of floats it
-no longer fits an ESP-NOW packet beyond about ten. `Device(..., per_neighbor=True)` sends
-each neighbor only its own value instead. `run_round` then returns the message for every
-neighbor, with each field at its default, and `device.addressed` maps each neighbor the
-device heard from to the message addressed to it, with each field reduced to its value for
-that neighbor. A neighbor builds its field from the values addressed to it, as it would
-from the whole fields, so the program computes the same:
+no longer fits an ESP-NOW packet beyond about ten. `Device(..., messages="addressed")`
+sends each neighbor only its own value instead; the default, `messages="shared"`, sends
+the same message to all. `run_round` then returns the message for every neighbor, with
+each field at its default, and `device.addressed` maps each neighbor the device heard from
+to the message addressed to it, with each field reduced to its value for that neighbor. A
+neighbor builds its field from the values addressed to it, as it would from the whole
+fields, so the program computes the same:
 
 ```python
 payload = device.run_round(sensors)
@@ -167,8 +168,8 @@ broadcast, without registering the neighbors as peers. It also leaves out a mess
 every neighbor while it keeps one addressed to it since its last round: send the addressed
 messages first. `addressed` is empty when the program sends no field, and the message for
 every neighbor then serves them all. The devices that receive these messages need a
-version of phyelds with `per_neighbor`: an older one would take a message addressed to
-another device for its own.
+version of phyelds that knows them: an older one would take a message addressed to another
+device for its own.
 
 Each message stays the same size whatever the neighbors, but there is one more for each of
 them. With a field of floats, compact paths and device ids of 3 bytes (with 43 bytes of

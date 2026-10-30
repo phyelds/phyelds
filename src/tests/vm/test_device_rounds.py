@@ -1,3 +1,5 @@
+import pytest
+
 from phyelds.calculus import aggregate, exchange, neighbors, remember
 from phyelds.data import NeighborhoodField
 from phyelds.libraries.device import local_id, sense, store
@@ -74,13 +76,13 @@ def test_device_computes_the_same_values_with_an_encoding_of_its_own():
 
 
 def test_device_sends_each_neighbor_its_own_value_of_a_field():
-    whole = [Device(device_id, addressed) for device_id in (10, 20, 30)]
-    per_neighbor = [Device(device_id, addressed, per_neighbor=True) for device_id in (10, 20, 30)]
+    shared = [Device(device_id, addressed) for device_id in (10, 20, 30)]
+    addressing = [Device(device_id, addressed, messages="addressed") for device_id in (10, 20, 30)]
 
-    expected = _run_line(whole, rounds=3)
+    expected = _run_line(shared, rounds=3)
 
     assert expected[1] == {10: 210, 20: 220, 30: 230}
-    assert _run_line(per_neighbor, rounds=3) == expected
+    assert _run_line(addressing, rounds=3) == expected
 
 
 def _hear(device: Device, sender: Device) -> None:
@@ -91,7 +93,7 @@ def _hear(device: Device, sender: Device) -> None:
 
 
 def test_device_ignores_the_messages_addressed_to_other_devices():
-    sender, device, other = (Device(device_id, addressed, per_neighbor=True) for device_id in (1, 2, 3))
+    sender, device, other = (Device(device_id, addressed, messages="addressed") for device_id in (1, 2, 3))
     sender.receive(2, device.run_round({}))
     sender.receive(3, other.run_round({}))
 
@@ -104,8 +106,8 @@ def test_device_ignores_the_messages_addressed_to_other_devices():
 
 
 def test_device_takes_the_message_for_every_neighbor_once_none_is_addressed_to_it():
-    sender = Device(1, addressed, per_neighbor=True, lifetime=1)
-    device = Device(2, addressed, per_neighbor=True)
+    sender = Device(1, addressed, messages="addressed", lifetime=1)
+    device = Device(2, addressed, messages="addressed")
     sender.receive(2, device.run_round({}))
     _hear(device, sender)
     device.run_round({})
@@ -118,15 +120,15 @@ def test_device_takes_the_message_for_every_neighbor_once_none_is_addressed_to_i
 
 
 def test_device_addresses_no_message_when_its_program_sends_no_field():
-    devices = [Device(device_id, gradient, per_neighbor=True) for device_id in (10, 20, 30)]
+    devices = [Device(device_id, gradient, messages="addressed") for device_id in (10, 20, 30)]
 
     _run_line(devices, rounds=3)
 
     assert [device.addressed for device in devices] == [{}, {}, {}]
 
 
-def _payload_sizes(neighbors: int, per_neighbor: bool) -> list[int]:
-    center = Device(0, addressed, per_neighbor=per_neighbor)
+def _payload_sizes(neighbors: int, messages: str) -> list[int]:
+    center = Device(0, addressed, messages=messages)
     for neighbor in range(1, neighbors + 1):
         center.receive(neighbor, Device(neighbor, addressed).run_round({}))
     payload = center.run_round({})
@@ -134,8 +136,13 @@ def _payload_sizes(neighbors: int, per_neighbor: bool) -> list[int]:
 
 
 def test_device_messages_do_not_grow_with_the_neighbors_when_addressed():
-    assert max(_payload_sizes(8, per_neighbor=True)) == max(_payload_sizes(2, per_neighbor=True))
-    assert max(_payload_sizes(8, per_neighbor=False)) > max(_payload_sizes(2, per_neighbor=False))
+    assert max(_payload_sizes(8, "addressed")) == max(_payload_sizes(2, "addressed"))
+    assert max(_payload_sizes(8, "shared")) > max(_payload_sizes(2, "shared"))
+
+
+def test_device_rejects_messages_other_than_shared_and_addressed():
+    with pytest.raises(ValueError, match="messages"):
+        Device(1, gradient, messages="per_neighbor")
 
 
 def test_device_forgets_a_neighbor_silent_for_longer_than_the_lifetime():
