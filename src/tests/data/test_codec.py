@@ -115,6 +115,12 @@ def test_codec_rejects_constants_registered_without_a_name():
         register(object())
 
 
+@pytest.mark.parametrize("payload", [b"\x09\x00\x02", b""])
+def test_codec_rejects_payloads_of_an_unknown_format(payload):
+    with pytest.raises(ValueError, match="format"):
+        decode(payload)
+
+
 def test_codec_round_trips_the_outbox_of_an_engine(binary):
     @aggregate
     def program():
@@ -125,6 +131,17 @@ def test_codec_round_trips_the_outbox_of_an_engine(binary):
     outbox = engine.get().cooldown()
 
     assert decode(encode(outbox, binary)) == outbox
+
+
+def test_codec_sends_a_compact_path_in_four_bytes():
+    @aggregate
+    def program():
+        return neighbors(True)
+
+    engine.set(MutableEngine(paths="compact").setup(MockNodeContext(0)))
+    program()
+
+    assert len(encode(engine.get().cooldown(), binary=True)) == 1 + 4 + 1  # format, path, True
 
 
 @aggregate

@@ -17,9 +17,11 @@ _BY_NAME: dict[str, Any] = {}
 _CLASS_NAMES: dict[type, str] = {}
 _CONSTANT_NAMES: dict[int, str] = {}
 _NON_FINITE = {"inf": float("inf"), "-inf": float("-inf"), "nan": float("nan")}
-# The first byte of a payload: JSON objects start with "{".
+# The first byte of a payload: JSON objects start with "{". In the binary format, the keys of
+# the messages are values like the others, or, when they all are, 32-bit unsigned integers.
 _JSON = 0x7B
 _BINARY = 0x01
+_BINARY_UINT32_KEYS = 0x02
 # The first byte of each value in the binary format.
 (_NONE, _FALSE, _TRUE, _INT, _F32, _F64, _STR,
  _LIST, _TUPLE, _SET, _DICT, _FIELD, _OBJECT, _CONSTANT) = range(14)
@@ -70,9 +72,13 @@ def encode(outbox: Mapping[Any, Any], binary: bool = False) -> bytes:
     """
     if not binary:
         return json.dumps(_to_json(outbox)).encode()
-    out = bytearray([_BINARY])
+    uint32_keys = all(isinstance(key, int) and 0 <= key <= 0xFFFFFFFF for key in outbox)
+    out = bytearray([_BINARY_UINT32_KEYS if uint32_keys else _BINARY])
     for key, item in outbox.items():
-        _write(key, out)
+        if uint32_keys:
+            out.extend(struct.pack("<I", key))
+        else:
+            _write(key, out)
         _write(item, out)
     return bytes(out)
 
@@ -86,13 +92,22 @@ def decode(payload: bytes) -> dict[Any, Any]:
 
     Returns:
         The messages, ready to be given to ``Engine.setup``.
+
+    Raises:
+        ValueError: If the first byte of ``payload`` is not that of a format of the codec.
     """
-    if payload[0] == _JSON:
+    kind = payload[0] if payload else None
+    if kind == _JSON:
         return _from_json(json.loads(payload))
+    if kind not in (_BINARY, _BINARY_UINT32_KEYS):
+        raise ValueError(f"unknown format {payload[:1]!r}: not a payload of phyelds.data.codec")
     messages = {}
     at = 1
     while at < len(payload):
-        key, at = _read(payload, at)
+        if kind == _BINARY_UINT32_KEYS:
+            key, at = struct.unpack_from("<I", payload, at)[0], at + 4
+        else:
+            key, at = _read(payload, at)
         messages[key], at = _read(payload, at)
     return messages
 
