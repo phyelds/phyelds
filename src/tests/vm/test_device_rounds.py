@@ -97,6 +97,14 @@ def test_device_sends_each_neighbor_its_own_value_of_a_field():
     assert _run_line(addressing, rounds=3) == expected
 
 
+def test_device_addresses_its_messages_in_the_binary_format_too():
+    shared = [Device(device_id, addressed) for device_id in (10, 20, 30)]
+    devices = [Device(device_id, addressed, messages="addressed", binary=True) for device_id in (10, 20, 30)]
+
+    assert _run_line(devices, rounds=3) == _run_line(shared, rounds=3)
+    assert all(payload[:1] != b"{" for device in devices for payload in device.addressed.values())
+
+
 def _hear(device: Device, sender: Device) -> None:
     """A round of ``sender``, all of whose messages ``device`` hears, the addressed ones first."""
     payload = sender.run_round({})

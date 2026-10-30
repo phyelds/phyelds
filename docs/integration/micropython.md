@@ -210,8 +210,10 @@ of ESP-NOW frame around each message):
 | 10 | 245 B | 45 B | 11 | 288 / 939 |
 | 20 | 416 B | 45 B | 21 | 459 / 1814 |
 
-So send the whole field while it fits a packet, and messages for each neighbor when it does
-not: they take more time on air.
+In the [binary format](#the-wire-format) a message addressed to a neighbor takes 23 bytes
+instead of 45, and the whole field fits a packet up to about fifteen neighbors. So send the
+whole field while it fits a packet, and messages for each neighbor when it does not: they
+take more time on air.
 
 ---
 
