@@ -43,6 +43,23 @@ def test_device_computes_the_same_values_with_compact_paths():
     assert _run_line(devices, rounds=3) == [0, 1, 2]
 
 
+def test_device_computes_the_same_values_with_an_encoding_of_its_own():
+    codes = {"gradient": 1, "remember": 2, "neighbors": 3, "left": 4, "right": 5}
+
+    class Numbered:
+        """``gradient@0`` then ``neighbors@1`` as ``"1.0/3.1"``: readable with ``codes``."""
+
+        def segment(self, parent, name, counter):  # pylint: disable=unused-argument
+            return f"{codes[name]}.{counter}"
+
+        def key(self, path):
+            return "/".join(path)
+
+    devices = [Device(device_id, gradient, paths=Numbered()) for device_id in (10, 20, 30)]
+
+    assert _run_line(devices, rounds=3) == [0, 1, 2]
+
+
 def test_device_forgets_a_neighbor_silent_for_longer_than_the_lifetime():
     source = Device(1, gradient)
     device = Device(2, gradient, lifetime=2)

@@ -20,14 +20,20 @@ class Device:  # pylint: disable=too-many-instance-attributes
     Args:
         device_id: The id of the device, unique in the network.
         program: The ``@aggregate`` function to run in each round.
-        paths: The path mode of the engine, ``"debug"`` or ``"compact"``; devices that talk
-            to each other must use the same.
+        paths: How the engine encodes alignment paths: ``"debug"``, ``"compact"``, or an
+            encoding of one's own (see ``MutableEngine``); devices that talk to each other
+            must use the same.
         lifetime: For how many rounds a message is used if its sender does not send a newer
             one. ``1`` keeps only the messages received since the last round.
     """
 
     def __init__(
-        self, device_id: Any, program: Callable[[], Any], *, paths: str = "debug", lifetime: int = 1
+        self,
+        device_id: Any,
+        program: Callable[[], Any],
+        *,
+        paths: Any = "debug",
+        lifetime: int = 1,
     ):
         self.device_id = device_id
         self.program = program
