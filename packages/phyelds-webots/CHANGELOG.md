@@ -1,3 +1,9 @@
+## [9.2.0](https://github.com/phyelds/phyelds/compare/9.1.0...9.2.0) (2026-10-30)
+
+### Features
+
+* **vm:** send each neighbor its own value of a field ([#53](https://github.com/phyelds/phyelds/issues/53)) ([a725cd4](https://github.com/phyelds/phyelds/commit/a725cd477260dad3dd5658f40a08479df28d68bc))
+
 ## [9.1.0](https://github.com/phyelds/phyelds/compare/9.0.0...9.1.0) (2026-10-30)
 
 ### Features
