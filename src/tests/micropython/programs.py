@@ -1,16 +1,17 @@
 """
 Programs run on CPython and on MicroPython by test_runtime.py, on a line of devices.
 
-    python programs.py <program> [paths]
+    python programs.py <program> [paths [binary]]
 
-prints the encoded results and outboxes of the last round.
+prints the encoded results and outboxes of the last round; with ``binary``, the outboxes
+are first encoded in the binary format and decoded back.
 """
 import sys
 
 from phyelds import engine
 from phyelds.calculus import aggregate, exchange, neighbors, remember
 from phyelds.data import State
-from phyelds.data.codec import encode
+from phyelds.data.codec import decode, encode
 from phyelds.experimental.formation import circle, formation, leader_positioning, star
 from phyelds.experimental.state_machines import Next, StateMachine, collective_state_machine
 from phyelds.experimental.swarm import Vector, cohesion, go_to, separation, sink_at
@@ -224,4 +225,7 @@ def run(program, paths="debug"):
 
 
 if __name__ == "__main__":
-    print(encode(run(globals()[sys.argv[1]], *sys.argv[2:])).decode())
+    last_results, last_outboxes = run(globals()[sys.argv[1]], *sys.argv[2:3])
+    if sys.argv[3:] == ["binary"]:
+        last_outboxes = {device: decode(encode(outbox, True)) for device, outbox in last_outboxes.items()}
+    print(encode((last_results, last_outboxes)).decode())

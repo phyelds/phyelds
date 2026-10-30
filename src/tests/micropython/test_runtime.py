@@ -68,7 +68,7 @@ def _cpython(program: str, paths: str = "debug"):
     return _comparable(decode(encode(programs.run(getattr(programs, program), paths))))
 
 
-@pytest.mark.parametrize("program", [
+PROGRAMS = [
     "neighbour_ids",
     "remembered",
     "exchanged",
@@ -89,9 +89,19 @@ def _cpython(program: str, paths: str = "debug"):
     "described_state_machine",
     "swarm_blocks",
     "formed",
-])
+]
+
+
+@pytest.mark.parametrize("program", PROGRAMS)
 def test_micropython_runs_programs_like_cpython(bundle, program):
     assert _micropython(bundle, program) == _cpython(program)
+
+
+@pytest.mark.parametrize(
+    ("program", "paths"), [(program, "compact") for program in PROGRAMS] + [("gossiped", "debug")]
+)
+def test_micropython_round_trips_the_messages_of_programs_in_the_binary_format(bundle, program, paths):
+    assert _micropython(bundle, program, paths, "binary") == _cpython(program, paths)
 
 
 def test_micropython_and_cpython_send_the_same_compact_messages(bundle):
