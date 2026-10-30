@@ -5,9 +5,9 @@ Two formats, which work alike on CPython and MicroPython, so that devices on eit
 understand each other. JSON, the default, is readable: what JSON cannot say (tuples, sets,
 keys that are not strings, infinities, fields, the dataclasses of the libraries) is written
 as an object with a single tag key; plain JSON objects never appear, so the tags cannot
-clash. The binary format is about three times smaller: a tag byte before each value (see
-``phyelds.data._binary``). ``decode`` tells them apart from the first byte, so devices
-sending either can share a network.
+clash. The binary format is smaller, above all with compact paths: a tag byte before each
+value instead of the syntax of JSON. ``decode`` tells them apart by the first byte, so
+devices sending either can share a network.
 """
 import json
 from collections.abc import Mapping

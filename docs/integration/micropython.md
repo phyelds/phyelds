@@ -144,6 +144,35 @@ The bytes are JSON, with a tag for what JSON cannot say: tuples, sets, non-strin
 infinities, fields, and the dataclasses and sentinels of the libraries. To send a type of
 your own, register it on every device with `register(MyDataclass)`.
 
+`encode(outbox, binary=True)`, or `Device(..., binary=True)`, writes a binary format
+instead: a byte before each value in place of the syntax of JSON, and with compact paths a
+key in 4 bytes. In the example a message then takes 16 bytes instead of 40, so more than
+twice as much state fits in an ESP-NOW packet; with debug paths, whose keys are strings
+either way, 116 instead of 131. `decode` tells the formats apart by the first byte, `{` for
+JSON, so every device understands both, and devices sending either can share a network,
+for instance while they move to the binary one. Only the devices that send or receive it
+load the binary format: about 4 KB more heap on the 64-bit unix port.
+
+#### The binary format
+
+For devices of other runtimes: a payload starts with `0x01`, then each message, as a key and
+a value; or with `0x02` when all the keys are integers in 32 bits, as compact paths are,
+then each key takes 4 bytes, little-endian, and is followed by its value. A value is a tag
+byte, then its content:
+
+| Tag | Value | Content |
+|---|---|---|
+| 0, 1, 2 | `None`, `False`, `True` | none |
+| 3 | `int` | zigzag varint: 7 bits per byte, the least significant first, the high bit set on every byte but the last |
+| 4 | `float` | 4 bytes, IEEE 754, little-endian: when they hold it exactly |
+| 5 | `float` | 8 bytes, otherwise |
+| 6 | `str` | varint length, then UTF-8 |
+| 7, 8, 9 | `list`, `tuple`, `set` | varint count, then the items |
+| 10 | `dict` | varint count, then the key and the value of each item |
+| 11 | field | node id, data as the content of a `dict`, default |
+| 12 | registered dataclass | name as the content of a `str`, fields as the content of a `list` |
+| 13 | registered constant | name as the content of a `str` |
+
 ---
 
 ## What works

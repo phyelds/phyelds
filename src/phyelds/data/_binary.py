@@ -1,21 +1,7 @@
 """
-The binary format of ``phyelds.data.codec``: what ``_to_json`` writes as JSON, with a tag
-byte before each value instead of the syntax of JSON.
-
-A payload starts with ``0x01``, then the messages, each a key and a value; or with ``0x02``
-when all the keys are integers in 32 bits (compact paths), each key then written in 4 bytes,
-little-endian. A value is its tag, then its content:
-
-- ``None``, ``False``, ``True``: the tag alone;
-- ``int``: zigzag varint (7 bits per byte, least significant first, high bit on all bytes
-  but the last);
-- ``float``: 4 bytes (IEEE 754, little-endian) if they hold it exactly, 8 otherwise;
-- ``str``: varint length, then UTF-8;
-- ``list``, ``tuple``, ``set``: varint count, then the items;
-- ``dict``: varint count, then key and value of each item;
-- a field: its node id, its data as a ``dict`` without tag, its default;
-- a registered dataclass: its name as a ``str`` without tag, then its fields as a ``list``
-  without tag; a registered constant: its name.
+The binary format of ``phyelds.data.codec``, which the MicroPython page of the docs
+describes for other runtimes: what ``_to_json`` writes as JSON, with a tag byte before each
+value instead of the syntax of JSON.
 """
 import struct
 from collections.abc import Mapping
