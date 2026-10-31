@@ -380,6 +380,9 @@ def _difference(
     """The time of ``rounds`` rounds less that of one, which leaves the start-up out."""
     startup = run(1)
     total = run(rounds)
+    if total <= startup:
+        raise ValueError(f"{rounds} rounds took {total:.2f} s, no longer than the start-up "
+                         f"({startup:.2f} s): run more of them")
     return {"wall_s": total - startup, "rounds_timed": rounds - 1,
             "sim_time": (rounds - 1) * seconds_per_round, "startup_s": startup,
             "neighbor_search_s": None, "messages_per_round": None, "bytes_per_round": None}
@@ -434,6 +437,7 @@ def provenance() -> dict[str, Any]:
         "commit": commit,
         "cpu": _cpu(),
         "cpus": os.cpu_count(),
+        "affinity": sorted(os.sched_getaffinity(0)),  # the CPUs the measurements may run on
         "memory_gb": round(os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES") / 2 ** 30, 1),
         "os": platform.platform(),
     }

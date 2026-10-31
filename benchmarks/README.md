@@ -41,6 +41,10 @@ that fails gives a line with an `error` instead of the metrics.
 
 ## Limits
 
+- Pin the measurements to the same kind of core, e.g. `taskset -c 2 poetry run python
+  benchmarks/run.py ...`. On processors with cores of different speeds, a measurement that
+  is not pinned can land on either. The `environment` records the CPUs the measurement could
+  use.
 - ARGoS and Webots run in processes of their own. Their time is that of `--rounds` rounds
   less that of one, which leaves the start-up out. With few agents or rounds the start-up
   noise is larger than the difference, so give them hundreds of rounds.
