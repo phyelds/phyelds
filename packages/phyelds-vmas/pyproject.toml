@@ -22,8 +22,8 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.12,<3.14"
-phyelds = ">=8.0.0,<9.0.0"
-phyelds-simulator = ">=8.0.0,<9.0.0"
+phyelds = "^9.3.0"
+phyelds-simulator = "^9.3.0"
 vmas = "1.5.2"
 numpy = ">=1.26"
 torch = ">=2.0"

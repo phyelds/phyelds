@@ -3,16 +3,20 @@ var testPypi = (process.env.RELEASE_TEST_PYPI || "false").toLowerCase() === "tru
 var pypiUsername = process.env.PYPI_USERNAME;
 var pypiPassword = process.env.PYPI_PASSWORD;
 
+// The packages are released together: each requires the core (and the simulator) of its
+// own release, as tested here, up to the next major one.
+function prepare(name) {
+    return "(cd packages/" + name + " && poetry version -- \${nextRelease.version}"
+        + " && sed -i -E 's/^(phyelds|phyelds-simulator) = .*/\\1 = \"^\${nextRelease.version}\"/' pyproject.toml)";
+}
+
 var prepareCmd = [
     "poetry version -- \${nextRelease.version}",
-    "(cd packages/phyelds-simulator && poetry version -- \${nextRelease.version})",
-    "(cd packages/phyelds-mesa && poetry version -- \${nextRelease.version})",
-    // phyelds-webots needs a core at least as recent as itself (phyelds.vm.device).
-    "(cd packages/phyelds-webots && poetry version -- \${nextRelease.version}"
-        + " && sed -i 's/^phyelds = .*/phyelds = \"^\${nextRelease.version}\"/' pyproject.toml)",
-    "(cd packages/phyelds-argos && poetry version -- \${nextRelease.version}"
-        + " && sed -i 's/^phyelds = .*/phyelds = \"^\${nextRelease.version}\"/' pyproject.toml)",
-    "cd packages/phyelds-vmas && poetry version -- \${nextRelease.version}",
+    prepare("phyelds-simulator"),
+    prepare("phyelds-mesa"),
+    prepare("phyelds-webots"),
+    prepare("phyelds-argos"),
+    prepare("phyelds-vmas"),
 ].join(" && ");
 var publishOptions = "--build";
 
