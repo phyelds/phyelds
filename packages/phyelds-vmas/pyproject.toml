@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "phyelds-vmas"
-version = "9.3.0"
+version = "9.3.1"
 description = "VMAS integration for phyelds"
 license = "Apache-2.0"
 authors = [
@@ -22,8 +22,8 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.12,<3.14"
-phyelds = "^9.3.0"
-phyelds-simulator = "^9.3.0"
+phyelds = "^9.3.1"
+phyelds-simulator = "^9.3.1"
 vmas = "1.5.2"
 numpy = ">=1.26"
 torch = ">=2.0"

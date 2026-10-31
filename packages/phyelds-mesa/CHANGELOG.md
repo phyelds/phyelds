@@ -1,3 +1,9 @@
+## [9.3.1](https://github.com/phyelds/phyelds/compare/9.3.0...9.3.1) (2026-10-31)
+
+### Bug Fixes
+
+* **release:** require the core of their own release in all packages ([#57](https://github.com/phyelds/phyelds/issues/57)) ([38b5b28](https://github.com/phyelds/phyelds/commit/38b5b28097ac78b26d86f358b31934c7f3eeb02a)), closes [#56](https://github.com/phyelds/phyelds/issues/56)
+
 ## [9.3.0](https://github.com/phyelds/phyelds/compare/9.2.0...9.3.0) (2026-10-30)
 
 ### Features
