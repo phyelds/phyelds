@@ -25,6 +25,7 @@ poetry run pip install "mesa[network]==3.5.1"   # once, for the Mesa extension
 PYTHONPATH="packages/phyelds-mesa/src" poetry run pytest packages/phyelds-mesa/tests
 PYTHONPATH="packages/phyelds-webots/src" poetry run pytest packages/phyelds-webots/tests  # runs Webots if on the PATH
 PYTHONPATH="packages/phyelds-argos/src" poetry run pytest packages/phyelds-argos/tests    # needs ARGoS3 and CMake
+poetry run python benchmarks/run.py --hosts simulator mesa --nodes 100 1000   # scaling benchmarks (benchmarks/README.md)
 poetry install --with docs         # documentation dependencies
 poetry run mkdocs build --strict   # build the docs, as in CI (mkdocs serve to preview)
 poetry run python docs/examples/gradient.py   # regenerate the gifs in docs/assets
