@@ -23,8 +23,6 @@ def move_right():
     action.send([1, 0])
 ```
 
-The extension requires `phyelds >=8.0.0,<9.0.0`.
-
 Programs share the typed sensors `observations`, `rewards`, `dones`, `infos` and
 `agent`, and the actuator `action`, with the host. Existing string names such as
 `sense("observations")` and `store("action", [1, 0])` remain supported. An action
