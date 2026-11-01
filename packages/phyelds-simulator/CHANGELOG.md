@@ -4,6 +4,17 @@
 
 * **integration:** show the baseline of the benchmarks on a page ([#62](https://github.com/phyelds/phyelds/issues/62)) ([52b71bf](https://github.com/phyelds/phyelds/commit/52b71bfc29f077d9683482a2ea091f81c16aa889)), closes [#36](https://github.com/phyelds/phyelds/issues/36) [#36](https://github.com/phyelds/phyelds/issues/36)
 
+### General maintenance
+
+* **pre-commit:** lint the paths that ci lints, not the staged files ([#63](https://github.com/phyelds/phyelds/issues/63)) ([e2834d7](https://github.com/phyelds/phyelds/commit/e2834d76dcc31d57d448a641fc143c27a05e388e))
+* **release:** 9.4.2 [skip ci] ([38a5658](https://github.com/phyelds/phyelds/commit/38a565855abd37f915dba50dae50e1dc85ba39c1)), closes [#36](https://github.com/phyelds/phyelds/issues/36) [#36](https://github.com/phyelds/phyelds/issues/36)
+
+## [9.4.2](https://github.com/phyelds/phyelds/compare/9.4.1...9.4.2) (2026-11-01)
+
+### Documentation
+
+* **integration:** show the baseline of the benchmarks on a page ([#62](https://github.com/phyelds/phyelds/issues/62)) ([52b71bf](https://github.com/phyelds/phyelds/commit/52b71bfc29f077d9683482a2ea091f81c16aa889)), closes [#36](https://github.com/phyelds/phyelds/issues/36) [#36](https://github.com/phyelds/phyelds/issues/36)
+
 ## [9.4.1](https://github.com/phyelds/phyelds/compare/9.4.0...9.4.1) (2026-11-01)
 
 ### Documentation
