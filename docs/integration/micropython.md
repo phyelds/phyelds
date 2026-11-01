@@ -215,6 +215,21 @@ instead of 45, and the whole field fits a packet up to about fifteen neighbors. 
 whole field while it fits a packet, and messages for each neighbor when it does not: they
 take more time on air.
 
+### Snapshots
+
+A device that restarts starts from scratch: the self-stabilising building blocks converge
+again, but what the program counts or remembers starts over. `device.snapshot()` returns
+what the device keeps between its rounds, its state and the messages it holds, as bytes in
+the format of its messages; `restore` gives them to a new device, which then runs its rounds
+as the old one would have. A board can keep them across a deep sleep, and a host can move a
+device to another process or machine:
+
+```python
+snapshot = device.snapshot()          # bytes: keep them, or send them on
+device = Device(device_id, gradient)  # the same id, program, paths and lifetime
+device.restore(snapshot)
+```
+
 ---
 
 ## What works
