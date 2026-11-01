@@ -1,3 +1,13 @@
+## [9.4.1](https://github.com/phyelds/phyelds/compare/9.4.0...9.4.1) (2026-11-01)
+
+### Documentation
+
+* **integration:** state the round semantics of each host ([#58](https://github.com/phyelds/phyelds/issues/58)) ([b1cf236](https://github.com/phyelds/phyelds/commit/b1cf23639f95d84904ecf172783f07e0b79a1f73)), closes [#35](https://github.com/phyelds/phyelds/issues/35) [#35](https://github.com/phyelds/phyelds/issues/35) [#35](https://github.com/phyelds/phyelds/issues/35) [#35](https://github.com/phyelds/phyelds/issues/35)
+
+### General maintenance
+
+* **benchmarks:** measure hosts, adapters and phyelds with many agents ([#59](https://github.com/phyelds/phyelds/issues/59)) ([7fe72db](https://github.com/phyelds/phyelds/commit/7fe72db500b1276781de8594ed76d27bca21ae81)), closes [#36](https://github.com/phyelds/phyelds/issues/36) [#36](https://github.com/phyelds/phyelds/issues/36) [#36](https://github.com/phyelds/phyelds/issues/36) [#36](https://github.com/phyelds/phyelds/issues/36) [#36](https://github.com/phyelds/phyelds/issues/36)
+
 ## [9.4.0](https://github.com/phyelds/phyelds/compare/9.3.1...9.4.0) (2026-11-01)
 
 ### Features

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "phyelds-simulator"
-version = "9.4.0"
+version = "9.4.1"
 description = "A discrete-event simulator, with live rendering, for phyelds programs"
 license = "Apache-2.0"
 authors = [
@@ -22,7 +22,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.12,<3.14"
-phyelds = "^9.4.0"
+phyelds = "^9.4.1"
 matplotlib = ">=3.10.1,<3.11.0"
 pandas = "^2.2.3"
 pydantic = "2.12.5"
