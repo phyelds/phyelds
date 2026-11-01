@@ -176,7 +176,8 @@ while robot.step(int(robot.getBasicTimeStep())) != -1:
   each `robot.step`.
 - **Synchronous rounds**: Webots delivers a message in the step after it was sent. With a
   round at every step of every robot, a robot receives in each round what its neighbors
-  sent in the previous one, as in the phyelds simulator. A neighbor that stops sending is
+  sent in the previous one, as with [Mesa](mesa.md) (see the
+  [rounds of each host](index.md#rounds-of-each-host)). A neighbor that stops sending is
   forgotten at the next round.
 - **Sensors**: `gps=` and `inertial_unit=` name the devices to sense with; `sensors=` adds
   more, from a function called at each round.

@@ -59,3 +59,36 @@ The complete, runnable example, which drives a line of devices with plain Python
 - **Run each device on its own**, when every device has its own process and sends its messages as bytes over a radio: `phyelds.vm.device.Device` runs its rounds, and the host only moves the bytes. This is how [MicroPython and the ESP32](micropython.md) and [Webots](webots.md) robots run phyelds.
 
 - **Embed Python in a native simulator**, when it calls C++ controllers in one process: [ARGoS](argos.md) runs a `Device` per robot and transports its messages over the simulated radio.
+
+---
+
+## Ideal and delivered neighborhoods
+
+A host builds the inbox of a device in one of two ways:
+
+- **Ideal**: the host computes the neighbors, from positions or a graph, and hands the device the last outbox of each one. No message is ever lost or late. The simulator, VMAS and Mesa work this way.
+- **Delivered**: the inbox is what the transport actually delivered. The neighbors are the devices heard from, and a lost message is simply missing. Webots, ARGoS and the ESP32 work this way, through a `Device`.
+
+A host that simulates a network, such as a network simulator or a V2X model, must use the delivered model. An inbox built from positions around the network would hide the losses and delays the network is there to show.
+
+---
+
+## Rounds of each host
+
+Each host makes its own choices about time, scheduling and membership. A new host can pick the row closest to it as the reference to match.
+
+| Host | Clock | Rounds | Neighborhood | Message lifetime | Join and leave |
+|---|---|---|---|---|---|
+| Simulator | The time of its events | One event per node per period. Nodes due at the same time run one after the other, in no set order, and read what their neighbors already sent in this round | Ideal: the neighborhood function | The last outbox of a neighbor, while it is a neighbor | Add a node and schedule its rounds; a removed node stops running |
+| [VMAS](vmas.md) | The simulator's | As the simulator; VMAS steps in an event of its own | Ideal, on the positions of the VMAS agents | As the simulator | The agents of the scenario, fixed |
+| [Mesa](mesa.md) | `model.time` | Synchronous: each `run_round` runs every agent once, and each agent reads what its neighbors sent in the previous round | Ideal: `within`, `cell_neighbors` or any function | One round | An agent joins when it is among the agents of a round; one missing from a round is forgotten, with its state and messages |
+| [Webots](webots.md) | The simulation time | One per robot every `--steps-per-round` steps, each robot in its own process. Synchronous, as Webots delivers a message in the next step | Delivered: the robots its `Emitter` reaches | One round | The robots of the world; one that stops sending is forgotten at the next round |
+| [ARGoS](argos.md) | The simulation clock | One per robot per tick, one robot at a time. Synchronous, as the radio delivers on the next tick | Delivered: the range-and-bearing or simple radios | One round | The robots of the experiment; a reset clears the state and the messages |
+| [MicroPython](micropython.md) | The clock of each device | Each device on its own, with a round every `ROUND_MS`. Asynchronous: the rounds of neighbors are not aligned | Delivered: the ESP-NOW broadcasts received | `lifetime` rounds (4 in the example) | A device joins with its first message, and is forgotten after `lifetime` silent rounds |
+
+Two schedules cover these hosts, and `Device` reproduces both round by round, on the same topology:
+
+- **Synchronous** (Mesa, Webots, ARGoS): every device runs its round, and then every device sends. `packages/phyelds-mesa/tests/test_runtime_matches_devices.py` checks Mesa against such a loop.
+- **Sequential** (the simulator and VMAS): each device sends right after its own round, so a device reads what its neighbors already sent in the current round. `src/tests/vm/test_device_matches_simulator.py` checks the simulator against such a loop.
+
+When the rounds of neighbors are not aligned, a device can run two rounds between two messages of the same neighbor. This happens with asynchronous devices, or over a simulated network. With `lifetime=1`, such neighbors drop in and out from one round to the next. Keep their messages for two rounds or more.
