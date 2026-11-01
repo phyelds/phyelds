@@ -130,6 +130,38 @@ class Device:  # pylint: disable=too-many-instance-attributes
             outbox = _for(outbox, None)
         return encode(outbox, self.binary)
 
+    def snapshot(self) -> bytes:
+        """
+        What the device keeps between its rounds: its state and the messages it holds.
+
+        Returns:
+            The bytes to give to ``restore``, in the format of the messages.
+
+        Raises:
+            TypeError: If the state holds a value of a type the codec does not know; see
+                ``phyelds.data.codec.register``.
+        """
+        return encode({"state": self._state, "inbox": self._inbox}, self.binary)
+
+    def restore(self, snapshot: bytes) -> None:
+        """
+        Take the state and the messages of a ``snapshot`` in place of those of the device.
+
+        The device then runs its next rounds as the one that took the snapshot would have: a
+        host can move a device to another process or machine, or keep it across a restart.
+        Restore it in a device with the same id, program, ``paths`` and ``lifetime``.
+
+        Args:
+            snapshot: The bytes that ``snapshot`` returned.
+
+        Raises:
+            ValueError: If ``snapshot`` is not bytes that ``snapshot`` returned.
+        """
+        saved = decode(snapshot)
+        if "state" not in saved or "inbox" not in saved:
+            raise ValueError("not a snapshot of a Device")
+        self._state, self._inbox = saved["state"], saved["inbox"]
+
 
 def _for(outbox: Mapping[Any, Any], neighbor: Any) -> dict[Any, Any]:
     """``outbox``, each field reduced to its value for ``neighbor`` (its default for ``None``)."""

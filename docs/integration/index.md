@@ -44,7 +44,7 @@ The complete, runnable example, which drives a line of devices with plain Python
 - **Call `cooldown()` before `state_trace()`.** `cooldown` also drops the state the program did not use in this round; reading the trace first would keep stale state.
 - **Use one engine per round.** `phyelds.vm.engine` is a `ContextVar`: set a fresh `MutableEngine` before each round. Being a `ContextVar`, each thread or `asyncio` task sees its own engine.
 - **Deliver copies.** Outboxes and states are plain dictionaries of your values. A real network serializes them; an in-process host should copy them, or devices will be able to mutate each other's state.
-- **Keep the state per device.** The state is opaque: store it as it is and give it back in the next round. It must survive between rounds, but it need not survive a restart (the program re-converges).
+- **Keep the state per device.** The state is opaque: store it as it is and give it back in the next round. It must survive between rounds; across a restart, the self-stabilising building blocks converge again without it, but what the program counts or remembers starts over. A `Device` keeps its state for you, and its [snapshot](micropython.md#snapshots) carries it, with the messages it holds, to another process.
 - **Send to the current neighbors only.** Neighbors that disappear simply stop appearing in the inbox; the program adapts.
 - **Read actuations from the outputs.** Programs act on the world through `store(name, value)`; the host applies them (moving a robot, switching a LED).
 - **Unwrap the result.** A program may return a `State` proxy: use `.value` to get the plain value.
