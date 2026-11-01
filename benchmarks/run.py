@@ -199,8 +199,11 @@ def _vmas_environment(config: Mapping[str, Any], points: Sequence[Point]) -> Any
     from phyelds.simulator.neighborhood import radius_neighborhood
     from phyelds.vmas import VmasEnvironment
 
+    # Flocking spawns its agents apart in a 2x2 arena, retrying until they fit, which never
+    # ends with a thousand of them: let them overlap, as they are moved to the points anyway.
     vmas_environment = make_env(
-        scenario="flocking", num_envs=1, seed=config["seed"], n_agents=len(points), n_obstacles=0
+        scenario="flocking", num_envs=1, seed=config["seed"], n_agents=len(points), n_obstacles=0,
+        min_dist_between_entities=0,
     )
     environment = VmasEnvironment(vmas_environment, radius_neighborhood(RADIUS))
     for (index, node), point in zip(environment.nodes.items(), points):
