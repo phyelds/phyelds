@@ -3,6 +3,7 @@ import pytest
 from phyelds.calculus import aggregate, exchange, neighbors, remember
 from phyelds.data import NeighborhoodField
 from phyelds.libraries.device import local_id, sense, store
+from phyelds.libraries.time import counter
 from phyelds.vm.device import Device
 
 INFINITY = float("inf")
@@ -181,3 +182,41 @@ def test_device_forgets_a_neighbor_silent_for_longer_than_the_lifetime():
 
 def test_device_returns_bytes_to_send():
     assert isinstance(Device(1, gradient).run_round({"source": True}), bytes)
+
+
+def test_device_snapshot_is_bytes():
+    device = Device(1, gradient)
+    device.run_round({"source": True})
+
+    assert isinstance(device.snapshot(), bytes)
+
+
+@aggregate
+def counted_gradient():
+    """The gradient, and the rounds the device has run: a state it would lose on a restart."""
+    return gradient().value, counter().value
+
+
+def _alone(device: Device, rounds: int) -> list:
+    """Rounds of ``device`` that hear nothing new: what it sends and computes from what it holds."""
+    return [(device.run_round({}), device.result) for _ in range(rounds)]
+
+
+@pytest.mark.parametrize("options", [{}, {"paths": "compact", "binary": True}])
+def test_device_restored_from_a_snapshot_runs_on_as_the_original(options):
+    devices = [Device(device_id, counted_gradient, lifetime=2, **options) for device_id in (10, 20, 30)]
+    _run_line(devices, rounds=2)
+    original = devices[1]
+    original.run_round({})  # the messages it holds are a round old, and expire a round later
+    restored = Device(20, counted_gradient, lifetime=2, **options)
+
+    restored.restore(original.snapshot())
+
+    assert _alone(restored, rounds=3) == _alone(original, rounds=3)
+
+
+def test_device_rejects_a_message_in_place_of_a_snapshot():
+    device = Device(1, gradient)
+
+    with pytest.raises(ValueError, match="snapshot"):
+        device.restore(Device(2, gradient).run_round({}))
