@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "phyelds-webots"
-version = "9.3.1"
+version = "9.4.0"
 description = "Webots integration for phyelds: aggregate programs on the robots of a Webots simulation"
 license = "Apache-2.0"
 authors = [
@@ -22,7 +22,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.12,<3.14"
-phyelds = "^9.3.1"
+phyelds = "^9.4.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.0.3"

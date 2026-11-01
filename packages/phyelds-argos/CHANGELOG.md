@@ -1,3 +1,9 @@
+## [9.4.0](https://github.com/phyelds/phyelds/compare/9.3.1...9.4.0) (2026-11-01)
+
+### Features
+
+* **vm:** snapshot and restore the state and messages of a device ([#60](https://github.com/phyelds/phyelds/issues/60)) ([fa0294c](https://github.com/phyelds/phyelds/commit/fa0294c0be4aabee8989528484b05c990159accd)), closes [#38](https://github.com/phyelds/phyelds/issues/38) [#38](https://github.com/phyelds/phyelds/issues/38)
+
 ## [9.3.1](https://github.com/phyelds/phyelds/compare/9.3.0...9.3.1) (2026-10-31)
 
 ### Bug Fixes
