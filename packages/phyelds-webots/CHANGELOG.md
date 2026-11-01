@@ -1,3 +1,9 @@
+## [9.4.2](https://github.com/phyelds/phyelds/compare/9.4.1...9.4.2) (2026-11-01)
+
+### Documentation
+
+* **integration:** show the baseline of the benchmarks on a page ([#62](https://github.com/phyelds/phyelds/issues/62)) ([52b71bf](https://github.com/phyelds/phyelds/commit/52b71bfc29f077d9683482a2ea091f81c16aa889)), closes [#36](https://github.com/phyelds/phyelds/issues/36) [#36](https://github.com/phyelds/phyelds/issues/36)
+
 ## [9.4.1](https://github.com/phyelds/phyelds/compare/9.4.0...9.4.1) (2026-11-01)
 
 ### Documentation
