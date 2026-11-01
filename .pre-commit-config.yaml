@@ -15,9 +15,10 @@ repos:
 
       - id: poetry-pylint
         name: Style checks with pylint via poetry
-        entry: poetry run pylint src
+        entry: poetry run pylint src packages/phyelds-simulator/src packages/phyelds-simulator/tests
         language: system
         types: [python]
+        pass_filenames: false
 
       - id: poetry-pytest
         name: Run pytest via poetry
