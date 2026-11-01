@@ -115,6 +115,7 @@ nav:
       - Webots: integration/webots.md
       - ARGoS: integration/argos.md
       - MicroPython & ESP32: integration/micropython.md
+      - Benchmarks: integration/benchmarks.md
   - Experimental:
       - What experimental means: experimental/index.md
       - Collective state machines: experimental/state-machines.md
