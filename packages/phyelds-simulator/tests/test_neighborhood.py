@@ -260,3 +260,26 @@ def test_radius_neighborhood_compares_positions_of_different_dimensions_as_a_sca
     environment.add_node(Node(position=(5.0, 5.0, 100.0), node_id="tall"))
 
     _assert_same_neighbors(radius_neighborhood(2.0), environment, 2.0)
+
+
+class _CountedPosition(tuple):
+    """A position that counts how often it is read."""
+    reads = 0
+
+    def __iter__(self):
+        _CountedPosition.reads += 1
+        return super().__iter__()
+
+
+def test_radius_neighborhood_reads_only_the_positions_of_the_nodes_nearby():
+    environment = Environment()
+    for node_id in range(1000):
+        environment.add_node(Node(position=_CountedPosition((node_id * 10.0, 0.0)), node_id=node_id))
+    neighborhood = radius_neighborhood(1.0)
+    neighborhood(environment.nodes[0], environment)  # the first query may index the nodes
+    _CountedPosition.reads = 0
+
+    found = neighborhood(environment.nodes[500], environment)
+
+    assert found == []
+    assert _CountedPosition.reads < 10
