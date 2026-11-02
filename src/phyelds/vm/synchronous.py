@@ -25,6 +25,8 @@ class SynchronousRuntime:
 
     def __init__(self, program: Callable[[], Any]):
         self.program = program
+        self.outputs: dict[Hashable, dict[str, Any]] = {}
+        """What the program stored with ``store`` on each device, in the last round."""
         self._states: dict[Hashable, dict[str, Any]] = {}
         self._outboxes: dict[Hashable, dict[str, Any]] = {}
 
@@ -43,7 +45,7 @@ class SynchronousRuntime:
         Returns:
             The result of the program on each device, by its id.
         """
-        states, outboxes, results = {}, {}, {}
+        states, outboxes, outputs, results = {}, {}, {}, {}
         for device, device_sensors in sensors.items():
             inbox = {
                 other: self._outboxes[other]
@@ -57,10 +59,11 @@ class SynchronousRuntime:
             result = self.program()
             outboxes[device] = node_engine.cooldown()
             states[device] = node_engine.state_trace()
+            outputs[device] = context.outputs
             results[device] = result.value if isinstance(result, State) else result
-        self._states, self._outboxes = states, outboxes
+        self._states, self._outboxes, self.outputs = states, outboxes, outputs
         return results
 
     def reset(self) -> None:
         """Forget the state and the messages of every device."""
-        self._states, self._outboxes = {}, {}
+        self._states, self._outboxes, self.outputs = {}, {}, {}
