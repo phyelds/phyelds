@@ -1,9 +1,11 @@
 import functools
 
-from phyelds.calculus import aggregate
+from phyelds.calculus import aggregate, neighbors
+from phyelds.libraries.device import local_id
 from tests.calculus.mock import MockSimulator
 
 SCALE = 1
+COUNTER = 0
 
 
 def _run(program):
@@ -74,3 +76,51 @@ def test_aggregate_runs_each_function_when_they_share_a_decorator_below_it():
         return "second"
 
     assert (_run(first), _run(second)) == ("first", "second")
+
+
+def test_aggregate_assigns_a_variable_declared_global():
+    global COUNTER
+    COUNTER = 0
+
+    @aggregate
+    def program():
+        global COUNTER
+        COUNTER += 1
+        return COUNTER
+
+    results = [_run(program) for _ in range(3)]
+
+    assert (results, COUNTER) == ([1, 2, 3], 3)
+
+
+def test_aggregate_assigns_a_variable_declared_nonlocal_and_still_aligns_its_branches():
+    calls = 0
+    simulator = MockSimulator(3)
+
+    @aggregate
+    def program():
+        nonlocal calls
+        calls += 1
+        if local_id() < 2:
+            return neighbors(local_id())
+        else:
+            return neighbors(local_id())
+
+    simulator.cycle_for(program, 3)
+
+    assert calls == 9
+    assert simulator.nodes[2].root.data == {2: 2}
+
+
+class _Base:
+    def value(self):
+        return 1
+
+
+def test_aggregate_method_calls_super_without_arguments():
+    class Child(_Base):
+        @aggregate
+        def value(self):
+            return super().value() + 1
+
+    assert _run(Child().value) == 2

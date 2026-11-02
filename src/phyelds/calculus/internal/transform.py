@@ -8,7 +8,8 @@ import ast
 import inspect
 import os
 import textwrap
-from collections.abc import Callable, Mapping
+import types
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 from phyelds.calculus.internal import AggregateTransformer
@@ -16,6 +17,8 @@ from phyelds.calculus.internal import AggregateTransformer
 _DEBUG_AST = os.environ.get("PHYELDS_DEBUG_AST", "0").lower() in ("1", "true", "yes")
 
 _TRANSFORMATION_CACHE = {}
+# The rewritten definition runs in a factory, nested in a scope that binds its closure variables.
+_SCOPE, _FACTORY = "__phyelds_scope__", "__phyelds_factory__"
 
 
 def is_aggregate_decorator(node: ast.expr) -> bool:
@@ -50,48 +53,86 @@ def _transformed_tree(func: Callable) -> ast.Module:
     return tree
 
 
-# pylint: disable=exec-used,broad-exception-caught
+def _function(name: str, body: list[ast.stmt]) -> ast.FunctionDef:
+    """The definition of a function ``name`` without arguments, decorators or annotations."""
+    no_arguments = ast.arguments(
+        posonlyargs=[], args=[], vararg=None, kwonlyargs=[], kw_defaults=[], kwarg=None, defaults=[]
+    )
+    return ast.FunctionDef(
+        name=name, args=no_arguments, body=body, decorator_list=[], returns=None, type_comment=None,
+        type_params=[],
+    )
+
+
+def _in_factory(tree: ast.Module, names: Sequence[str]) -> ast.Module:
+    """
+    The definition of ``tree`` returned by a factory, nested in a scope where ``names`` are
+    local: the definition reads them as closure variables, and its other names as globals.
+    """
+    definition = tree.body[0]
+    factory = _function(_FACTORY, [definition, ast.Return(ast.Name(definition.name, ast.Load()))])
+    body = [factory, ast.Return(ast.Name(_FACTORY, ast.Load()))]
+    if names:
+        targets = [ast.Name(name, ast.Store()) for name in names]
+        body.insert(0, ast.Assign(targets=targets, value=ast.Constant(None)))
+    scope = _function(_SCOPE, body)
+    for node in (scope, factory):
+        ast.copy_location(node, definition)
+    return ast.fix_missing_locations(ast.Module(body=[scope], type_ignores=[]))
+
+
+def _inner_code(code: types.CodeType, name: str) -> types.CodeType:
+    """The code of the function ``name`` defined in ``code``."""
+    return next(
+        constant for constant in code.co_consts
+        if isinstance(constant, types.CodeType) and constant.co_name == name
+    )
+
+
+def _factory_code(func: Callable, names: Sequence[str]) -> types.CodeType:
+    """The code of a factory that defines ``func`` aligned, with ``names`` in its closure."""
+    tree = _transformed_tree(func)
+    if _DEBUG_AST:
+        print(f"--- Transformed code for {func.__name__} ---")
+        print(ast.unparse(tree))
+        print("--- End transformed code ---")
+    # Compiled at the lines of the original file, so that tracebacks point to the source.
+    ast.increment_lineno(tree, func.__code__.co_firstlineno - 1)
+    module = compile(_in_factory(tree, names), filename=func.__code__.co_filename, mode="exec")
+    return _inner_code(_inner_code(module, _SCOPE), _FACTORY)
+
+
+# pylint: disable=broad-exception-caught
 def transform_code(func: Callable, helpers: Mapping[str, Any]) -> Callable:
     """
     Transforms the code of the given function to include alignment contexts.
 
+    The transformed function runs in the globals of ``func`` and shares the cells of its
+    closure, so it reads and assigns the same variables as ``func``.
+
     Args:
         func: The function to transform.
         helpers: Names the rewritten code calls (``align_left``, ``align_right``,
-            ``_aligned_branch``), added to the function's globals.
+            ``_aligned_branch``); the closure variables of ``func`` take precedence.
 
     Returns:
         The transformed function, or ``func`` itself if its source cannot be rewritten.
     """
-    # The code whose source is rewritten: a decorator below @aggregate shares its wrapper's.
-    code = inspect.unwrap(func).__code__
-    if code in _TRANSFORMATION_CACHE:
-        code_obj = _TRANSFORMATION_CACHE[code]
-    else:
+    # The function whose source is rewritten: a decorator below @aggregate wraps it.
+    original = inspect.unwrap(func)
+    code = original.__code__
+    cells = {name: types.CellType(value) for name, value in helpers.items()}
+    cells.update(zip(code.co_freevars, original.__closure__ or ()))
+    if code not in _TRANSFORMATION_CACHE:
         try:
-            tree = _transformed_tree(func)
-            if _DEBUG_AST:
-                print(f"--- Transformed code for {func.__name__} ---")
-                print(ast.unparse(tree))
-                print("--- End transformed code ---")
-            # Compiled at the lines of the original file, so that tracebacks point to the source.
-            ast.increment_lineno(tree, code.co_firstlineno - 1)
-            code_obj = compile(tree, filename=code.co_filename, mode="exec")
-            _TRANSFORMATION_CACHE[code] = code_obj
+            _TRANSFORMATION_CACHE[code] = _factory_code(original, list(cells))
         except Exception as e:
             print(f"WARNING: AST transformation failed ({e}). Using original function.")
             return func
-    scope = func.__globals__.copy()
-    scope.update(helpers)
-    if func.__closure__ and func.__code__.co_freevars:
-        for name, cell in zip(func.__code__.co_freevars, func.__closure__):
-            try:
-                scope[name] = cell.cell_contents
-            except ValueError:
-                pass
-    local_scope = {}
-    exec(code_obj, scope, local_scope)
-    return local_scope[func.__name__]
+    factory_code = _TRANSFORMATION_CACHE[code]
+    closure = tuple(cells[name] for name in factory_code.co_freevars)
+    factory = types.FunctionType(factory_code, original.__globals__, _FACTORY, None, closure)
+    return factory()  # pylint: disable=not-callable  # pylint does not infer FunctionType
 
 
 def str_transformed_code(func: Callable) -> str | None:
