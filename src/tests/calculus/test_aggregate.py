@@ -21,6 +21,14 @@ def passing(fn):
     return wrapper
 
 
+_RECORDED = []
+
+
+def recorded(fn):
+    _RECORDED.append(fn.__name__)
+    return fn
+
+
 def test_aggregate_keeps_the_metadata_of_the_wrapped_function():
     def program():
         """Docs of the program."""
@@ -138,3 +146,16 @@ def test_aggregate_keeps_the_default_values_of_the_function():
     assert results == [2, 4, 6]
     assert program.__wrapped__.__defaults__ == ([1, 1, 1],)
     assert program.__wrapped__.__kwdefaults__ == {"second": [2, 2, 2]}
+
+
+def test_aggregate_rewrites_its_function_once_and_not_at_each_call():
+    @aggregate
+    @recorded
+    def program():
+        return 1
+
+    _RECORDED.clear()
+    results = [_run(program) for _ in range(3)]
+
+    assert results == [1, 1, 1]
+    assert _RECORDED == ["program"]
