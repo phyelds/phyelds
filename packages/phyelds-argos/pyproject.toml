@@ -10,7 +10,7 @@ packages = [{ include = "phyelds/argos", from = "src" }]
 include = [{ path = "src/phyelds/argos/native/**", format = ["sdist", "wheel"] }]
 
 [tool.poetry.dependencies]
-python = ">=3.12,<3.14"
+python = ">=3.12,<3.15"
 phyelds = "^9.4.2"
 
 [tool.pytest.ini_options]

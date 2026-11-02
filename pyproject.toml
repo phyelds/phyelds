@@ -36,7 +36,7 @@ requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.dependencies]
-python = ">=3.12,<3.14"
+python = ">=3.12,<3.15"
 wrapt = ">=1.17.2,<1.18.0"
 
 [tool.poetry.group.dev.dependencies]
