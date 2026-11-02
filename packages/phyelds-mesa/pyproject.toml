@@ -21,7 +21,7 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.12,<3.14"
+python = ">=3.12,<3.15"
 phyelds = "^9.4.2"
 # Mesa imports networkx when it starts, but declares it only in its network extra.
 mesa = { version = ">=3.5.1,<4.0.0", extras = ["network"] }

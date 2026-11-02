@@ -10,7 +10,7 @@ neighborhood.
 
 ## Install and build
 
-Use Python **3.12 or 3.13**, a C++17 compiler, CMake 3.18+ and an installed ARGoS3.
+Use Python **3.12, 3.13 or 3.14**, a C++17 compiler, CMake 3.18+ and an installed ARGoS3.
 The Python development headers and shared library must match the interpreter you use.
 UV-managed CPython distributions include both. During development, from the phyelds root:
 

@@ -6,7 +6,7 @@ robot, and programs read and write the same sensors and actuators as on ARGoS.
 
 ## Installation
 
-Install it in the Python that Webots runs the controllers with (Python 3.12 or 3.13):
+Install it in the Python that Webots runs the controllers with (Python 3.12, 3.13 or 3.14):
 
 ```bash
 pip install phyelds-webots

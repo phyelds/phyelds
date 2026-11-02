@@ -10,8 +10,8 @@ program moves between the two unchanged.
 pip install phyelds-webots
 ```
 
-Install it in the Python that Webots runs the controllers with, which must be Python 3.12
-or 3.13. By default Webots runs `python3` from the `PATH`; you can pick another one in the
+Install it in the Python that Webots runs the controllers with, which must be Python 3.12,
+3.13 or 3.14. By default Webots runs `python3` from the `PATH`; you can pick another one in the
 preferences of Webots, or in the `runtime.ini` of a controller. The `controller` module
 comes with Webots.
 
