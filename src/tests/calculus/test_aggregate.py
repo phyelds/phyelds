@@ -124,3 +124,17 @@ def test_aggregate_method_calls_super_without_arguments():
             return super().value() + 1
 
     assert _run(Child().value) == 2
+
+
+def test_aggregate_keeps_the_default_values_of_the_function():
+    @aggregate
+    def program(first=[], *, second=[]):
+        first.append(1)
+        second.append(2)
+        return len(first) + len(second)
+
+    results = [_run(program) for _ in range(3)]
+
+    assert results == [2, 4, 6]
+    assert program.__wrapped__.__defaults__ == ([1, 1, 1],)
+    assert program.__wrapped__.__kwdefaults__ == {"second": [2, 2, 2]}

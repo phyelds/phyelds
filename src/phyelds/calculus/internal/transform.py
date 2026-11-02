@@ -17,8 +17,9 @@ from phyelds.calculus.internal import AggregateTransformer
 _DEBUG_AST = os.environ.get("PHYELDS_DEBUG_AST", "0").lower() in ("1", "true", "yes")
 
 _TRANSFORMATION_CACHE = {}
-# The rewritten definition runs in a factory, nested in a scope that binds its closure variables.
-_SCOPE, _FACTORY = "__phyelds_scope__", "__phyelds_factory__"
+# The rewritten definition runs in a factory, nested in a scope that binds its closure variables
+# and the default values of the original function.
+_SCOPE, _FACTORY, _DEFAULT = "__phyelds_scope__", "__phyelds_factory__", "__phyelds_default_"
 
 
 def is_aggregate_decorator(node: ast.expr) -> bool:
@@ -81,6 +82,29 @@ def _in_factory(tree: ast.Module, names: Sequence[str]) -> ast.Module:
     return ast.fix_missing_locations(ast.Module(body=[scope], type_ignores=[]))
 
 
+def _defaults_from_closure(definition: ast.FunctionDef) -> None:
+    """
+    Replace the default values of ``definition`` with names: those of ``_defaults``, so that
+    the definition takes the very values of the original function, evaluated once.
+    """
+    arguments = definition.args
+    arguments.defaults = [
+        ast.Name(f"{_DEFAULT}{index}", ast.Load()) for index in range(len(arguments.defaults))
+    ]
+    arguments.kw_defaults = [
+        None if default is None else ast.Name(f"{_DEFAULT}{argument.arg}", ast.Load())
+        for argument, default in zip(arguments.kwonlyargs, arguments.kw_defaults)
+    ]
+
+
+def _defaults(func: Callable) -> dict[str, Any]:
+    """The default values of ``func``, by the names ``_defaults_from_closure`` gives them."""
+    defaults = {f"{_DEFAULT}{index}": value for index, value in enumerate(func.__defaults__ or ())}
+    keywords = func.__kwdefaults__ or {}
+    defaults.update((f"{_DEFAULT}{name}", value) for name, value in keywords.items())
+    return defaults
+
+
 def _inner_code(code: types.CodeType, name: str) -> types.CodeType:
     """The code of the function ``name`` defined in ``code``."""
     return next(
@@ -98,6 +122,7 @@ def _factory_code(func: Callable, names: Sequence[str]) -> types.CodeType:
         print("--- End transformed code ---")
     # Compiled at the lines of the original file, so that tracebacks point to the source.
     ast.increment_lineno(tree, func.__code__.co_firstlineno - 1)
+    _defaults_from_closure(tree.body[0])
     module = compile(_in_factory(tree, names), filename=func.__code__.co_filename, mode="exec")
     return _inner_code(_inner_code(module, _SCOPE), _FACTORY)
 
@@ -107,8 +132,9 @@ def transform_code(func: Callable, helpers: Mapping[str, Any]) -> Callable:
     """
     Transforms the code of the given function to include alignment contexts.
 
-    The transformed function runs in the globals of ``func`` and shares the cells of its
-    closure, so it reads and assigns the same variables as ``func``.
+    The transformed function runs in the globals of ``func``, shares the cells of its
+    closure and takes its default values, so it reads and assigns the same variables as
+    ``func``, and its defaults are the same objects.
 
     Args:
         func: The function to transform.
@@ -121,7 +147,8 @@ def transform_code(func: Callable, helpers: Mapping[str, Any]) -> Callable:
     # The function whose source is rewritten: a decorator below @aggregate wraps it.
     original = inspect.unwrap(func)
     code = original.__code__
-    cells = {name: types.CellType(value) for name, value in helpers.items()}
+    values = {**helpers, **_defaults(original)}
+    cells = {name: types.CellType(value) for name, value in values.items()}
     cells.update(zip(code.co_freevars, original.__closure__ or ()))
     if code not in _TRANSFORMATION_CACHE:
         try:
