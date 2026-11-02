@@ -2,6 +2,8 @@
 The synchronous runtime and a loop of ``Device``s, on the same topology, run the same rounds:
 every device runs, and then every device sends.
 """
+import pytest
+
 from phyelds.calculus import aggregate, neighbors, remember
 from phyelds.libraries.collect import count_nodes
 from phyelds.libraries.device import local_id, sense, store
@@ -104,3 +106,22 @@ def test_synchronous_runtime_forgets_the_devices_missing_from_a_round():
     results = runtime.run_round(_sensors(topology), topology)
 
     assert results == {0: 5, 1: 1}
+
+
+@pytest.mark.parametrize("program", [gradient_leader_count, neighbor_count])
+def test_synchronous_runtime_computes_the_same_rounds_in_worker_threads(program):
+    topology = _grid(7, 5)
+    sequential = SynchronousRuntime(program)
+    threaded = SynchronousRuntime(program, workers=4)
+
+    expected = [sequential.run_round(_sensors(topology), topology) for _ in range(ROUNDS)]
+    actual = [threaded.run_round(_sensors(topology), topology) for _ in range(ROUNDS)]
+
+    assert actual == expected
+    assert list(actual[-1]) == list(expected[-1])
+    assert threaded.outputs == sequential.outputs
+
+
+def test_synchronous_runtime_rejects_fewer_than_one_worker():
+    with pytest.raises(ValueError, match="at least 1"):
+        SynchronousRuntime(rounds, workers=0)
