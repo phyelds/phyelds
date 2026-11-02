@@ -91,3 +91,16 @@ def test_synchronous_runtime_exposes_what_the_program_stored():
         runtime.run_round(_sensors(topology), topology)
 
     assert runtime.outputs == {0: {"neighbors": 2}, 1: {"neighbors": 1}, 2: {"neighbors": 1}}
+
+
+def test_synchronous_runtime_forgets_the_devices_missing_from_a_round():
+    runtime = SynchronousRuntime(rounds)
+    topology = {0: [1], 1: [0]}
+    for _ in range(3):
+        runtime.run_round(_sensors(topology), topology)
+
+    alone = {0: []}
+    runtime.run_round(_sensors(alone), alone)
+    results = runtime.run_round(_sensors(topology), topology)
+
+    assert results == {0: 5, 1: 1}
