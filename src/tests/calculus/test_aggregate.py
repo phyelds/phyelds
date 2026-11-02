@@ -1,3 +1,5 @@
+import functools
+
 from phyelds.calculus import aggregate
 from tests.calculus.mock import MockSimulator
 
@@ -8,6 +10,13 @@ def _run(program):
     simulator = MockSimulator(1)
     simulator.cycle(program)
     return simulator.nodes[0].root
+
+
+def passing(fn):
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        return fn(*args, **kwargs)
+    return wrapper
 
 
 def test_aggregate_keeps_the_metadata_of_the_wrapped_function():
@@ -51,3 +60,17 @@ def test_aggregate_sees_a_closure_variable_rebound_after_its_first_call():
     second = _run(program)
 
     assert (first, second) == (10, 20)
+
+
+def test_aggregate_runs_each_function_when_they_share_a_decorator_below_it():
+    @aggregate
+    @passing
+    def first():
+        return "first"
+
+    @aggregate
+    @passing
+    def second():
+        return "second"
+
+    assert (_run(first), _run(second)) == ("first", "second")

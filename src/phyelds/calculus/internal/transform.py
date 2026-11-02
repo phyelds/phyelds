@@ -63,8 +63,10 @@ def transform_code(func: Callable, helpers: Mapping[str, Any]) -> Callable:
     Returns:
         The transformed function, or ``func`` itself if its source cannot be rewritten.
     """
-    if func.__code__ in _TRANSFORMATION_CACHE:
-        code_obj = _TRANSFORMATION_CACHE[func.__code__]
+    # The code whose source is rewritten: a decorator below @aggregate shares its wrapper's.
+    code = inspect.unwrap(func).__code__
+    if code in _TRANSFORMATION_CACHE:
+        code_obj = _TRANSFORMATION_CACHE[code]
     else:
         try:
             tree = _transformed_tree(func)
@@ -73,9 +75,9 @@ def transform_code(func: Callable, helpers: Mapping[str, Any]) -> Callable:
                 print(ast.unparse(tree))
                 print("--- End transformed code ---")
             # Compiled at the lines of the original file, so that tracebacks point to the source.
-            ast.increment_lineno(tree, func.__code__.co_firstlineno - 1)
-            code_obj = compile(tree, filename=func.__code__.co_filename, mode="exec")
-            _TRANSFORMATION_CACHE[func.__code__] = code_obj
+            ast.increment_lineno(tree, code.co_firstlineno - 1)
+            code_obj = compile(tree, filename=code.co_filename, mode="exec")
+            _TRANSFORMATION_CACHE[code] = code_obj
         except Exception as e:
             print(f"WARNING: AST transformation failed ({e}). Using original function.")
             return func
