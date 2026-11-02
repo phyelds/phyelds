@@ -14,7 +14,6 @@ from typing import Any
 
 from phyelds.calculus.internal import AggregateTransformer
 
-_DEBUG_AST = os.environ.get("PHYELDS_DEBUG_AST", "0").lower() in ("1", "true", "yes")
 
 _TRANSFORMATION_CACHE = {}
 # The rewritten definition runs in a factory, nested in a scope that binds its closure variables
@@ -52,6 +51,11 @@ def _transformed_tree(func: Callable) -> ast.Module:
     tree = AggregateTransformer().visit(tree)
     ast.fix_missing_locations(tree)
     return tree
+
+
+def _debugging() -> bool:
+    """Whether to print the rewritten code: ``PHYELDS_DEBUG_AST``, read at each rewriting."""
+    return os.environ.get("PHYELDS_DEBUG_AST", "0").lower() in ("1", "true", "yes")
 
 
 def _function(name: str, body: list[ast.stmt]) -> ast.FunctionDef:
@@ -116,7 +120,7 @@ def _inner_code(code: types.CodeType, name: str) -> types.CodeType:
 def _factory_code(func: Callable, names: Sequence[str]) -> types.CodeType:
     """The code of a factory that defines ``func`` aligned, with ``names`` in its closure."""
     tree = _transformed_tree(func)
-    if _DEBUG_AST:
+    if _debugging():
         print(f"--- Transformed code for {func.__name__} ---")
         print(ast.unparse(tree))
         print("--- End transformed code ---")

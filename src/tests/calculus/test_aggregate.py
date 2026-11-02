@@ -1,9 +1,4 @@
 import functools
-import os
-import subprocess
-import sys
-import textwrap
-from pathlib import Path
 
 from phyelds.calculus import aggregate, neighbors
 from phyelds.libraries.device import local_id
@@ -176,29 +171,17 @@ def test_aggregate_runs_a_function_without_source_as_it_is_and_warns_once(capsys
     assert capsys.readouterr().out.count("WARNING: AST transformation failed") == 1
 
 
-def test_aggregate_prints_the_rewritten_code_when_debugging(tmp_path):
-    script = tmp_path / "debugged.py"
-    script.write_text(textwrap.dedent("""
-        from phyelds import engine
-        from phyelds.calculus import aggregate
-        from phyelds.vm import NodeContext
-        from phyelds.vm.internal import MutableEngine
+def test_aggregate_prints_the_rewritten_code_when_debugging(monkeypatch, capsys):
+    monkeypatch.setenv("PHYELDS_DEBUG_AST", "1")
 
-        @aggregate
-        def program():
-            if True:
-                return 1
-            return 2
+    @aggregate
+    def program():
+        if True:
+            return 1
+        return 2
 
-        engine.set(MutableEngine().setup(NodeContext(0, {}), {}, {}))
-        program()
-    """))
-    source = Path(__file__).resolve().parents[2]
+    _run(program)
 
-    result = subprocess.run(
-        [sys.executable, str(script)], capture_output=True, text=True, check=True,
-        env={**os.environ, "PHYELDS_DEBUG_AST": "1", "PYTHONPATH": str(source)},
-    )
-
-    assert "--- Transformed code for program ---" in result.stdout
-    assert "with align_left():" in result.stdout
+    printed = capsys.readouterr().out
+    assert "--- Transformed code for program ---" in printed
+    assert "with align_left():" in printed
