@@ -1,3 +1,8 @@
+import math
+import random
+
+import pytest
+
 from phyelds.calculus import neighbors
 from phyelds.simulator import Environment, Node, Simulator
 from phyelds.simulator.runner import schedule_program_for_all
@@ -197,3 +202,61 @@ def test_adaptive_range_keeps_a_crowd_running_a_program_to_few_neighbors():
 
     counts = [node.data["result"] - 1 for node in simulator.environment.nodes.values()]
     assert max(counts) <= 8 and min(counts) >= 1
+
+
+def _scanning_every_node(radius):
+    """The neighbors as radius_neighborhood defines them: a scan of every node, in their order."""
+    def neighborhood(node, environment):
+        return [
+            other for other in environment.node_list()
+            if other.id != node.id
+            and sum((a - b) ** 2 for a, b in zip(node.position, other.position)) ** 0.5 <= radius
+        ]
+    return neighborhood
+
+
+def _assert_same_neighbors(neighborhood, environment, radius):
+    reference = _scanning_every_node(radius)
+    for node in environment.node_list():
+        found = [other.id for other in neighborhood(node, environment)]
+        assert found == [other.id for other in reference(node, environment)], node.id
+
+
+def _scattered(environment, rng, count, dimensions, start=0):
+    for node_id in range(start, start + count):
+        position = tuple(round(rng.uniform(0, 10), 1) for _ in range(dimensions))
+        environment.add_node(Node(position=position, node_id=node_id))
+
+
+@pytest.mark.parametrize("dimensions", [2, 3])
+@pytest.mark.parametrize("radius", [-1, 0, 0.1, 1, 2.5, math.inf])
+def test_radius_neighborhood_finds_the_nodes_a_scan_of_every_node_finds(dimensions, radius):
+    rng = random.Random(7)
+    environment = Environment()
+    _scattered(environment, rng, 150, dimensions)
+    neighborhood = radius_neighborhood(radius)
+    _assert_same_neighbors(neighborhood, environment, radius)
+
+    for node in environment.node_list()[::2]:
+        node.position = tuple(coordinate + rng.uniform(-3, 3) for coordinate in node.position)
+    environment.nodes[1].update(new_position=environment.nodes[3].position)
+    _assert_same_neighbors(neighborhood, environment, radius)
+
+    for node_id in range(0, 150, 5):
+        environment.remove_node(node_id)
+    _scattered(environment, rng, 20, dimensions, start=150)
+    _scattered(environment, rng, 3, dimensions, start=0)
+    environment.add_node(Node(position=(5.0,) * dimensions, node_id=7))
+    _assert_same_neighbors(neighborhood, environment, radius)
+
+    environment.nodes[8].position = (math.nan,) * dimensions
+    environment.nodes[9].position = (math.inf,) + (0.0,) * (dimensions - 1)
+    _assert_same_neighbors(neighborhood, environment, radius)
+
+
+def test_radius_neighborhood_compares_positions_of_different_dimensions_as_a_scan_does():
+    environment = Environment()
+    _scattered(environment, random.Random(3), 50, 2)
+    environment.add_node(Node(position=(5.0, 5.0, 100.0), node_id="tall"))
+
+    _assert_same_neighbors(radius_neighborhood(2.0), environment, 2.0)
