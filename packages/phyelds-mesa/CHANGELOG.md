@@ -1,3 +1,9 @@
+## [9.5.2](https://github.com/phyelds/phyelds/compare/9.5.1...9.5.2) (2026-11-03)
+
+### Bug Fixes
+
+* **calculus:** mangle the private names of aggregate methods as python does ([#69](https://github.com/phyelds/phyelds/issues/69)) ([4fa5cb3](https://github.com/phyelds/phyelds/commit/4fa5cb3e2edaebc12e9ada31c16c8196d2aeb59c))
+
 ## [9.5.1](https://github.com/phyelds/phyelds/compare/9.5.0...9.5.1) (2026-11-02)
 
 ### Performance improvements
