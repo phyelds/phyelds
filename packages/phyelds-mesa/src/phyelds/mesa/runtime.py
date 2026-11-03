@@ -9,10 +9,7 @@ from typing import Any
 
 from mesa import Agent
 
-from phyelds import engine
-from phyelds.data import State
-from phyelds.vm import NodeContext
-from phyelds.vm.internal import MutableEngine
+from phyelds.vm.synchronous import SynchronousRuntime
 
 Neighbors = Callable[[Agent], Iterable[Agent]]
 Sensors = Callable[[Agent], Mapping[str, Any]]
@@ -37,13 +34,23 @@ class AggregateRuntime:
     def __init__(
         self, program: Callable[[], Any], *, neighbors: Neighbors, sensors: Sensors | None = None
     ):
-        self.program = program
         self.neighbors = neighbors
         self.sensors = sensors
-        self.outputs: dict[int, dict[str, Any]] = {}
+        self._rounds = SynchronousRuntime(program)
+
+    @property
+    def program(self) -> Callable[[], Any]:
+        """The ``@aggregate`` function run on each agent."""
+        return self._rounds.program
+
+    @program.setter
+    def program(self, program: Callable[[], Any]) -> None:
+        self._rounds.program = program
+
+    @property
+    def outputs(self) -> dict[int, dict[str, Any]]:
         """What the program stored with ``store`` on each agent, in the last round."""
-        self._states: dict[int, dict[str, Any]] = {}
-        self._outboxes: dict[int, dict[str, Any]] = {}
+        return self._rounds.outputs
 
     def run_round(self, agents: Iterable[Agent]) -> dict[int, Any]:
         """
@@ -57,28 +64,17 @@ class AggregateRuntime:
         Returns:
             The result of the program on each agent, by ``unique_id``.
         """
-        states, outboxes, outputs, results = {}, {}, {}, {}
-        for agent in agents:
-            inbox = {
-                neighbor.unique_id: self._outboxes[neighbor.unique_id]
-                for neighbor in self.neighbors(agent)
-                if neighbor.unique_id in self._outboxes
-            }
-            node_engine = MutableEngine()
-            engine.set(node_engine)
-            context = NodeContext(agent.unique_id, self._sense(agent))
-            node_engine.setup(context, inbox, self._states.get(agent.unique_id, {}))
-            result = self.program()
-            outboxes[agent.unique_id] = node_engine.cooldown()
-            states[agent.unique_id] = node_engine.state_trace()
-            outputs[agent.unique_id] = context.outputs
-            results[agent.unique_id] = result.value if isinstance(result, State) else result
-        self._states, self._outboxes, self.outputs = states, outboxes, outputs
-        return results
+        agents = list(agents)
+        sensors = {agent.unique_id: self._sense(agent) for agent in agents}
+        neighbors = {
+            agent.unique_id: [neighbor.unique_id for neighbor in self.neighbors(agent)]
+            for agent in agents
+        }
+        return self._rounds.run_round(sensors, neighbors)
 
     def reset(self) -> None:
         """Forget the state and the messages of every agent."""
-        self._states, self._outboxes, self.outputs = {}, {}, {}
+        self._rounds.reset()
 
     def _sense(self, agent: Agent) -> dict[str, Any]:
         """The default sensors of ``agent``, updated with the extra ones."""

@@ -54,7 +54,7 @@ The complete, runnable example, which drives a line of devices with plain Python
 ## Ways to integrate
 
 - **Reuse the phyelds simulator** with a custom `Environment`, when the host can be stepped from Python: the simulator's runner already implements the protocol (`phyelds.simulator.runner.aggregate_program_runner`), and you only map the host's state to nodes. This is how [VMAS](vmas.md) is integrated.
-- **Run rounds from another simulator**, when it owns the agents and the time: [Mesa](mesa.md) models do it with `phyelds-mesa`, which runs a round on every agent at each step of the model.
+- **Run rounds from another simulator**, when it owns the agents and the time: [Mesa](mesa.md) models do it with `phyelds-mesa`, which runs a round on every agent at each step of the model. For a host of your own, `phyelds.vm.synchronous.SynchronousRuntime` runs these rounds on devices known by their ids: give it the sensors and the neighbors of each device at every step, as in the [parallel rounds](#parallel-rounds) below.
 - **Drive rounds yourself**, as in the example above, when the host owns the loop (a real device, ROS node, or an external simulator calling back into Python).
 - **Run each device on its own**, when every device has its own process and sends its messages as bytes over a radio: `phyelds.vm.device.Device` runs its rounds, and the host only moves the bytes. This is how [MicroPython and the ESP32](micropython.md) and [Webots](webots.md) robots run phyelds.
 
@@ -88,7 +88,24 @@ Each host makes its own choices about time, scheduling and membership. A new hos
 
 Two schedules cover these hosts, and `Device` reproduces both round by round, on the same topology:
 
-- **Synchronous** (Mesa, Webots, ARGoS): every device runs its round, and then every device sends. `packages/phyelds-mesa/tests/test_runtime_matches_devices.py` checks Mesa against such a loop.
+- **Synchronous** (Mesa, Webots, ARGoS): every device runs its round, and then every device sends. `packages/phyelds-mesa/tests/test_runtime_matches_devices.py` checks Mesa against such a loop, and `src/tests/vm/test_synchronous.py` checks `SynchronousRuntime`.
 - **Sequential** (the simulator and VMAS): each device sends right after its own round, so a device reads what its neighbors already sent in the current round. `src/tests/vm/test_device_matches_simulator.py` checks the simulator against such a loop.
 
 When the rounds of neighbors are not aligned, a device can run two rounds between two messages of the same neighbor. This happens with asynchronous devices, or over a simulated network. With `lifetime=1`, such neighbors drop in and out from one round to the next. Keep their messages for two rounds or more.
+
+---
+
+## Parallel rounds
+
+In a synchronous round each device reads only what its neighbors sent in the previous round, so the rounds of the devices are independent. `SynchronousRuntime` can run them in a pool of threads, with the same results:
+
+```python
+from phyelds.vm.synchronous import SynchronousRuntime
+
+runtime = SynchronousRuntime(program, workers=8)
+for step in range(steps):
+    sensors = {agent: {"source": agent == 0} for agent in agents}
+    results = runtime.run_round(sensors, neighbors)  # neighbors: the ids around each id
+```
+
+Threads run Python in parallel only on a free-threaded Python (3.14t), and only while no imported module enables the GIL again. pandas does, and Mesa and the phyelds simulator import it, so their programs gain nothing from workers. Elsewhere one thread at a time runs Python, and more workers only add their cost. On 10,000 devices with about 8 neighbors each, 8 workers on 4 cores run the rounds of the benchmark programs 2–3 times as fast as one.
