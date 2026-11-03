@@ -43,12 +43,133 @@ def _drop_applied_decorators(func_def: ast.AST) -> None:
             return
 
 
+def _owner_class(func: Callable) -> str | None:
+    """The name of the innermost class whose body defines ``func``, if any."""
+    scopes = func.__qualname__.split(".")[:-1]
+    while scopes:
+        if scopes[-1] != "<locals>":
+            return scopes[-1]
+        del scopes[-2:]  # a function, and the <locals> of it
+    return None
+
+
+class _PrivateNames(ast.NodeTransformer):
+    """
+    Mangle the private names of a definition as Python does in the body of the class
+    ``owner``: compiled out of the class, the definition would read other names than its
+    class writes.
+    """
+
+    def __init__(self, owner: str):
+        self.prefix = "_" + owner.lstrip("_")
+
+    def mangled(self, name: str) -> str:
+        """``name`` as the class sees it: ``__name`` becomes ``_Owner__name``."""
+        if name.startswith("__") and not name.endswith("__") and "." not in name:
+            return self.prefix + name
+        return name
+
+    def _rebinding(self, name: str, node: ast.stmt) -> list[ast.stmt]:
+        """
+        The statements that move ``name``, bound by ``node``, to its mangled name: a nested
+        ``def __f`` keeps ``__f`` as its ``__name__``, but the class binds ``_Owner__f``.
+        """
+        mangled = self.mangled(name)
+        if mangled == name:
+            return []
+        rebind = ast.Assign(
+            targets=[ast.Name(mangled, ast.Store())], value=ast.Name(name, ast.Load())
+        )
+        forget = ast.Delete(targets=[ast.Name(name, ast.Del())])
+        return [ast.copy_location(rebind, node), ast.copy_location(forget, node)]
+
+    # pylint: disable=invalid-name,missing-function-docstring  # the visitors of ast
+    def visit_Name(self, node: ast.Name) -> ast.Name:
+        node.id = self.mangled(node.id)
+        return node
+
+    def visit_Attribute(self, node: ast.Attribute) -> ast.Attribute:
+        self.generic_visit(node)
+        node.attr = self.mangled(node.attr)
+        return node
+
+    def visit_arg(self, node: ast.arg) -> ast.arg:
+        self.generic_visit(node)
+        node.arg = self.mangled(node.arg)
+        return node
+
+    def visit_Global(self, node: ast.Global) -> ast.Global:
+        node.names = [self.mangled(name) for name in node.names]
+        return node
+
+    visit_Nonlocal = visit_Global
+
+    def visit_ExceptHandler(self, node: ast.ExceptHandler) -> ast.ExceptHandler:
+        self.generic_visit(node)
+        if node.name is not None:
+            node.name = self.mangled(node.name)
+        return node
+
+    def visit_MatchAs(self, node: ast.MatchAs) -> ast.MatchAs:
+        self.generic_visit(node)
+        if node.name is not None:
+            node.name = self.mangled(node.name)
+        return node
+
+    visit_MatchStar = visit_MatchAs
+
+    def visit_MatchMapping(self, node: ast.MatchMapping) -> ast.MatchMapping:
+        self.generic_visit(node)
+        if node.rest is not None:
+            node.rest = self.mangled(node.rest)
+        return node
+
+    def visit_Import(self, node: ast.Import) -> list[ast.stmt]:
+        statements: list[ast.stmt] = [node]
+        for alias in node.names:
+            if alias.asname is not None:
+                alias.name, alias.asname = self.mangled(alias.name), self.mangled(alias.asname)
+            elif "." in alias.name:  # imports the module as it is, binds its first package
+                statements += self._rebinding(alias.name.split(".")[0], node)
+            else:
+                alias.name = self.mangled(alias.name)
+        return statements
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> ast.ImportFrom:
+        if node.module is not None:
+            node.module = self.mangled(node.module)
+        for alias in node.names:
+            alias.name = self.mangled(alias.name)
+            if alias.asname is not None:
+                alias.asname = self.mangled(alias.asname)
+        return node
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> list[ast.stmt]:
+        self.generic_visit(node)
+        return [node, *self._rebinding(node.name, node)]
+
+    visit_AsyncFunctionDef = visit_FunctionDef
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> list[ast.stmt]:
+        body, node.body = node.body, []
+        self.generic_visit(node)  # its bases and decorators are in this class
+        if node.name.lstrip("_"):  # its body is in a class of its own
+            inside = ast.Module(body=body, type_ignores=[])
+            _PrivateNames(node.name).generic_visit(inside)
+            body = inside.body
+        node.body = body
+        return [node, *self._rebinding(node.name, node)]
+
+
 def _transformed_tree(func: Callable) -> ast.Module:
     """Parse ``func`` and rewrite its branches to align them."""
     source = textwrap.dedent(inspect.getsource(func))
     tree = ast.parse(source)
     _drop_applied_decorators(tree.body[0])
     tree = AggregateTransformer().visit(tree)
+    owner = _owner_class(inspect.unwrap(func))
+    if owner is not None and owner.lstrip("_"):
+        _PrivateNames(owner).generic_visit(tree.body[0])
     ast.fix_missing_locations(tree)
     return tree
 

@@ -1,4 +1,6 @@
 import functools
+import sys
+import types
 
 from phyelds.calculus import aggregate, neighbors
 from phyelds.libraries.device import local_id
@@ -185,3 +187,107 @@ def test_aggregate_prints_the_rewritten_code_when_debugging(monkeypatch, capsys)
     printed = capsys.readouterr().out
     assert "--- Transformed code for program ---" in printed
     assert "with align_left():" in printed
+
+
+class _Holder:
+    def __init__(self):
+        self.__secret = 41
+
+    @aggregate
+    def reveal(self):
+        return self.__secret + 1
+
+
+def test_aggregate_method_reads_a_private_attribute_of_its_class():
+    assert _run(_Holder().reveal) == 42
+
+
+_Private__offset = 100  # what __offset means in the body of _Private
+
+
+class _Private:
+    __limit = 10
+
+    def __init__(self):
+        self.__secret = 41
+
+    def __helper(self):
+        return 1
+
+    @aggregate
+    def everything(self, __bonus=1, *, __factor=1):
+        from math import floor as __floor
+        __local = self.__secret + self.__helper() + __bonus + __offset  # noqa: F821 (_Private__offset)
+
+        def __twice(__value):
+            return __value * 2
+
+        class __Box:
+            __inside = 3
+
+            def peek(self):
+                return self.__inside
+
+        try:
+            raise KeyError("private")
+        except KeyError as __error:
+            caught = __error.args[0]
+        values = [__item * __factor for __item in range(3)]
+        match {"key": __floor(2.5)}:
+            case {"key": __found, **__rest}:
+                matched = (__found, __rest)
+        return (
+            __twice(__local) + self.__limit + sum(values), caught, matched,
+            __twice.__name__, __Box().peek(), (__walrus := 7) + __walrus,
+        )
+
+
+def test_aggregate_method_sees_the_private_names_of_its_class_as_python_does():
+    holder = _Private()
+
+    for arguments in ({}, {"_Private__bonus": 2, "_Private__factor": 3}):
+        expected = _Private.everything.__wrapped__(holder, **arguments)
+        assert _run(lambda: holder.everything(**arguments)) == expected
+
+
+_Counted__count = 0  # what __count means in the body of _Counted
+
+
+class _Counted:
+    @aggregate
+    def bump(self):
+        global __count
+        __count += 1
+        return __count
+
+
+def test_aggregate_method_assigns_a_private_global_as_python_does():
+    global _Counted__count
+    _Counted__count = 0
+    counted = _Counted()
+
+    results = [_Counted.bump.__wrapped__(counted), _run(counted.bump)]
+
+    assert (results, _Counted__count) == ([1, 2], 2)
+
+
+class _Imports:
+    @aggregate
+    def load(self):
+        import __plain
+        import __aliased as __bound
+        import __package.inner
+        return __plain.value, __bound.value, __package.inner.value
+
+
+def test_aggregate_method_imports_private_modules_as_python_does(monkeypatch):
+    for name, value in (("_Imports__plain", 1), ("_Imports__aliased", 2), ("__package", 0), ("__package.inner", 3)):
+        module = types.ModuleType(name)
+        module.value = value
+        monkeypatch.setitem(sys.modules, name, module)
+    monkeypatch.setattr(sys.modules["__package"], "inner", sys.modules["__package.inner"], raising=False)
+
+    expected = _Imports.load.__wrapped__(_Imports())
+
+    assert expected == (1, 2, 3)
+    assert _run(_Imports().load) == expected
