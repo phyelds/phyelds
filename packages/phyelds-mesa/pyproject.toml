@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "phyelds-mesa"
-version = "9.4.2"
+version = "9.5.1"
 description = "Mesa integration for phyelds: aggregate programs on the agents of a Mesa model"
 license = "Apache-2.0"
 authors = [
@@ -21,8 +21,8 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.12,<3.14"
-phyelds = "^9.4.2"
+python = ">=3.12,<3.15"
+phyelds = "^9.5.1"
 # Mesa imports networkx when it starts, but declares it only in its network extra.
 mesa = { version = ">=3.5.1,<4.0.0", extras = ["network"] }
 

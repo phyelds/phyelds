@@ -1,3 +1,15 @@
+## [9.5.1](https://github.com/phyelds/phyelds/compare/9.5.0...9.5.1) (2026-11-02)
+
+### Performance improvements
+
+* **calculus:** rewrite each aggregate function once, not at each call ([#64](https://github.com/phyelds/phyelds/issues/64)) ([bae80ab](https://github.com/phyelds/phyelds/commit/bae80aba2077ee35c57fe50a5a6a19897a975258)), closes [#37](https://github.com/phyelds/phyelds/issues/37) [#37](https://github.com/phyelds/phyelds/issues/37) [#37](https://github.com/phyelds/phyelds/issues/37) [#37](https://github.com/phyelds/phyelds/issues/37) [#37](https://github.com/phyelds/phyelds/issues/37) [#37](https://github.com/phyelds/phyelds/issues/37) [#37](https://github.com/phyelds/phyelds/issues/37) [#37](https://github.com/phyelds/phyelds/issues/37)
+
+## [9.5.0](https://github.com/phyelds/phyelds/compare/9.4.2...9.5.0) (2026-11-02)
+
+### Features
+
+* support python 3.14 ([#65](https://github.com/phyelds/phyelds/issues/65)) ([09941da](https://github.com/phyelds/phyelds/commit/09941dab64ec9130d04797ad2e5166f1e7b4a002))
+
 ## [9.4.2](https://github.com/phyelds/phyelds/compare/9.4.1...9.4.2) (2026-11-01)
 
 ### Documentation
