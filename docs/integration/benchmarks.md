@@ -22,9 +22,12 @@ there are.
 
 - **ARGoS and Mesa keep their pace.** From 100 to 10,000 agents, ARGoS loses a factor of
   1.5 and Mesa a factor of 3.
-- **The simulator loses a factor of 50.** Its `radius_neighborhood` compares every node
-  with every other one, so a round costs O(N²). At 10,000 agents a neighbor search takes
-  36 s, and a round is mostly that search.
+- **The simulator loses a factor of 50.** In this baseline its `radius_neighborhood`
+  compares every node with every other one, so a round costs O(N²). At 10,000 agents a
+  neighbor search takes 36 s, and a round is mostly that search. It now keeps a uniform
+  grid of the nodes instead: on the same machine, on battery, the search at 10,000 agents
+  went from 83 s to 0.34 s, and `distance_to` from 117 to about 7,200 agent-rounds per
+  second, about as fast as at 1,000.
 
 VMAS and Webots are measured with 100 agents only (see [what is missing](#what-is-missing)).
 
