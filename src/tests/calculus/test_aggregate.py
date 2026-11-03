@@ -1,4 +1,6 @@
 import functools
+import sys
+import types
 
 from phyelds.calculus import aggregate, neighbors
 from phyelds.libraries.device import local_id
@@ -246,3 +248,46 @@ def test_aggregate_method_sees_the_private_names_of_its_class_as_python_does():
     for arguments in ({}, {"_Private__bonus": 2, "_Private__factor": 3}):
         expected = _Private.everything.__wrapped__(holder, **arguments)
         assert _run(lambda: holder.everything(**arguments)) == expected
+
+
+_Counted__count = 0  # what __count means in the body of _Counted
+
+
+class _Counted:
+    @aggregate
+    def bump(self):
+        global __count
+        __count += 1
+        return __count
+
+
+def test_aggregate_method_assigns_a_private_global_as_python_does():
+    global _Counted__count
+    _Counted__count = 0
+    counted = _Counted()
+
+    results = [_Counted.bump.__wrapped__(counted), _run(counted.bump)]
+
+    assert (results, _Counted__count) == ([1, 2], 2)
+
+
+class _Imports:
+    @aggregate
+    def load(self):
+        import __plain
+        import __aliased as __bound
+        import __package.inner
+        return __plain.value, __bound.value, __package.inner.value
+
+
+def test_aggregate_method_imports_private_modules_as_python_does(monkeypatch):
+    for name, value in (("_Imports__plain", 1), ("_Imports__aliased", 2), ("__package", 0), ("__package.inner", 3)):
+        module = types.ModuleType(name)
+        module.value = value
+        monkeypatch.setitem(sys.modules, name, module)
+    monkeypatch.setattr(sys.modules["__package"], "inner", sys.modules["__package.inner"], raising=False)
+
+    expected = _Imports.load.__wrapped__(_Imports())
+
+    assert expected == (1, 2, 3)
+    assert _run(_Imports().load) == expected
