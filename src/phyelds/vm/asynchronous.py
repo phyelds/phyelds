@@ -20,20 +20,32 @@ class AsynchronousRuntime:
 
     Args:
         program: The ``@aggregate`` function to run on each device.
+        retention: For how long, in the units of the ``"time"`` sensor or ``time``, a silent
+            device is kept before its state, messages and outputs are forgotten; ``None`` by
+            default, which keeps silent devices until ``forget`` or ``reset``.
+
+    Raises:
+        ValueError: If ``retention`` is not positive.
     """
 
-    def __init__(self, program: Callable[[], Any]):
+    def __init__(self, program: Callable[[], Any], *, retention: float | None = None):
+        if retention is not None and retention <= 0:
+            raise ValueError(f"retention must be positive, not {retention}")
         self.program = program
+        self.retention = retention
         self.outputs: dict[Hashable, dict[str, Any]] = {}
         """What the program stored with ``store`` on each device, in its last spike."""
         self._states: dict[Hashable, dict[str, Any]] = {}
         self._outboxes: dict[Hashable, dict[str, Any]] = {}
+        self._last_seen: dict[Hashable, float] = {}
 
     def spike(
         self,
         device: Hashable,
         sensors: Mapping[str, Any],
         neighbors: Iterable[Hashable],
+        *,
+        time: float | None = None,
     ) -> Any:
         """
         Run the program once on ``device``, keeping the state and messages of the others.
@@ -42,14 +54,30 @@ class AsynchronousRuntime:
             device: The id of the device running the spike.
             sensors: The sensors of ``device`` in this spike, by name.
             neighbors: The ids of the current neighbors of ``device``.
+            time: The time of this spike, when it is not in ``sensors["time"]``.
 
         Returns:
             The result of the program on ``device``.
+
+        Raises:
+            ValueError: If ``retention`` is set and neither ``time`` nor ``sensors["time"]``
+                is given.
         """
+        device_sensors = dict(sensors)
+        if time is not None and "time" not in device_sensors:
+            device_sensors["time"] = time
+        if self.retention is not None:
+            now = device_sensors.get("time")
+            if now is None:
+                raise ValueError("retention requires a time in sensors or as time=")
+            for other, seen in list(self._last_seen.items()):
+                if now - seen > self.retention:
+                    self.forget(other)
+            self._last_seen[device] = now
         inbox = {other: self._outboxes[other] for other in neighbors if other in self._outboxes}
         node_engine = MutableEngine()
         engine.set(node_engine)
-        context = NodeContext(device, dict(sensors))
+        context = NodeContext(device, device_sensors)
         node_engine.setup(context, inbox, self._states.get(device, {}))
         result = self.program()
         self._outboxes[device] = node_engine.cooldown()
@@ -61,6 +89,8 @@ class AsynchronousRuntime:
         self,
         sensors: Mapping[Hashable, Mapping[str, Any]],
         neighbors: Mapping[Hashable, Iterable[Hashable]],
+        *,
+        time: float | None = None,
     ) -> dict[Hashable, Any]:
         """
         Run the program once on each device of ``sensors``, in the order of ``sensors``.
@@ -68,12 +98,13 @@ class AsynchronousRuntime:
         Args:
             sensors: The sensors of each device of this round, by its id.
             neighbors: The ids of the neighbors of each device, by its id.
+            time: The time of this round, when it is not in ``sensors[device]["time"]``.
 
         Returns:
             The result of the program on each device, by its id, in the order of ``sensors``.
         """
         return {
-            device: self.spike(device, device_sensors, neighbors.get(device, ()))
+            device: self.spike(device, device_sensors, neighbors.get(device, ()), time=time)
             for device, device_sensors in sensors.items()
         }
 
@@ -87,7 +118,8 @@ class AsynchronousRuntime:
         self._states.pop(device, None)
         self._outboxes.pop(device, None)
         self.outputs.pop(device, None)
+        self._last_seen.pop(device, None)
 
     def reset(self) -> None:
         """Forget the state and the messages of every device."""
-        self._states, self._outboxes, self.outputs = {}, {}, {}
+        self._states, self._outboxes, self.outputs, self._last_seen = {}, {}, {}, {}

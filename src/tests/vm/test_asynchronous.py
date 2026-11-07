@@ -4,6 +4,8 @@ rounds: each device sends right after its own round.
 """
 import random
 
+import pytest
+
 from phyelds.calculus import aggregate, neighbors, remember
 from phyelds.libraries.collect import count_nodes
 from phyelds.libraries.device import local_id, sense, store
@@ -128,3 +130,32 @@ def test_asynchronous_runtime_forgets_the_state_messages_and_outputs_of_a_device
     assert runtime.outputs == {0: {"neighbors": 1}}
     assert runtime.spike(0, {}, [1]) == 0
     assert counted.spike(1, {}, [0]) == 1
+
+
+def test_asynchronous_runtime_forgets_a_device_silent_for_longer_than_the_retention_time():
+    runtime = AsynchronousRuntime(neighbor_count, retention=2.0)
+    runtime.spike(1, {"time": 0.0}, [0])
+
+    assert runtime.spike(0, {"time": 2.0}, [1]) == 1
+    assert runtime.spike(0, {"time": 2.5}, [1]) == 0
+    assert 1 not in runtime.outputs
+
+
+def test_asynchronous_runtime_accepts_the_time_as_an_argument_of_spike_and_run_round():
+    runtime = AsynchronousRuntime(neighbor_count, retention=2.0)
+    runtime.spike(1, {}, [0], time=0.0)
+
+    assert runtime.run_round({0: {}}, {0: [1]}, time=2.0) == {0: 1}
+    assert runtime.run_round({0: {}}, {0: [1]}, time=2.5) == {0: 0}
+
+
+def test_asynchronous_runtime_rejects_a_non_positive_retention_time():
+    with pytest.raises(ValueError, match="positive"):
+        AsynchronousRuntime(rounds, retention=0)
+
+
+def test_asynchronous_runtime_requires_a_time_when_retention_is_set():
+    runtime = AsynchronousRuntime(rounds, retention=1.0)
+
+    with pytest.raises(ValueError, match="time"):
+        runtime.spike(0, {}, [])
