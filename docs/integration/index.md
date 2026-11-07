@@ -37,6 +37,17 @@ In detail, the host:
 
 The complete, runnable example, which drives a line of devices with plain Python objects, is [`docs/examples/custom_runtime.py`](https://github.com/phyelds/phyelds/blob/master/docs/examples/custom_runtime.py).
 
+`phyelds.vm.rounds.run_round` goes through steps 4 and 5 in one call, in the right order: give it the program, the id, the sensors, the inbox and the state, and it returns a `Round` with the `result` (already unwrapped), the `outbox`, the new `state` and the `outputs`. Gathering the inbox, keeping the states and delivering the outboxes stay with the host:
+
+```python
+from phyelds.vm.rounds import run_round
+
+done = run_round(program, device_id, sensors, inbox, states.get(device_id))
+states[device_id], outboxes[device_id] = done.state, done.outbox
+```
+
+The runtimes below and `Device` run their rounds with it.
+
 ---
 
 ## Rules for a host
