@@ -1,0 +1,84 @@
+"""
+The asynchronous runtime and the simulator, on the same topology and schedule, run the same
+rounds: each device sends right after its own round.
+"""
+import random
+
+from phyelds.calculus import aggregate, remember
+from phyelds.libraries.collect import count_nodes
+from phyelds.libraries.device import local_id, sense
+from phyelds.libraries.gossip import gossip_max
+from phyelds.libraries.spreading import distance_to
+from phyelds.simulator import Simulator
+from phyelds.simulator.deployments import grid_generation
+from phyelds.simulator.neighborhood import radius_neighborhood
+from phyelds.simulator.runner import aggregate_program_runner
+from phyelds.vm.asynchronous import AsynchronousRuntime
+
+ROUNDS = 12
+
+
+@aggregate
+def gradient_leader_count():
+    potential = distance_to(sense("source"))
+    return potential.value, gossip_max(local_id()).value, count_nodes(potential).value
+
+
+@aggregate
+def rounds():
+    set_count, count = remember(0)
+    return set_count(count + 1)
+
+
+def _grid_with_phases() -> tuple[Simulator, dict[int, float]]:
+    """A 4×3 grid where each node reaches the 8 around it, and when in each period a node runs."""
+    simulator = Simulator()
+    grid_generation(simulator, 4, 3, spacing=1)
+    simulator.environment.set_neighborhood_function(radius_neighborhood(1.5))
+    simulator.environment.add_data_for_all_nodes({"source": False})
+    simulator.environment.nodes[0].data["source"] = True
+    order = sorted(simulator.environment.nodes)
+    random.Random(7).shuffle(order)
+    phases = {node_id: (rank + 1) / (len(order) + 1) for rank, node_id in enumerate(order)}
+    return simulator, phases
+
+
+def _simulator_rounds(simulator: Simulator, phases: dict[int, float]) -> list[dict]:
+    for node in simulator.environment.node_list():
+        simulator.schedule_event(
+            phases[node.id], aggregate_program_runner, simulator, 1.0, node, gradient_leader_count
+        )
+    rounds = []
+    for end in range(1, ROUNDS + 1):
+        simulator.run(until_time=end)
+        rounds.append({node.id: node.data["result"] for node in simulator.environment.node_list()})
+    return rounds
+
+
+def test_asynchronous_runtime_computes_the_rounds_of_the_simulator_on_the_same_schedule():
+    simulator, phases = _grid_with_phases()
+    environment = simulator.environment
+    order = sorted(phases, key=phases.get)
+    neighbors = {
+        node.id: [other.id for other in environment.get_neighbors(node)]
+        for node in environment.node_list()
+    }
+    sensors = {device: {"source": device == 0} for device in order}
+    runtime = AsynchronousRuntime(gradient_leader_count)
+
+    expected = _simulator_rounds(simulator, phases)
+    actual = [runtime.run_round(sensors, neighbors) for _ in range(ROUNDS)]
+
+    assert actual == expected
+
+
+def test_asynchronous_runtime_keeps_the_state_of_each_device_across_rounds_until_reset():
+    topology = {0: [1], 1: [0]}
+    sensors = {0: {}, 1: {}}
+    runtime = AsynchronousRuntime(rounds)
+    for _ in range(3):
+        runtime.run_round(sensors, topology)
+
+    runtime.reset()
+
+    assert runtime.run_round(sensors, topology) == {0: 1, 1: 1}
