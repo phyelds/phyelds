@@ -77,6 +77,17 @@ class AsynchronousRuntime:
             for device, device_sensors in sensors.items()
         }
 
+    def forget(self, device: Hashable) -> None:
+        """
+        Forget the state, the messages and the outputs of ``device``.
+
+        Args:
+            device: The id of the device to forget.
+        """
+        self._states.pop(device, None)
+        self._outboxes.pop(device, None)
+        self.outputs.pop(device, None)
+
     def reset(self) -> None:
         """Forget the state and the messages of every device."""
         self._states, self._outboxes, self.outputs = {}, {}, {}

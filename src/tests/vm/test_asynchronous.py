@@ -110,3 +110,21 @@ def test_asynchronous_runtime_exposes_what_the_program_stored():
         runtime.run_round(sensors, topology)
 
     assert runtime.outputs == {0: {"neighbors": 2}, 1: {"neighbors": 1}, 2: {"neighbors": 1}}
+
+
+def test_asynchronous_runtime_forgets_the_state_messages_and_outputs_of_a_device():
+    topology = {0: [1], 1: [0]}
+    sensors = {0: {}, 1: {}}
+    runtime = AsynchronousRuntime(neighbor_count)
+    for _ in range(2):
+        runtime.run_round(sensors, topology)
+    counted = AsynchronousRuntime(rounds)
+    for _ in range(3):
+        counted.run_round(sensors, topology)
+
+    runtime.forget(1)
+    counted.forget(1)
+
+    assert runtime.outputs == {0: {"neighbors": 1}}
+    assert runtime.spike(0, {}, [1]) == 0
+    assert counted.spike(1, {}, [0]) == 1
