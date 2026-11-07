@@ -8,10 +8,7 @@ from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor  # pylint: disable=no-name-in-module
 from typing import Any
 
-from phyelds import engine
-from phyelds.data import State
-from phyelds.vm import NodeContext
-from phyelds.vm.internal import MutableEngine
+from phyelds.vm.rounds import run_round
 
 # More chunks than workers, so that a worker that drew slow devices does not hold the others.
 _CHUNKS_PER_WORKER = 4
@@ -97,15 +94,9 @@ class SynchronousRuntime:
                 for other in neighbors.get(device, ())
                 if other in self._outboxes
             }
-            node_engine = MutableEngine()
-            engine.set(node_engine)
-            context = NodeContext(device, dict(sensors[device]))
-            node_engine.setup(context, inbox, self._states.get(device, {}))
-            result = self.program()
-            outboxes[device] = node_engine.cooldown()
-            states[device] = node_engine.state_trace()
-            outputs[device] = context.outputs
-            results[device] = result.value if isinstance(result, State) else result
+            done = run_round(self.program, device, sensors[device], inbox, self._states.get(device))
+            states[device], outboxes[device] = done.state, done.outbox
+            outputs[device], results[device] = done.outputs, done.result
         return states, outboxes, outputs, results
 
 

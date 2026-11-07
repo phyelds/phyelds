@@ -5,10 +5,7 @@ round (a spike), so the next devices to run already read its new message.
 from collections.abc import Callable, Hashable, Iterable, Mapping
 from typing import Any
 
-from phyelds import engine
-from phyelds.data import State
-from phyelds.vm import NodeContext
-from phyelds.vm.internal import MutableEngine
+from phyelds.vm.rounds import run_round
 
 
 class AsynchronousRuntime:
@@ -75,15 +72,10 @@ class AsynchronousRuntime:
                     self.forget(other)
             self._last_seen[device] = now
         inbox = {other: self._outboxes[other] for other in neighbors if other in self._outboxes}
-        node_engine = MutableEngine()
-        engine.set(node_engine)
-        context = NodeContext(device, device_sensors)
-        node_engine.setup(context, inbox, self._states.get(device, {}))
-        result = self.program()
-        self._outboxes[device] = node_engine.cooldown()
-        self._states[device] = node_engine.state_trace()
-        self.outputs[device] = context.outputs
-        return result.value if isinstance(result, State) else result
+        done = run_round(self.program, device, device_sensors, inbox, self._states.get(device))
+        self._states[device], self._outboxes[device] = done.state, done.outbox
+        self.outputs[device] = done.outputs
+        return done.result
 
     def run_round(
         self,
