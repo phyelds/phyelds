@@ -4,7 +4,8 @@ their agents together, such as the model of a multi-agent simulator.
 """
 import math
 from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
-from concurrent.futures import ThreadPoolExecutor
+# In Python 3.14 concurrent.futures loads ThreadPoolExecutor in __getattr__, which astroid misses.
+from concurrent.futures import ThreadPoolExecutor  # pylint: disable=no-name-in-module
 from typing import Any
 
 from phyelds import engine
