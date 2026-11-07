@@ -27,6 +27,33 @@ class AsynchronousRuntime:
         self._states: dict[Hashable, dict[str, Any]] = {}
         self._outboxes: dict[Hashable, dict[str, Any]] = {}
 
+    def spike(
+        self,
+        device: Hashable,
+        sensors: Mapping[str, Any],
+        neighbors: Iterable[Hashable],
+    ) -> Any:
+        """
+        Run the program once on ``device``, keeping the state and messages of the others.
+
+        Args:
+            device: The id of the device running the spike.
+            sensors: The sensors of ``device`` in this spike, by name.
+            neighbors: The ids of the current neighbors of ``device``.
+
+        Returns:
+            The result of the program on ``device``.
+        """
+        inbox = {other: self._outboxes[other] for other in neighbors if other in self._outboxes}
+        node_engine = MutableEngine()
+        engine.set(node_engine)
+        context = NodeContext(device, dict(sensors))
+        node_engine.setup(context, inbox, self._states.get(device, {}))
+        result = self.program()
+        self._outboxes[device] = node_engine.cooldown()
+        self._states[device] = node_engine.state_trace()
+        return result.value if isinstance(result, State) else result
+
     def run_round(
         self,
         sensors: Mapping[Hashable, Mapping[str, Any]],
@@ -42,19 +69,10 @@ class AsynchronousRuntime:
         Returns:
             The result of the program on each device, by its id, in the order of ``sensors``.
         """
-        results = {}
-        for device, device_sensors in sensors.items():
-            peers = neighbors.get(device, ())
-            inbox = {other: self._outboxes[other] for other in peers if other in self._outboxes}
-            node_engine = MutableEngine()
-            engine.set(node_engine)
-            context = NodeContext(device, dict(device_sensors))
-            node_engine.setup(context, inbox, self._states.get(device, {}))
-            result = self.program()
-            self._outboxes[device] = node_engine.cooldown()
-            self._states[device] = node_engine.state_trace()
-            results[device] = result.value if isinstance(result, State) else result
-        return results
+        return {
+            device: self.spike(device, device_sensors, neighbors.get(device, ()))
+            for device, device_sensors in sensors.items()
+        }
 
     def reset(self) -> None:
         """Forget the state and the messages of every device."""

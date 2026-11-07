@@ -82,3 +82,13 @@ def test_asynchronous_runtime_keeps_the_state_of_each_device_across_rounds_until
     runtime.reset()
 
     assert runtime.run_round(sensors, topology) == {0: 1, 1: 1}
+
+
+def test_asynchronous_runtime_spikes_one_device_without_forgetting_the_others():
+    runtime = AsynchronousRuntime(rounds)
+    runtime.spike(0, {}, [1])
+    runtime.spike(1, {}, [0])
+
+    assert runtime.spike(0, {}, [1]) == 2
+    assert runtime.spike(0, {}, [1]) == 3
+    assert runtime.spike(1, {}, [0]) == 2
