@@ -4,9 +4,9 @@ rounds: each device sends right after its own round.
 """
 import random
 
-from phyelds.calculus import aggregate, remember
+from phyelds.calculus import aggregate, neighbors, remember
 from phyelds.libraries.collect import count_nodes
-from phyelds.libraries.device import local_id, sense
+from phyelds.libraries.device import local_id, sense, store
 from phyelds.libraries.gossip import gossip_max
 from phyelds.libraries.spreading import distance_to
 from phyelds.simulator import Simulator
@@ -28,6 +28,13 @@ def gradient_leader_count():
 def rounds():
     set_count, count = remember(0)
     return set_count(count + 1)
+
+
+@aggregate
+def neighbor_count():
+    count = neighbors(1).sum(include_self=False)
+    store("neighbors", count)
+    return count
 
 
 def _grid_with_phases() -> tuple[Simulator, dict[int, float]]:
@@ -92,3 +99,14 @@ def test_asynchronous_runtime_spikes_one_device_without_forgetting_the_others():
     assert runtime.spike(0, {}, [1]) == 2
     assert runtime.spike(0, {}, [1]) == 3
     assert runtime.spike(1, {}, [0]) == 2
+
+
+def test_asynchronous_runtime_exposes_what_the_program_stored():
+    topology = {0: [1, 2], 1: [0], 2: [0]}
+    sensors = {0: {}, 1: {}, 2: {}}
+    runtime = AsynchronousRuntime(neighbor_count)
+
+    for _ in range(2):
+        runtime.run_round(sensors, topology)
+
+    assert runtime.outputs == {0: {"neighbors": 2}, 1: {"neighbors": 1}, 2: {"neighbors": 1}}

@@ -24,6 +24,8 @@ class AsynchronousRuntime:
 
     def __init__(self, program: Callable[[], Any]):
         self.program = program
+        self.outputs: dict[Hashable, dict[str, Any]] = {}
+        """What the program stored with ``store`` on each device, in its last spike."""
         self._states: dict[Hashable, dict[str, Any]] = {}
         self._outboxes: dict[Hashable, dict[str, Any]] = {}
 
@@ -52,6 +54,7 @@ class AsynchronousRuntime:
         result = self.program()
         self._outboxes[device] = node_engine.cooldown()
         self._states[device] = node_engine.state_trace()
+        self.outputs[device] = context.outputs
         return result.value if isinstance(result, State) else result
 
     def run_round(
@@ -76,4 +79,4 @@ class AsynchronousRuntime:
 
     def reset(self) -> None:
         """Forget the state and the messages of every device."""
-        self._states, self._outboxes = {}, {}
+        self._states, self._outboxes, self.outputs = {}, {}, {}
