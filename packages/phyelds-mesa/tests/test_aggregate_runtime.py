@@ -1,6 +1,7 @@
 import math
 
 import mesa
+import pytest
 from mesa.discrete_space import CellAgent, OrthogonalVonNeumannGrid
 from mesa.experimental.continuous_space import ContinuousSpace, ContinuousSpaceAgent
 
@@ -145,3 +146,49 @@ def test_runtime_forgets_agents_that_left():
 
     assert agents[2].unique_id not in results
     assert results[agents[1].unique_id] == 1
+
+
+def test_asynchronous_runtime_publishes_each_agent_message_before_the_next_agent_runs():
+    _, agents = _line(3)
+    runtime = AggregateRuntime(neighbour_count, neighbors=within(1.5), synchronous=False)
+
+    assert _run(runtime, agents, rounds_to_run=1) == [0, 1, 1]
+
+
+def test_asynchronous_runtime_spikes_one_agent_and_forgets_an_agent_when_asked():
+    _, agents = _line(2)
+    runtime = AggregateRuntime(neighbour_count, neighbors=within(1.5), synchronous=False)
+    runtime.spike(agents[0])
+
+    assert runtime.spike(agents[1]) == 1
+
+    runtime.forget(agents[0])
+
+    assert runtime.spike(agents[1]) == 0
+
+
+def test_asynchronous_runtime_forgets_an_agent_silent_for_longer_than_the_retention_time():
+    model, agents = _line(2)
+    runtime = AggregateRuntime(
+        neighbour_count, neighbors=within(1.5), synchronous=False, retention=1.0
+    )
+    runtime.spike(agents[0])
+    model.step()
+
+    assert runtime.spike(agents[1]) == 1
+
+    model.step()
+
+    assert runtime.spike(agents[1]) == 0
+
+
+def test_synchronous_runtime_rejects_retention_spike_and_forget():
+    _, agents = _line(1)
+    runtime = AggregateRuntime(rounds, neighbors=within(1.5))
+
+    with pytest.raises(ValueError, match="synchronous=False"):
+        AggregateRuntime(rounds, neighbors=within(1.5), retention=1.0)
+    with pytest.raises(ValueError, match="synchronous=False"):
+        runtime.spike(agents[0])
+    with pytest.raises(ValueError, match="synchronous=False"):
+        runtime.forget(agents[0])

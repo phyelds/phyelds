@@ -5,11 +5,10 @@ runs on its own (a microcontroller, a robot controller) and talks over a radio.
 from collections.abc import Callable, Mapping
 from typing import Any
 
-from phyelds import engine
-from phyelds.data import NeighborhoodField, State
+from phyelds.data import NeighborhoodField
 from phyelds.data.codec import decode, encode
-from phyelds.vm import NodeContext
 from phyelds.vm.internal import MutableEngine
+from phyelds.vm.rounds import run_round
 
 
 class Device:  # pylint: disable=too-many-instance-attributes
@@ -112,14 +111,11 @@ class Device:  # pylint: disable=too-many-instance-attributes
             if self._inbox[sender][1] > self.lifetime:
                 del self._inbox[sender]
         received = {sender: entry[0] for sender, entry in self._inbox.items()}
-        engine.set(MutableEngine(paths=self.paths))
-        context = NodeContext(self.device_id, dict(sensors))
-        engine.get().setup(context, received, self._state)
-        result = self.program()
-        outbox = engine.get().cooldown()  # first: it also drops the state not used
-        self._state = engine.get().state_trace()
-        self.outputs = context.outputs
-        self.result = result.value if isinstance(result, State) else result
+        done = run_round(
+            self.program, self.device_id, sensors, received, self._state, paths=self.paths
+        )
+        outbox, self._state = done.outbox, done.state
+        self.outputs, self.result = done.outputs, done.result
         self.addressed = {}
         fields = any(isinstance(value, NeighborhoodField) for value in outbox.values())
         if self.messages == "addressed" and fields:
