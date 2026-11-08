@@ -90,13 +90,8 @@ def test_codec_restores_registered_constants_by_identity(binary):
 
 
 def test_codec_sends_the_value_of_a_state(binary):
-    @aggregate
-    def program():
-        _, state = remember(4)
-        return state
-
     engine.set(MutableEngine().setup(MockNodeContext(0)))
-    state = program()
+    _, state = remember(4)
 
     assert isinstance(state, State)
     assert type(_round_trip(state, binary)) is int

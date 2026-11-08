@@ -62,7 +62,7 @@ def aggregate(func):
         engine.get().enter(func.__name__)
         result = _transformed(func)(*args, **kwargs)
         engine.get().exit()
-        return result
+        return result.value if isinstance(result, State) else result
 
     return wrapper
 
