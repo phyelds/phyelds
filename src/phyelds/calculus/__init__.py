@@ -73,6 +73,8 @@ def _unwrap(value: Any) -> Any:
         return value.value
     if type(value) is tuple:  # pylint: disable=unidiomatic-typecheck
         return tuple(_unwrap(item) for item in value)
+    if type(value) is list:  # pylint: disable=unidiomatic-typecheck
+        return [_unwrap(item) for item in value]
     return value
 
 

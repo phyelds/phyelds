@@ -50,3 +50,18 @@ def test_aggregate_returns_the_values_of_the_states_in_a_returned_tuple():
     # Assert
     assert result == (1, 2)
     assert not any(isinstance(item, State) for item in result)
+
+
+def test_aggregate_returns_the_values_of_the_states_nested_in_a_returned_list():
+    # Arrange
+    @aggregate
+    def program():
+        return [remember(1)[1], (remember(2)[1], 3)]
+
+    # Act
+    result = program()
+
+    # Assert
+    assert result == [1, (2, 3)]
+    assert not isinstance(result[0], State)
+    assert not isinstance(result[1][0], State)
