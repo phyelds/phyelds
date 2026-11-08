@@ -14,6 +14,7 @@ from phyelds.libraries.gossip import (
 import pytest
 from phyelds.simulator.runner import schedule_program_for_all
 from tests.libraries.simulator_utils import setup_up_simulator
+from phyelds.data import State
 
 ITERATIONS = 10
 
@@ -34,6 +35,22 @@ def test_gossip_max_min_should_gossip_the_correct_values():
     # for all node result should be (size - 1, 0)
     for node in simulator.environment.nodes.values():
         assert node.data["result"] == (size - 1, 0, set(range(size)))
+
+@pytest.mark.parametrize(
+    "strategy",
+    [None, monotonic_gossip(), path_coherent_gossip(), time_replicated_gossip(5.0)],
+)
+def test_gossip_max_returns_a_bare_value_whatever_the_strategy(strategy):
+    # Arrange
+    simulator = setup_up_simulator(3)
+    @aggregate
+    def program():
+        return isinstance(gossip_max(local_id(), strategy=strategy), State)
+    # Act
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
+    simulator.run(ITERATIONS)
+    # Assert
+    assert not any(node.data["result"] for node in simulator.environment.nodes.values())
 
 def test_normal_gossip_does_not_heal():
     size = 5
@@ -162,5 +179,3 @@ def test_gossip_mean_converges_to_harmonic_equilibrium_and_self_stabilizes():
     assert simulator.environment.nodes[0].data["result"] == pytest.approx(15.0, abs=1e-2)
     assert simulator.environment.nodes[1].data["result"] == pytest.approx(30.0, abs=1e-2)
     assert simulator.environment.nodes[2].data["result"] == pytest.approx(45.0, abs=1e-2)
-
-

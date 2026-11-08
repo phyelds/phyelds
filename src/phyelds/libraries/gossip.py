@@ -69,13 +69,13 @@ def _select_best_path(
 
 
 @aggregate
-def _monotonic_gossip_step(value: T, callback: Callable[..., T]) -> StateT[T]:
+def _monotonic_gossip_step(value: T, callback: Callable[..., T]) -> T:
     """Run a classic monotonic gossip step using ``remember`` and ``neighbors``."""
     set_gossip, gossip_value = remember(value)
     neighborhood_value: NeighborhoodField[T] = neighbors(gossip_value)
     new_value: T = callback(value, *neighborhood_value)
     set_gossip(new_value)
-    return gossip_value
+    return gossip_value.value
 
 
 @aggregate
