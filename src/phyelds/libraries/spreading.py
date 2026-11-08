@@ -245,7 +245,7 @@ def distance_to(
     distances: NeighborhoodField[float] | None = None,
     *,
     strategy: SpreadingStrategy | None = None,
-) -> StateT[float]:
+) -> float:
     """
     Calculate the distance to the nearest source node in the network.
 
@@ -267,7 +267,7 @@ def distance_to(
             if source
             else min_with_default(neighbors_gradients.exclude_self(), float("inf"))
         )
-        return gradient
+        return gradient.value
 
     active_strategy = _resolve_strategy(strategy)
     fallback = 0.0 if source else float("inf")
