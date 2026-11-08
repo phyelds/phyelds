@@ -7,6 +7,7 @@ prints the encoded results and outboxes of the last round; with ``binary``, the 
 are first encoded in the binary format and decoded back.
 """
 import sys
+from collections import namedtuple
 
 from phyelds import engine
 from phyelds.calculus import aggregate, exchange, neighbors, remember
@@ -188,6 +189,22 @@ def described_state_machine():
 def state_type():
     _, count = remember(3)
     return isinstance(count, int)
+
+
+_Pair = namedtuple("_Pair", ("first", "second"))
+
+
+@aggregate
+def _containers():
+    _, count = remember(3)
+    return count, [count], {"count": count}, _Pair(count, 1)
+
+
+@aggregate
+def returned_states():
+    returned = _containers()
+    items = [returned[0], returned[1][0], returned[2]["count"], returned[3].first]
+    return [isinstance(item, State) for item in items] + [type(returned[3]).__name__]
 
 
 def _rounded(vector):

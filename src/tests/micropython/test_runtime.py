@@ -89,6 +89,7 @@ PROGRAMS = [
     "described_state_machine",
     "swarm_blocks",
     "formed",
+    "returned_states",
 ]
 
 
