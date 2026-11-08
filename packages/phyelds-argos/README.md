@@ -5,7 +5,7 @@ foot-bot, e-puck, eye-bot, Spiri, Pi-Puck, BuilderBot, drone, block or prototype
 ARGoS owns the robots, physics and radios. Each robot runs a `phyelds.vm.device.Device`;
 its bytes travel through the robot's simulated radio, one round per tick.
 
-Install this package into Python 3.12 or 3.13, with ARGoS3, a C++17 compiler and
+Install this package into Python 3.12, 3.13 or 3.14, with ARGoS3, a C++17 compiler and
 CMake 3.18+ installed. Build the plugin with the same Python that has your programs:
 
 ```bash

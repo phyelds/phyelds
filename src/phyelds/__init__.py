@@ -12,6 +12,8 @@ In order to use it, you should:
 3. Call `engine.get().cooldown()` to reset the engine state and get the messages to send.
 4. Store `engine.get().state_trace()` for the next round.
 
+`phyelds.vm.rounds.run_round` runs these steps for one device, in this order.
+
 """
 from contextvars import ContextVar
 

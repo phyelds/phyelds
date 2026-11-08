@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.13"]
+        python-version: ["3.13", "3.14"]
 
     steps:
     - uses: actions/checkout@v4
@@ -60,7 +60,9 @@ jobs:
         files: coverage.xml
         use_oidc: true
 
-  vmas:
+  free-threaded:
+    # The rounds of many devices can run in threads only if the core never enables the GIL
+    # (test_dependencies checks it). The simulator's pandas does, so the suite runs as usual.
     runs-on: ubuntu-latest
 
     steps:
@@ -69,7 +71,28 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: "3.13"
+        python-version: "3.14t"
+
+    - name: Install core and test dependencies
+      run: pip install -e . -e packages/phyelds-simulator pytest jedi
+
+    - name: Test with pytest
+      run: python -m pytest
+
+  vmas:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.13", "3.14"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
 
     - name: Install Poetry
       run: |
@@ -93,14 +116,18 @@ jobs:
 
   mesa:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.13", "3.14"]
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Python
+    - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
-        python-version: "3.13"
+        python-version: ${{ matrix.python-version }}
 
     - name: Install Poetry
       run: |
@@ -128,8 +155,12 @@ jobs:
   webots:
     runs-on: ubuntu-latest
     # Webots and xvfb come with the image; its Python is too old for phyelds, so the
-    # controllers run on a Python 3.13 environment put first on the PATH by the test.
+    # controllers run on the Python of the matrix, put first on the PATH by the test.
     container: cyberbotics/webots:R2025a-ubuntu22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.13", "3.14"]
 
     steps:
     - uses: actions/checkout@v4
@@ -139,7 +170,7 @@ jobs:
 
     - name: Install core and test dependencies
       run: |
-        uv venv --python 3.13 .venv
+        uv venv --python ${{ matrix.python-version }} .venv
         uv pip install --python .venv/bin/python -e . pytest pylint
 
     - name: Lint Webots extension
@@ -151,7 +182,7 @@ jobs:
       uses: actions/cache/restore@v4
       with:
         path: ~/.cache/Cyberbotics/Webots/assets
-        key: webots-R2025a-assets-${{ github.run_id }}-${{ github.run_attempt }}
+        key: webots-R2025a-assets-${{ matrix.python-version }}-${{ github.run_id }}-${{ github.run_attempt }}
         restore-keys: webots-R2025a-assets-
 
     - name: Test Webots extension, in Webots
@@ -164,7 +195,7 @@ jobs:
       uses: actions/cache/save@v4
       with:
         path: ~/.cache/Cyberbotics/Webots/assets
-        key: webots-R2025a-assets-${{ github.run_id }}-${{ github.run_attempt }}
+        key: webots-R2025a-assets-${{ matrix.python-version }}-${{ github.run_id }}-${{ github.run_attempt }}
 
     - name: Build Webots extension
       run: uv build packages/phyelds-webots

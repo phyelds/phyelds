@@ -57,10 +57,15 @@ def aggregate(func):
         func (Callable): The function to wrap.
     """
 
+    rewritten = None
+
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
+        nonlocal rewritten
+        if rewritten is None:  # on the first call, once: the rewriting is costly
+            rewritten = _transformed(func)
         engine.get().enter(func.__name__)
-        result = _transformed(func)(*args, **kwargs)
+        result = rewritten(*args, **kwargs)
         engine.get().exit()
         return result
 
