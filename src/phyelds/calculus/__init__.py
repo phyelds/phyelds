@@ -62,12 +62,20 @@ def aggregate(func):
         engine.get().enter(func.__name__)
         result = _transformed(func)(*args, **kwargs)
         engine.get().exit()
-        return result.value if isinstance(result, State) else result
+        return _unwrap(result)
 
     return wrapper
 
 
-@aggregate
+def _unwrap(value: Any) -> Any:
+    """Replace the ``State``s in ``value`` with their values."""
+    if isinstance(value, State):
+        return value.value
+    if type(value) is tuple:  # pylint: disable=unidiomatic-typecheck
+        return tuple(_unwrap(item) for item in value)
+    return value
+
+
 def remember(init: T) -> Tuple[Callable[[Union[T, "State[T]"]], "State[T]"], "State[T]"]:
     """
     Keep a value across the rounds of the current device.
@@ -89,8 +97,11 @@ def remember(init: T) -> Tuple[Callable[[Union[T, "State[T]"]], "State[T]"], "St
             reflects at once) and returns ``state``; ``state`` is a ``State`` proxy that
             behaves like the value it holds.
     """
-    # engine.get() returns the context/engine instance
-    state = State(init, engine.get().current_path(), engine.get())
+    # Aligned by hand rather than with @aggregate, which would unwrap the returned state.
+    current_engine = engine.get()
+    current_engine.enter("remember")
+    state = State(init, current_engine.current_path(), current_engine)
+    current_engine.exit()
     return state.update_fn, state
 
 
