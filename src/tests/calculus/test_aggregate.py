@@ -4,7 +4,7 @@ from typing import NamedTuple
 import pytest
 
 from phyelds import engine
-from phyelds.calculus import aggregate, remember
+from phyelds.calculus import aggregate, neighbors, remember
 from phyelds.data import State
 from phyelds.vm import Engine
 from phyelds.vm.internal import MutableEngine
@@ -195,3 +195,17 @@ def test_aggregate_returns_the_values_of_the_states_in_a_returned_set(kind):
     assert type(result) is kind
     assert result == {1, 2}
     assert not any(isinstance(item, State) for item in result)
+
+
+def test_aggregate_returns_the_values_of_the_states_in_a_returned_field():
+    # Arrange
+    @aggregate
+    def program():
+        return neighbors(remember(1)[1])
+
+    # Act
+    result = program()
+
+    # Assert
+    assert result.local() == 1
+    assert not isinstance(result.local(), State)

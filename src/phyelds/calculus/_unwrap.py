@@ -7,7 +7,7 @@ with a smaller peak of heap.
 from collections.abc import Sequence
 from typing import Any
 
-from phyelds.data import State
+from phyelds.data import NeighborhoodField, State
 
 
 def unwrap(value: Any) -> Any:
@@ -62,6 +62,14 @@ def _unwrap_set(value: set | frozenset) -> set | frozenset:
     return value if unwrapped is items else type(value)(unwrapped)
 
 
+def _unwrap_field(value: NeighborhoodField) -> NeighborhoodField:
+    """Unwrap the values of a field and its default."""
+    data, default = _unwrap_dict(value.data), unwrap(value.default)
+    if data is value.data and default is value.default:
+        return value
+    return NeighborhoodField(data, value.node_id, default=default)
+
+
 def _unwrap_all(values: Sequence[Any]) -> Any:
     """Unwrap each of ``values``: ``values`` itself if none changes, else a list of them."""
     unwrapped = [unwrap(item) for item in values]
@@ -71,4 +79,10 @@ def _unwrap_all(values: Sequence[Any]) -> Any:
 
 
 # The containers unwrapped by their exact type; subclasses may not rebuild the same way.
-_BY_TYPE = {list: _unwrap_all, dict: _unwrap_dict, set: _unwrap_set, frozenset: _unwrap_set}
+_BY_TYPE = {
+    list: _unwrap_all,
+    dict: _unwrap_dict,
+    set: _unwrap_set,
+    frozenset: _unwrap_set,
+    NeighborhoodField: _unwrap_field,
+}
