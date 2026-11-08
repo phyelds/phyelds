@@ -179,3 +179,19 @@ def test_aggregate_keeps_the_type_of_a_returned_dataclass_while_unwrapping_it():
     # Assert
     assert result == Team(3, formed=True)
     assert not isinstance(result.leader, State)
+
+
+@pytest.mark.parametrize("kind", [set, frozenset])
+def test_aggregate_returns_the_values_of_the_states_in_a_returned_set(kind):
+    # Arrange
+    @aggregate
+    def program():
+        return kind({remember(1)[1], 2})
+
+    # Act
+    result = program()
+
+    # Assert
+    assert type(result) is kind
+    assert result == {1, 2}
+    assert not any(isinstance(item, State) for item in result)

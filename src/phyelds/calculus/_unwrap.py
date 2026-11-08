@@ -14,12 +14,11 @@ def unwrap(value: Any) -> Any:
     """Replace the ``State``s in ``value`` with their values, copying only what holds one."""
     if isinstance(value, State):
         return value.value
-    if type(value) is list:  # pylint: disable=unidiomatic-typecheck
-        return _unwrap_all(value)
+    by_type = _BY_TYPE.get(type(value))
+    if by_type is not None:
+        return by_type(value)
     if isinstance(value, tuple):
         return _unwrap_tuple(value)
-    if type(value) is dict:  # pylint: disable=unidiomatic-typecheck
-        return _unwrap_dict(value)
     if hasattr(value, "__dataclass_fields__") and not isinstance(value, type):
         return _unwrap_dataclass(value)
     return value
@@ -56,9 +55,20 @@ def _unwrap_dataclass(value: Any) -> Any:
     return type(value)(**dict(zip(names, unwrapped)))
 
 
+def _unwrap_set(value: set | frozenset) -> set | frozenset:
+    """Unwrap the items of a set or a frozenset."""
+    items = list(value)
+    unwrapped = _unwrap_all(items)
+    return value if unwrapped is items else type(value)(unwrapped)
+
+
 def _unwrap_all(values: Sequence[Any]) -> Any:
     """Unwrap each of ``values``: ``values`` itself if none changes, else a list of them."""
     unwrapped = [unwrap(item) for item in values]
     if all(new is old for new, old in zip(unwrapped, values)):
         return values
     return unwrapped
+
+
+# The containers unwrapped by their exact type; subclasses may not rebuild the same way.
+_BY_TYPE = {list: _unwrap_all, dict: _unwrap_dict, set: _unwrap_set, frozenset: _unwrap_set}
