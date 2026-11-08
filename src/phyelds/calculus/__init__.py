@@ -53,8 +53,9 @@ def aggregate(func):
             ...
         ```
 
-    The ``State``s the function creates and returns, also inside tuples, lists and dicts,
-    are replaced with their values: a ``State`` does not leave the function that created it.
+    The ``State``s the function creates and returns, also inside tuples, lists, dicts, sets,
+    dataclasses and fields, are replaced with their values: a ``State`` does not leave the
+    function that created it.
 
     Args:
         func (Callable): The function to wrap.

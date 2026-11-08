@@ -36,7 +36,9 @@ def counter():
 
 Calling the update function mutates the proxy in place too: after `set_count(count + 1)`, `count` immediately holds the new value. That is why `counter()` above returns `1` in its first round.
 
-A `State` never leaves the function that created it: an `@aggregate` function returns the value of a `State` it creates and returns, also when the `State` sits in a tuple, a named tuple, a list or a dict (keys included). Outside that function nobody can call its update function, so its callers get plain values, and `.value` is only ever needed on the result of `remember` itself.
+A `State` never leaves the function that created it: an `@aggregate` function returns the value of a `State` it creates and returns, also when the `State` sits in a tuple, a named tuple, a list, a dict (keys included), a set, a dataclass or a field, at any depth. Outside that function nobody can call its update function, so its callers get plain values, and `.value` is only ever needed on the result of `remember` itself.
+
+Objects of other classes are returned as they are, with the `State` inside: pass them the value (`Team(leader.value)`), or make them dataclasses.
 
 ---
 
