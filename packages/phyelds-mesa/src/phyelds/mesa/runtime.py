@@ -10,7 +10,6 @@ from typing import Any
 from mesa import Agent
 
 from phyelds import engine
-from phyelds.data import State
 from phyelds.vm import NodeContext
 from phyelds.vm.internal import MutableEngine
 
@@ -72,7 +71,7 @@ class AggregateRuntime:
             outboxes[agent.unique_id] = node_engine.cooldown()
             states[agent.unique_id] = node_engine.state_trace()
             outputs[agent.unique_id] = context.outputs
-            results[agent.unique_id] = result.value if isinstance(result, State) else result
+            results[agent.unique_id] = result
         self._states, self._outboxes, self.outputs = states, outboxes, outputs
         return results
 

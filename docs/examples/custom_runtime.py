@@ -20,7 +20,6 @@ from typing import Any, Callable
 
 from phyelds import engine
 from phyelds.calculus import aggregate, neighbors, remember
-from phyelds.data import State
 from phyelds.libraries.device import sense, store
 from phyelds.vm import NodeContext
 from phyelds.vm.internal import MutableEngine
@@ -57,7 +56,7 @@ def run_round(device: Device, inbox: dict[int, dict[str, Any]], program: Callabl
     device.outbox = engine.get().cooldown()  # first: it also drops the state not used
     device.state = engine.get().state_trace()
     device.outputs = engine.get().node_context.outputs
-    return result.value if isinstance(result, State) else result
+    return result
 # --8<-- [end:run_round]
 
 

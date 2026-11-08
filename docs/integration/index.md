@@ -15,7 +15,7 @@ A phyelds program does not know where it runs. For each device and each round, t
   </div>
   <div class="ph-step">
     <div class="ph-step-title">2. Compute</div>
-    <p>Call <code>setup(context, inbox, state)</code> on a fresh engine, run the <code>@aggregate</code> function, and unwrap <code>result.value</code> if it returns a <code>State</code> proxy.</p>
+    <p>Call <code>setup(context, inbox, state)</code> on a fresh engine, and run the <code>@aggregate</code> function: its result holds plain values, never a <code>State</code> proxy.</p>
   </div>
   <div class="ph-step ph-step--purple">
     <div class="ph-step-title">3. Act</div>

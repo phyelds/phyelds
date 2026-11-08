@@ -7,7 +7,6 @@ from phyelds.vm.internal import MutableEngine
 
 from phyelds import engine
 from phyelds.vm import NodeContext
-from phyelds.data import State
 from phyelds.simulator import Simulator, Node
 
 
@@ -54,10 +53,7 @@ def aggregate_program_runner(
         neighbors_messages,
         node.data.get("state", {})
     )
-    result = program(**kwargs)
-    if isinstance(result, State):
-        result = result.value
-    node.data["result"] = result
+    node.data["result"] = program(**kwargs)
     node.data["messages"] = engine.get().cooldown()
     node.data["state"] = engine.get().state_trace()
     node.data["outputs"] = engine.get().node_context.outputs

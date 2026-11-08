@@ -6,7 +6,7 @@ from collections.abc import Callable, Mapping
 from typing import Any
 
 from phyelds import engine
-from phyelds.data import NeighborhoodField, State
+from phyelds.data import NeighborhoodField
 from phyelds.data.codec import decode, encode
 from phyelds.vm import NodeContext
 from phyelds.vm.internal import MutableEngine
@@ -119,7 +119,7 @@ class Device:  # pylint: disable=too-many-instance-attributes
         outbox = engine.get().cooldown()  # first: it also drops the state not used
         self._state = engine.get().state_trace()
         self.outputs = context.outputs
-        self.result = result.value if isinstance(result, State) else result
+        self.result = result
         self.addressed = {}
         fields = any(isinstance(value, NeighborhoodField) for value in outbox.values())
         if self.messages == "addressed" and fields:
