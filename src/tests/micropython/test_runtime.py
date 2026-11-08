@@ -125,7 +125,7 @@ def test_micropython_does_not_reflect_comparisons_onto_states(bundle):
     completed = _on_micropython(bundle, "value_compared_to_state")
 
     assert completed.returncode != 0
-    assert "unsupported types for __lt__: 'int', 'State'" in completed.stdout
+    assert "unsupported types for __lt__: 'int', 'State'" in completed.stdout + completed.stderr
 
 
 def test_micropython_states_are_not_instances_of_their_value_type(bundle):
