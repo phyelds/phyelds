@@ -12,6 +12,7 @@ repos:
         entry: poetry run flake8
         language: system
         types: [python]
+        pass_filenames: false
 
       - id: poetry-pylint
         name: Style checks with pylint via poetry
