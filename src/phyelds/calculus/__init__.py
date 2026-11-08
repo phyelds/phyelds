@@ -73,6 +73,9 @@ def _unwrap(value: Any) -> Any:
         return value.value
     if type(value) is tuple:  # pylint: disable=unidiomatic-typecheck
         return tuple(_unwrap(item) for item in value)
+    if isinstance(value, tuple):
+        # A named tuple; MicroPython's ones have no ``_fields`` to tell them apart.
+        return type(value)(*(_unwrap(item) for item in value))
     if type(value) is list:  # pylint: disable=unidiomatic-typecheck
         return [_unwrap(item) for item in value]
     if type(value) is dict:  # pylint: disable=unidiomatic-typecheck

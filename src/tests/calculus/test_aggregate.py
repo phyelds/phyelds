@@ -1,3 +1,5 @@
+from typing import NamedTuple
+
 import pytest
 
 from phyelds import engine
@@ -81,3 +83,23 @@ def test_aggregate_returns_the_values_of_the_states_in_a_returned_dict():
     assert not isinstance(result["distance"], State)
     assert not any(isinstance(key, State) for key in result)
     assert not isinstance(result["key"][0], State)
+
+
+class Reading(NamedTuple):
+    sensor: str
+    value: float
+
+
+def test_aggregate_keeps_the_type_of_a_returned_named_tuple_while_unwrapping_it():
+    # Arrange
+    @aggregate
+    def program():
+        return Reading("temperature", remember(21.5)[1])
+
+    # Act
+    result = program()
+
+    # Assert
+    assert type(result) is Reading
+    assert result == Reading("temperature", 21.5)
+    assert not isinstance(result.value, State)
