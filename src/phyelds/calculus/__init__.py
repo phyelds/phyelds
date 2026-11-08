@@ -18,6 +18,7 @@ Inside it, the core syntax is:
 - `align`: scopes the calls inside it, so that they only align with the same scope on the neighbors.
 """
 import functools
+from collections.abc import Sequence
 from typing import TypeVar, Callable, Tuple, Union, Any
 
 from phyelds import engine
@@ -68,19 +69,44 @@ def aggregate(func):
 
 
 def _unwrap(value: Any) -> Any:
-    """Replace the ``State``s in ``value`` with their values."""
+    """Replace the ``State``s in ``value`` with their values, copying only what holds one."""
     if isinstance(value, State):
         return value.value
-    if type(value) is tuple:  # pylint: disable=unidiomatic-typecheck
-        return tuple(_unwrap(item) for item in value)
-    if isinstance(value, tuple):
-        # A named tuple; MicroPython's ones have no ``_fields`` to tell them apart.
-        return type(value)(*(_unwrap(item) for item in value))
     if type(value) is list:  # pylint: disable=unidiomatic-typecheck
-        return [_unwrap(item) for item in value]
+        return _unwrap_all(value)
+    if isinstance(value, tuple):
+        return _unwrap_tuple(value)
     if type(value) is dict:  # pylint: disable=unidiomatic-typecheck
-        return {_unwrap(key): _unwrap(item) for key, item in value.items()}
+        return _unwrap_dict(value)
     return value
+
+
+def _unwrap_tuple(value: tuple) -> tuple:
+    """Unwrap the items of a tuple, keeping the type of a named tuple."""
+    items = _unwrap_all(value)
+    if items is value:
+        return value
+    if type(value) is tuple:  # pylint: disable=unidiomatic-typecheck
+        return tuple(items)
+    # A named tuple; MicroPython's ones have no ``_fields`` to tell them apart.
+    return type(value)(*items)
+
+
+def _unwrap_dict(value: dict) -> dict:
+    """Unwrap the keys and the values of a dict."""
+    keys, items = list(value), list(value.values())
+    unwrapped_keys, unwrapped_items = _unwrap_all(keys), _unwrap_all(items)
+    if unwrapped_keys is keys and unwrapped_items is items:
+        return value
+    return dict(zip(unwrapped_keys, unwrapped_items))
+
+
+def _unwrap_all(values: Sequence[Any]) -> Any:
+    """Unwrap each of ``values``: ``values`` itself if none changes, else a list of them."""
+    unwrapped = [_unwrap(item) for item in values]
+    if all(new is old for new, old in zip(unwrapped, values)):
+        return values
+    return unwrapped
 
 
 def remember(init: T) -> Tuple[Callable[[Union[T, "State[T]"]], "State[T]"], "State[T]"]:

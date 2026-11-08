@@ -103,3 +103,19 @@ def test_aggregate_keeps_the_type_of_a_returned_named_tuple_while_unwrapping_it(
     assert type(result) is Reading
     assert result == Reading("temperature", 21.5)
     assert not isinstance(result.value, State)
+
+
+def test_aggregate_returns_the_same_object_when_the_result_holds_no_state():
+    # Arrange
+    readings = {"temperatures": [21.5, (22.0, 23.0)]}
+
+    @aggregate
+    def program():
+        return readings
+
+    # Act
+    result = program()
+
+    # Assert
+    assert result is readings
+    assert result["temperatures"] is readings["temperatures"]
