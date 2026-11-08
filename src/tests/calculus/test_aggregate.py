@@ -5,6 +5,7 @@ import pytest
 from phyelds import engine
 from phyelds.calculus import aggregate, remember
 from phyelds.data import State
+from phyelds.vm import Engine
 from phyelds.vm.internal import MutableEngine
 from tests.calculus.mock import MockNodeContext
 
@@ -119,3 +120,41 @@ def test_aggregate_returns_the_same_object_when_the_result_holds_no_state():
     # Assert
     assert result is readings
     assert result["temperatures"] is readings["temperatures"]
+
+
+class _OwnEngine(Engine):
+    """An engine written from scratch, whose __init__ does not call Engine's."""
+
+    def __init__(self):  # pylint: disable=super-init-not-called
+        self.path, self.states = [], {}
+
+    def enter(self, name):
+        self.path.append(name)
+
+    def exit(self):
+        self.path.pop()
+
+    def current_path(self):
+        return list(self.path)
+
+    def read_state(self, stack):
+        return self.states.get(str(stack))
+
+    def write_state(self, value, stack):
+        self.states[str(stack)] = value
+
+
+def test_aggregate_unwraps_states_on_an_engine_that_does_not_call_the_engine_init():
+    # Arrange
+    engine.set(_OwnEngine())
+
+    @aggregate
+    def program():
+        return remember(42)[1]
+
+    # Act
+    result = program()
+
+    # Assert
+    assert result == 42
+    assert not isinstance(result, State)

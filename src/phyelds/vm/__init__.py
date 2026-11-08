@@ -99,11 +99,13 @@ class Engine(ABC):
     Abstract base class for the engine. This class should be implemented by the user.
     """
 
+    # Lets @aggregate tell whether a call created a State it may have to unwrap; a class
+    # attribute, so that engines whose __init__ does not call this one have it too.
+    states_created: int = 0
+
     def __init__(self):
         self.node_context: NodeContext | None = None
         self.engine_state: EngineState | None = None
-        # Lets @aggregate tell whether a call created a State it may have to unwrap.
-        self.states_created: int = 0
 
     def setup(
         self, node_context: NodeContext, messages: dict[int, dict[str, any]], state=None
