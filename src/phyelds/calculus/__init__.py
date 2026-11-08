@@ -75,6 +75,8 @@ def _unwrap(value: Any) -> Any:
         return tuple(_unwrap(item) for item in value)
     if type(value) is list:  # pylint: disable=unidiomatic-typecheck
         return [_unwrap(item) for item in value]
+    if type(value) is dict:  # pylint: disable=unidiomatic-typecheck
+        return {_unwrap(key): _unwrap(item) for key, item in value.items()}
     return value
 
 

@@ -65,3 +65,19 @@ def test_aggregate_returns_the_values_of_the_states_nested_in_a_returned_list():
     assert result == [1, (2, 3)]
     assert not isinstance(result[0], State)
     assert not isinstance(result[1][0], State)
+
+
+def test_aggregate_returns_the_values_of_the_states_in_a_returned_dict():
+    # Arrange
+    @aggregate
+    def program():
+        return {"distance": remember(1.5)[1], remember("key")[1]: [remember(2)[1]]}
+
+    # Act
+    result = program()
+
+    # Assert
+    assert result == {"distance": 1.5, "key": [2]}
+    assert not isinstance(result["distance"], State)
+    assert not any(isinstance(key, State) for key in result)
+    assert not isinstance(result["key"][0], State)
