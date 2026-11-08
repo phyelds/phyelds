@@ -102,6 +102,8 @@ class Engine(ABC):
     def __init__(self):
         self.node_context: NodeContext | None = None
         self.engine_state: EngineState | None = None
+        # Lets @aggregate tell whether a call created a State it may have to unwrap.
+        self.states_created: int = 0
 
     def setup(
         self, node_context: NodeContext, messages: dict[int, dict[str, any]], state=None

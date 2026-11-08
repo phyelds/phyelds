@@ -517,6 +517,7 @@ class State(wrapt.ObjectProxy, Generic[S]):
         super().__init__(value)
         self._self_path: List[Any] = list(path)
         self._self_engine: Engine = engine
+        engine.states_created += 1
 
     @property
     def value(self) -> S:

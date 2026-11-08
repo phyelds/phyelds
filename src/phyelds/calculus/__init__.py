@@ -54,8 +54,8 @@ def aggregate(func):
             ...
         ```
 
-    The ``State``s the function returns, also inside tuples, lists and dicts, are
-    replaced with their values: a ``State`` does not leave the function that created it.
+    The ``State``s the function creates and returns, also inside tuples, lists and dicts,
+    are replaced with their values: a ``State`` does not leave the function that created it.
 
     Args:
         func (Callable): The function to wrap.
@@ -63,9 +63,15 @@ def aggregate(func):
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        engine.get().enter(func.__name__)
+        current_engine = engine.get()
+        current_engine.enter(func.__name__)
+        states_before = current_engine.states_created
         result = _transformed(func)(*args, **kwargs)
-        engine.get().exit()
+        current_engine.exit()
+        # Only a State created during this call can be returned: those of the calls below
+        # were unwrapped when they returned.
+        if current_engine.states_created == states_before:
+            return result
         return _unwrap(result)
 
     return wrapper
