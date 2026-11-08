@@ -60,7 +60,6 @@ class CompactPaths:
         Returns:
             The key of the path up to this point.
         """
-        # ponytail: 30-bit keys, ~1e-3 chance of a collision with 1000 paths; widen if needed
         start = _ROOT if parent is None else parent
         high, low = start >> 15, start & 0x7FFF
         for byte in str(name).encode():
