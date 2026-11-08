@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import NamedTuple
 
 import pytest
@@ -158,3 +159,23 @@ def test_aggregate_unwraps_states_on_an_engine_that_does_not_call_the_engine_ini
     # Assert
     assert result == 42
     assert not isinstance(result, State)
+
+
+@dataclass(frozen=True)
+class Team:
+    leader: int
+    formed: bool = False
+
+
+def test_aggregate_keeps_the_type_of_a_returned_dataclass_while_unwrapping_it():
+    # Arrange
+    @aggregate
+    def program():
+        return Team(remember(3)[1], formed=True)
+
+    # Act
+    result = program()
+
+    # Assert
+    assert result == Team(3, formed=True)
+    assert not isinstance(result.leader, State)

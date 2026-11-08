@@ -8,6 +8,7 @@ are first encoded in the binary format and decoded back.
 """
 import sys
 from collections import namedtuple
+from dataclasses import dataclass
 
 from phyelds import engine
 from phyelds.calculus import aggregate, exchange, neighbors, remember
@@ -194,17 +195,24 @@ def state_type():
 _Pair = namedtuple("_Pair", ("first", "second"))
 
 
+@dataclass
+class _Team:
+    leader: int
+    formed: bool = False
+
+
 @aggregate
 def _containers():
     _, count = remember(3)
-    return count, [count], {"count": count}, _Pair(count, 1)
+    return count, [count], {"count": count}, _Pair(count, 1), _Team(count, True)
 
 
 @aggregate
 def returned_states():
     returned = _containers()
-    items = [returned[0], returned[1][0], returned[2]["count"], returned[3].first]
-    return [isinstance(item, State) for item in items] + [type(returned[3]).__name__]
+    items = [returned[0], returned[1][0], returned[2]["count"], returned[3].first, returned[4].leader]
+    kinds = [type(returned[3]).__name__, type(returned[4]).__name__, returned[4].formed]
+    return [isinstance(item, State) for item in items] + kinds
 
 
 def _rounded(vector):

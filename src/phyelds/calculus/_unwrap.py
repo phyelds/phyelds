@@ -20,6 +20,8 @@ def unwrap(value: Any) -> Any:
         return _unwrap_tuple(value)
     if type(value) is dict:  # pylint: disable=unidiomatic-typecheck
         return _unwrap_dict(value)
+    if hasattr(value, "__dataclass_fields__") and not isinstance(value, type):
+        return _unwrap_dataclass(value)
     return value
 
 
@@ -41,6 +43,17 @@ def _unwrap_dict(value: dict) -> dict:
     if unwrapped_keys is keys and unwrapped_items is items:
         return value
     return dict(zip(unwrapped_keys, unwrapped_items))
+
+
+def _unwrap_dataclass(value: Any) -> Any:
+    """Unwrap the fields of a dataclass, building a new one with its constructor."""
+    # The MicroPython stand-in lists the field names in a tuple, CPython keys a dict by them.
+    names = list(value.__dataclass_fields__)
+    items = [getattr(value, name) for name in names]
+    unwrapped = _unwrap_all(items)
+    if unwrapped is items:
+        return value
+    return type(value)(**dict(zip(names, unwrapped)))
 
 
 def _unwrap_all(values: Sequence[Any]) -> Any:
