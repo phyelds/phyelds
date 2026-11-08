@@ -4,30 +4,106 @@ A neighborhood function is simply a function that takes a node and a list of all
 and returns a list of neighbors.
 """
 
-from typing import Any, Dict, List
+import itertools
+import math
+from collections import defaultdict
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 from phyelds.simulator import Node, Environment
 
 _NEVER = object()  # the round a node has not adapted its range in yet
+# Cells a little wider than the radius: a rounding error can never put a neighbor two cells off.
+_MARGIN = 1 + 1e-6
+
+
+class _UniformGrid:
+    """
+    The nodes of an environment by the cell of a uniform grid they are in: the nodes within
+    ``side`` of a node are in its cell or in the cells around it. The nodes the grid cannot
+    place, with a coordinate that is not a finite number or of another dimension than the
+    first node, are near every node.
+    """
+
+    def __init__(self, side: float, nodes: Iterable[Node]):
+        self.side = side
+        self.rank: Dict[Any, int] = {}
+        """The order of each node in the environment, by its id."""
+        self._dimensions: Optional[int] = None
+        self._cells: Dict[Tuple[int, ...], Dict[Any, Node]] = defaultdict(dict)
+        self._anywhere: Dict[Any, Node] = {}
+        self._next_rank = 0
+        for node in nodes:
+            self.added(node, None)
+
+    def __len__(self) -> int:
+        return len(self.rank)
+
+    def added(self, node: Node, replaced: Optional[Node]) -> None:
+        """Index ``node``; one that replaced another keeps its order, as in the environment."""
+        if replaced is None:
+            self.rank[node.id] = self._next_rank
+            self._next_rank += 1
+        else:
+            self._bucket(replaced.position).pop(node.id, None)
+        self._bucket(node.position)[node.id] = node
+
+    def removed(self, node: Node) -> None:
+        """Forget ``node``."""
+        self._bucket(node.position).pop(node.id, None)
+        self.rank.pop(node.id, None)
+
+    def moved(self, node: Node, old_position: Tuple[float, ...]) -> None:
+        """Index ``node`` in the cell of its position."""
+        if node.id in self.rank:
+            self._bucket(old_position).pop(node.id, None)
+            self._bucket(node.position)[node.id] = node
+
+    def near(self, position: Tuple[float, ...]) -> List[Node]:
+        """The nodes that may be within ``side`` of ``position``, and maybe others."""
+        cell = self._cell(position)
+        if cell is None:
+            return [*self._anywhere.values(), *itertools.chain.from_iterable(
+                nodes.values() for nodes in self._cells.values()
+            )]
+        found = list(self._anywhere.values())
+        for offset in itertools.product((-1, 0, 1), repeat=len(cell)):
+            around = tuple(index + step for index, step in zip(cell, offset))
+            if around in self._cells:
+                found.extend(self._cells[around].values())
+        return found
+
+    def _cell(self, position: Tuple[float, ...]) -> Optional[Tuple[int, ...]]:
+        """The cell of ``position``, or ``None`` if the grid cannot place it."""
+        try:
+            if self._dimensions is None:
+                self._dimensions = len(position)
+            if len(position) != self._dimensions:
+                return None
+            return tuple(math.floor(coordinate / self.side) for coordinate in position)
+        except (TypeError, ValueError, OverflowError):  # no length, NaN or infinite
+            return None
+
+    def _bucket(self, position: Tuple[float, ...]) -> Dict[Any, Node]:
+        cell = self._cell(position)
+        return self._anywhere if cell is None else self._cells[cell]
 
 
 def radius_neighborhood(radius: float):
-    """Create a neighborhood function that includes nodes within a certain radius"""
+    """
+    Create a neighborhood function that includes nodes within a certain radius.
+
+    The nodes are found through a uniform grid that the environment keeps up to date as
+    nodes move, join and leave, so a query reads only the nodes nearby. The neighbors are
+    those of a scan of every node, in the order of the environment.
+    """
+    side = radius * _MARGIN if 0 < radius < math.inf else (math.inf if radius > 0 else 1.0)
 
     def neighborhood_func(node: Node, environment: Environment) -> List[Node]:
-        all_nodes: List[Node] = environment.node_list()
-        neighbors = []
-        for other in all_nodes:
-            if other.id == node.id:  # Skip self
-                continue
-
-            # Calculate Euclidean distance
-            distance = (
-                sum((a - b) ** 2 for a, b in zip(node.position, other.position)) ** 0.5
-            )
-
-            if distance <= radius:
-                neighbors.append(other)
-        return neighbors
+        grid = environment.spatial_index(("grid", side), lambda nodes: _UniformGrid(side, nodes))
+        candidates = sorted(grid.near(node.position), key=lambda other: grid.rank[other.id])
+        return [
+            other for other in candidates
+            if other.id != node.id and _distance(node, other) <= radius
+        ]
 
     return neighborhood_func
 

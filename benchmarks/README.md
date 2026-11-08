@@ -54,9 +54,10 @@ that fails gives a line with an `error` instead of the metrics.
   flocking scenario, so measure it up to 100.
 - Webots starts a Python process for each robot, which caps it at a few hundred robots
   on one machine.
-- The simulator's `radius_neighborhood` scans every node for every node, which makes a
-  round O(N²). At 10,000 agents a round mostly measures that scan, as `neighbor_search_s`
-  shows.
+- The simulator's `radius_neighborhood` keeps a uniform grid of the nodes, so a neighbor
+  search costs O(N). The baseline below predates it: then it scanned every node for every
+  node, a round cost O(N²), and at 10,000 agents a round mostly measured that scan, as
+  `neighbor_search_s` shows.
 
 ## Baseline
 
