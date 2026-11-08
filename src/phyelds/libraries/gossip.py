@@ -11,7 +11,7 @@ import sys
 from typing import Any, Dict, List, Set, TypeVar
 
 from phyelds.calculus import aggregate, align, exchange, neighbors, remember
-from phyelds.data import NeighborhoodField, StateT
+from phyelds.data import NeighborhoodField
 from phyelds.libraries.device import local_id
 from phyelds.libraries.distances import hops_distance
 from phyelds.libraries.spreading import cast_from
@@ -182,7 +182,7 @@ def gossip(
     callback: Callable[..., T],
     *,
     strategy: GossipStrategy | None = None,
-) -> StateT[T]:
+) -> T:
     """
     Gossip ``value`` across the network using ``callback`` and an optional ``strategy``.
 
@@ -205,7 +205,7 @@ def gossip_max(
     *,
     key: Callable[[T], Any] | None = None,
     strategy: GossipStrategy | None = None,
-) -> StateT[T]:
+) -> T:
     """
     Gossip the maximum value across the network.
 
@@ -226,7 +226,7 @@ def gossip_min(
     *,
     key: Callable[[T], Any] | None = None,
     strategy: GossipStrategy | None = None,
-) -> StateT[T]:
+) -> T:
     """
     Gossip the minimum value across the network.
 
@@ -246,7 +246,7 @@ def any_node(
     condition: bool,
     *,
     strategy: GossipStrategy | None = None,
-) -> StateT[bool]:
+) -> bool:
     """
     Check whether ``condition`` holds on at least one device in the network.
 
@@ -291,7 +291,7 @@ def stabilizing_gossip(
     value: T,
     max_diameter: int,
     callback: Callable[..., T],
-) -> StateT[T]:
+) -> T:
     """
     Combine ``value`` with the values of the devices within ``max_diameter`` hops.
 

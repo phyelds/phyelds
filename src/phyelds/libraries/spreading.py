@@ -14,7 +14,7 @@ import sys
 from typing import Any, TypeVar
 
 from phyelds.calculus import aggregate, exchange, neighbors, remember
-from phyelds.data import NeighborhoodField, StateT
+from phyelds.data import NeighborhoodField
 from phyelds.libraries.device import local_id
 from phyelds.libraries.distances import hops_distance
 from phyelds.libraries.utils import (
@@ -93,7 +93,7 @@ def _bellman_ford_cast(
     accumulate_step: Callable[[float, float, T], T],
     distances: NeighborhoodField[float],
     bounds: _MetricBounds,
-) -> StateT[T]:
+) -> T:
     """Run a single Bellman-Ford gradient cast step."""
     top_entry: tuple[float, T] = (bounds.top, data)
     set_state, current_state = remember(top_entry)
@@ -287,7 +287,7 @@ def cast_from(
     distances: NeighborhoodField[float] | None = None,
     *,
     strategy: SpreadingStrategy | None = None,
-) -> StateT[T]:
+) -> T:
     """
     Propagate and transform ``data`` from the nearest ``source`` node along a gradient.
 
@@ -315,7 +315,7 @@ def broadcast(
     distances: NeighborhoodField[float] | None = None,
     *,
     strategy: SpreadingStrategy | None = None,
-) -> StateT[T]:
+) -> T:
     """
     Broadcast ``data`` from the nearest ``source`` node across the network.
 
@@ -338,7 +338,7 @@ def distance_between(
     distances: NeighborhoodField[float] | None = None,
     *,
     strategy: SpreadingStrategy | None = None,
-) -> StateT[float]:
+) -> float:
     """
     Compute the distance between ``source`` and ``target`` and broadcast it across the network.
 
