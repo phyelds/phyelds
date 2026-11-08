@@ -54,6 +54,9 @@ def aggregate(func):
             ...
         ```
 
+    The ``State``s the function returns, also inside tuples, lists and dicts, are
+    replaced with their values: a ``State`` does not leave the function that created it.
+
     Args:
         func (Callable): The function to wrap.
     """

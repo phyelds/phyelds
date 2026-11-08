@@ -36,6 +36,8 @@ def counter():
 
 Calling the update function mutates the proxy in place too: after `set_count(count + 1)`, `count` immediately holds the new value. That is why `counter()` above returns `1` in its first round.
 
+A `State` never leaves the function that created it: an `@aggregate` function returns the value of a `State` it returns, also when the `State` sits in a tuple, a named tuple, a list or a dict (keys included). Outside that function nobody can call its update function, so its callers get plain values, and `.value` is only ever needed on the result of `remember` itself.
+
 ---
 
 ## `remember_and_evolve`
