@@ -8,7 +8,7 @@ import pytest
 
 from phyelds import engine
 from phyelds.calculus import aggregate, neighbors, remember
-from phyelds.data import State
+from phyelds.data import NeighborhoodField, State
 from phyelds.libraries.device import local_id
 from phyelds.vm import Engine
 from phyelds.vm.internal import MutableEngine
@@ -486,3 +486,27 @@ def test_aggregate_returns_the_values_of_the_states_in_a_returned_field():
     # Assert
     assert result.local() == 1
     assert not isinstance(result.local(), State)
+
+
+@pytest.mark.parametrize("readings", [
+    (21.5, 22.0),
+    Reading("temperature", 21.5),
+    [21.5, 22.0],
+    {"temperatures": [21.5, (22.0, 23.0)]},
+    {21.5, 22.0},
+    frozenset({21.5, 22.0}),
+    Team(3, formed=True),
+    NeighborhoodField({0: 21.5}, 0, default=0.0),
+])
+def test_aggregate_keeps_state_free_containers_when_it_creates_a_state(readings):
+    # Arrange
+    @aggregate
+    def program():
+        remember(1)
+        return readings
+
+    # Act
+    result = program()
+
+    # Assert
+    assert result is readings
