@@ -147,6 +147,8 @@ def program():
 
 Module-level constants (`INFINITY = float("inf")`) are fine; mutable globals are not.
 
+The same holds for a mutable default argument (`def program(seen=[])`): as in Python, it is created once, so every device and every round share it.
+
 ---
 
 ## Random values and other per-round surprises

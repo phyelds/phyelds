@@ -15,7 +15,7 @@ with runnable, tested examples in `docs/examples/`.
 ## Commands
 
 ```bash
-poetry install                     # set up the environment (Python 3.12–3.13)
+poetry install                     # set up the environment (Python 3.12–3.14)
 poetry run pytest                  # core and simulator tests (see testpaths)
 poetry run pytest src/tests/libraries/test_gossip.py::test_name   # a single test
 poetry run pylint src packages/phyelds-simulator/src packages/phyelds-simulator/tests  # lint, as in CI

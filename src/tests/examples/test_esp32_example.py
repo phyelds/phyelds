@@ -11,8 +11,6 @@ from phyelds.micropython.build import build
 
 EXAMPLE = Path(__file__).resolve().parents[3] / "docs" / "examples" / "esp32" / "main.py"
 MICROPYTHON = shutil.which("micropython")
-# ponytail: about 2x the heap an ESP32 needs, as objects are twice as large on the 64-bit
-# unix port; confirm on a board
 HEAP = "160k"
 LINE = """
 import json

@@ -20,8 +20,12 @@ protocol](index.md#the-round-protocol), with Mesa agents as devices:
 - **Devices**: each agent is a device, identified by its `unique_id`.
 - **Rounds**: `run_round(agents)` runs the program once on each agent, and returns its
   results by `unique_id`. Call it from the `step` of the model.
-- **Synchronous rounds**: in a round every agent receives what its neighbors sent in the
-  previous round, so the order of the agents does not matter.
+- **Synchronous rounds**: by default (`synchronous=True`), in a round every agent receives
+  what its neighbors sent in the previous round, so the order of the agents does not
+  matter.
+- **Asynchronous spikes**: with `synchronous=False`, each agent publishes its new message
+  as soon as it runs, so the next agents of `run_round` already read it, and
+  `spike(agent)` runs a single agent while keeping the state and messages of the others.
 - **Neighbors**: a function of the agent decides who it talks to.
   - `within(radius)`: the agents closer than `radius` in a continuous space.
   - `cell_neighbors`: the other agents in the same cell and in its neighborhood, in a
@@ -31,8 +35,9 @@ protocol](index.md#the-round-protocol), with Mesa agents as devices:
   cell) and `time` (the time of the model). `sensors=` adds more, from a function of the
   agent.
 - **Outputs**: what the program `store`s is in `runtime.outputs`, by `unique_id`.
-- **Agents that leave**: an agent missing from a round is forgotten, with its state
-  and its messages.
+- **Agents that leave**: in synchronous mode, an agent missing from a round is forgotten,
+  with its state and its messages. With `synchronous=False`, silent agents are kept until
+  `forget(agent)`, `reset()`, or after `retention` units of `model.time` without a spike.
 
 ---
 

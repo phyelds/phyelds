@@ -16,13 +16,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.13"]
+        python-version: ["3.13", "3.14"]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v7
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -55,21 +55,44 @@ jobs:
       run: poetry build
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v7
       with:
         files: coverage.xml
         use_oidc: true
 
-  vmas:
+  free-threaded:
+    # The rounds of many devices can run in threads only if the core never enables the GIL
+    # (test_dependencies checks it). The simulator's pandas does, so the suite runs as usual.
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
-        python-version: "3.13"
+        python-version: "3.14t"
+
+    - name: Install core and test dependencies
+      run: pip install -e . -e packages/phyelds-simulator pytest jedi
+
+    - name: Test with pytest
+      run: python -m pytest
+
+  vmas:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.13", "3.14"]
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v7
+      with:
+        python-version: ${{ matrix.python-version }}
 
     - name: Install Poetry
       run: |
@@ -93,14 +116,18 @@ jobs:
 
   mesa:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.13", "3.14"]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v7
       with:
-        python-version: "3.13"
+        python-version: ${{ matrix.python-version }}
 
     - name: Install Poetry
       run: |
@@ -128,18 +155,22 @@ jobs:
   webots:
     runs-on: ubuntu-latest
     # Webots and xvfb come with the image; its Python is too old for phyelds, so the
-    # controllers run on a Python 3.13 environment put first on the PATH by the test.
+    # controllers run on the Python of the matrix, put first on the PATH by the test.
     container: cyberbotics/webots:R2025a-ubuntu22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.13", "3.14"]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v6
+      uses: astral-sh/setup-uv@v7
 
     - name: Install core and test dependencies
       run: |
-        uv venv --python 3.13 .venv
+        uv venv --python ${{ matrix.python-version }} .venv
         uv pip install --python .venv/bin/python -e . pytest pylint
 
     - name: Lint Webots extension
@@ -148,10 +179,10 @@ jobs:
     # The worlds download their robots from GitHub, which drops connections when many runners
     # ask at once: keep what Webots downloaded, even from a run that failed half-way.
     - name: Restore the robots Webots downloaded
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v6
       with:
         path: ~/.cache/Cyberbotics/Webots/assets
-        key: webots-R2025a-assets-${{ github.run_id }}-${{ github.run_attempt }}
+        key: webots-R2025a-assets-${{ matrix.python-version }}-${{ github.run_id }}-${{ github.run_attempt }}
         restore-keys: webots-R2025a-assets-
 
     - name: Test Webots extension, in Webots
@@ -161,10 +192,10 @@ jobs:
 
     - name: Keep the robots Webots downloaded
       if: always()
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v6
       with:
         path: ~/.cache/Cyberbotics/Webots/assets
-        key: webots-R2025a-assets-${{ github.run_id }}-${{ github.run_attempt }}
+        key: webots-R2025a-assets-${{ matrix.python-version }}-${{ github.run_id }}-${{ github.run_attempt }}
 
     - name: Build Webots extension
       run: uv build packages/phyelds-webots
@@ -178,16 +209,16 @@ jobs:
       MICROPYTHON_VERSION: v1.29.0
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
         python-version: "3.13"
 
     - name: Cache MicroPython
       id: cache-micropython
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: |
           micropython/ports/unix/build-standard/micropython
@@ -228,7 +259,7 @@ jobs:
     # The build job skips the tests that need micropython and mpy-cross: Codecov merges the
     # coverage of both jobs.
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v7
       with:
         files: coverage.xml
         use_oidc: true

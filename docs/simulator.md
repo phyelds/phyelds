@@ -76,6 +76,18 @@ simulator.schedule_event(25.0, turn_off_source, simulator.environment.nodes[0])
     `node.update(new_data=...)` *replaces* the whole `data` dictionary, including
     the program's state. To change one sensor, assign the key.
 
+## Neighbors within a radius
+
+`radius_neighborhood(r)` links the nodes at most `r` apart. It finds them through a uniform
+grid that the environment keeps up to date as nodes move, join and leave, so a node reads
+only the nodes in its cell and in the cells around it, and a round of every node costs
+O(N) rather than O(N²). The neighbors are the same as a scan of every node would find, in
+the order of the environment.
+
+Move a node by giving it a new position, `node.position = (x, y)` or
+`node.update(new_position=(x, y))`, not by changing its position in place, so that the
+grid sees the move.
+
 ## Ranges that adapt
 
 With a fixed radius, a swarm that gathers floods each device with messages, and one

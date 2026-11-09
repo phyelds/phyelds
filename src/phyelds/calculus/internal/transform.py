@@ -8,14 +8,17 @@ import ast
 import inspect
 import os
 import textwrap
-from collections.abc import Callable, Mapping
+import types
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 from phyelds.calculus.internal import AggregateTransformer
 
-_DEBUG_AST = os.environ.get("PHYELDS_DEBUG_AST", "0").lower() in ("1", "true", "yes")
 
 _TRANSFORMATION_CACHE = {}
+# The rewritten definition runs in a factory, nested in a scope that binds its closure variables
+# and the default values of the original function.
+_SCOPE, _FACTORY, _DEFAULT = "__phyelds_scope__", "__phyelds_factory__", "__phyelds_default_"
 
 
 def is_aggregate_decorator(node: ast.expr) -> bool:
@@ -40,56 +43,248 @@ def _drop_applied_decorators(func_def: ast.AST) -> None:
             return
 
 
+def _owner_class(func: Callable) -> str | None:
+    """The name of the innermost class whose body defines ``func``, if any."""
+    scopes = func.__qualname__.split(".")[:-1]
+    while scopes:
+        if scopes[-1] != "<locals>":
+            return scopes[-1]
+        del scopes[-2:]  # a function, and the <locals> of it
+    return None
+
+
+class _PrivateNames(ast.NodeTransformer):
+    """
+    Mangle the private names of a definition as Python does in the body of the class
+    ``owner``: compiled out of the class, the definition would read other names than its
+    class writes.
+    """
+
+    def __init__(self, owner: str):
+        self.prefix = "_" + owner.lstrip("_")
+
+    def mangled(self, name: str) -> str:
+        """``name`` as the class sees it: ``__name`` becomes ``_Owner__name``."""
+        if name.startswith("__") and not name.endswith("__") and "." not in name:
+            return self.prefix + name
+        return name
+
+    def _rebinding(self, name: str, node: ast.stmt) -> list[ast.stmt]:
+        """
+        The statements that move ``name``, bound by ``node``, to its mangled name: a nested
+        ``def __f`` keeps ``__f`` as its ``__name__``, but the class binds ``_Owner__f``.
+        """
+        mangled = self.mangled(name)
+        if mangled == name:
+            return []
+        rebind = ast.Assign(
+            targets=[ast.Name(mangled, ast.Store())], value=ast.Name(name, ast.Load())
+        )
+        forget = ast.Delete(targets=[ast.Name(name, ast.Del())])
+        return [ast.copy_location(rebind, node), ast.copy_location(forget, node)]
+
+    # pylint: disable=invalid-name,missing-function-docstring  # the visitors of ast
+    def visit_Name(self, node: ast.Name) -> ast.Name:
+        node.id = self.mangled(node.id)
+        return node
+
+    def visit_Attribute(self, node: ast.Attribute) -> ast.Attribute:
+        self.generic_visit(node)
+        node.attr = self.mangled(node.attr)
+        return node
+
+    def visit_arg(self, node: ast.arg) -> ast.arg:
+        self.generic_visit(node)
+        node.arg = self.mangled(node.arg)
+        return node
+
+    def visit_Global(self, node: ast.Global) -> ast.Global:
+        node.names = [self.mangled(name) for name in node.names]
+        return node
+
+    visit_Nonlocal = visit_Global
+
+    def visit_ExceptHandler(self, node: ast.ExceptHandler) -> ast.ExceptHandler:
+        self.generic_visit(node)
+        if node.name is not None:
+            node.name = self.mangled(node.name)
+        return node
+
+    def visit_MatchAs(self, node: ast.MatchAs) -> ast.MatchAs:
+        self.generic_visit(node)
+        if node.name is not None:
+            node.name = self.mangled(node.name)
+        return node
+
+    visit_MatchStar = visit_MatchAs
+
+    def visit_MatchMapping(self, node: ast.MatchMapping) -> ast.MatchMapping:
+        self.generic_visit(node)
+        if node.rest is not None:
+            node.rest = self.mangled(node.rest)
+        return node
+
+    def visit_Import(self, node: ast.Import) -> list[ast.stmt]:
+        statements: list[ast.stmt] = [node]
+        for alias in node.names:
+            if alias.asname is not None:
+                alias.name, alias.asname = self.mangled(alias.name), self.mangled(alias.asname)
+            elif "." in alias.name:  # imports the module as it is, binds its first package
+                statements += self._rebinding(alias.name.split(".")[0], node)
+            else:
+                alias.name = self.mangled(alias.name)
+        return statements
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> ast.ImportFrom:
+        if node.module is not None:
+            node.module = self.mangled(node.module)
+        for alias in node.names:
+            alias.name = self.mangled(alias.name)
+            if alias.asname is not None:
+                alias.asname = self.mangled(alias.asname)
+        return node
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> list[ast.stmt]:
+        self.generic_visit(node)
+        return [node, *self._rebinding(node.name, node)]
+
+    visit_AsyncFunctionDef = visit_FunctionDef
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> list[ast.stmt]:
+        body, node.body = node.body, []
+        self.generic_visit(node)  # its bases and decorators are in this class
+        if node.name.lstrip("_"):  # its body is in a class of its own
+            inside = ast.Module(body=body, type_ignores=[])
+            _PrivateNames(node.name).generic_visit(inside)
+            body = inside.body
+        node.body = body
+        return [node, *self._rebinding(node.name, node)]
+
+
 def _transformed_tree(func: Callable) -> ast.Module:
     """Parse ``func`` and rewrite its branches to align them."""
     source = textwrap.dedent(inspect.getsource(func))
     tree = ast.parse(source)
     _drop_applied_decorators(tree.body[0])
     tree = AggregateTransformer().visit(tree)
+    owner = _owner_class(inspect.unwrap(func))
+    if owner is not None and owner.lstrip("_"):
+        _PrivateNames(owner).generic_visit(tree.body[0])
     ast.fix_missing_locations(tree)
     return tree
 
 
-# pylint: disable=exec-used,broad-exception-caught
+def _debugging() -> bool:
+    """Whether to print the rewritten code: ``PHYELDS_DEBUG_AST``, read at each rewriting."""
+    return os.environ.get("PHYELDS_DEBUG_AST", "0").lower() in ("1", "true", "yes")
+
+
+def _function(name: str, body: list[ast.stmt]) -> ast.FunctionDef:
+    """The definition of a function ``name`` without arguments, decorators or annotations."""
+    no_arguments = ast.arguments(
+        posonlyargs=[], args=[], vararg=None, kwonlyargs=[], kw_defaults=[], kwarg=None, defaults=[]
+    )
+    return ast.FunctionDef(
+        name=name, args=no_arguments, body=body, decorator_list=[], returns=None, type_comment=None,
+        type_params=[],
+    )
+
+
+def _in_factory(tree: ast.Module, names: Sequence[str]) -> ast.Module:
+    """
+    The definition of ``tree`` returned by a factory, nested in a scope where ``names`` are
+    local: the definition reads them as closure variables, and its other names as globals.
+    """
+    definition = tree.body[0]
+    factory = _function(_FACTORY, [definition, ast.Return(ast.Name(definition.name, ast.Load()))])
+    body = [factory, ast.Return(ast.Name(_FACTORY, ast.Load()))]
+    if names:
+        targets = [ast.Name(name, ast.Store()) for name in names]
+        body.insert(0, ast.Assign(targets=targets, value=ast.Constant(None)))
+    scope = _function(_SCOPE, body)
+    for node in (scope, factory):
+        ast.copy_location(node, definition)
+    return ast.fix_missing_locations(ast.Module(body=[scope], type_ignores=[]))
+
+
+def _defaults_from_closure(definition: ast.FunctionDef) -> None:
+    """
+    Replace the default values of ``definition`` with names: those of ``_defaults``, so that
+    the definition takes the very values of the original function, evaluated once.
+    """
+    arguments = definition.args
+    arguments.defaults = [
+        ast.Name(f"{_DEFAULT}{index}", ast.Load()) for index in range(len(arguments.defaults))
+    ]
+    arguments.kw_defaults = [
+        None if default is None else ast.Name(f"{_DEFAULT}{argument.arg}", ast.Load())
+        for argument, default in zip(arguments.kwonlyargs, arguments.kw_defaults)
+    ]
+
+
+def _defaults(func: Callable) -> dict[str, Any]:
+    """The default values of ``func``, by the names ``_defaults_from_closure`` gives them."""
+    defaults = {f"{_DEFAULT}{index}": value for index, value in enumerate(func.__defaults__ or ())}
+    keywords = func.__kwdefaults__ or {}
+    defaults.update((f"{_DEFAULT}{name}", value) for name, value in keywords.items())
+    return defaults
+
+
+def _inner_code(code: types.CodeType, name: str) -> types.CodeType:
+    """The code of the function ``name`` defined in ``code``."""
+    return next(
+        constant for constant in code.co_consts
+        if isinstance(constant, types.CodeType) and constant.co_name == name
+    )
+
+
+def _factory_code(func: Callable, names: Sequence[str]) -> types.CodeType:
+    """The code of a factory that defines ``func`` aligned, with ``names`` in its closure."""
+    tree = _transformed_tree(func)
+    if _debugging():
+        print(f"--- Transformed code for {func.__name__} ---")
+        print(ast.unparse(tree))
+        print("--- End transformed code ---")
+    # Compiled at the lines of the original file, so that tracebacks point to the source.
+    ast.increment_lineno(tree, func.__code__.co_firstlineno - 1)
+    _defaults_from_closure(tree.body[0])
+    module = compile(_in_factory(tree, names), filename=func.__code__.co_filename, mode="exec")
+    return _inner_code(_inner_code(module, _SCOPE), _FACTORY)
+
+
+# pylint: disable=broad-exception-caught
 def transform_code(func: Callable, helpers: Mapping[str, Any]) -> Callable:
     """
     Transforms the code of the given function to include alignment contexts.
 
+    The transformed function runs in the globals of ``func``, shares the cells of its
+    closure and takes its default values, so it reads and assigns the same variables as
+    ``func``, and its defaults are the same objects.
+
     Args:
         func: The function to transform.
         helpers: Names the rewritten code calls (``align_left``, ``align_right``,
-            ``_aligned_branch``), added to the function's globals.
+            ``_aligned_branch``); the closure variables of ``func`` take precedence.
 
     Returns:
         The transformed function, or ``func`` itself if its source cannot be rewritten.
     """
-    if func.__code__ in _TRANSFORMATION_CACHE:
-        code_obj = _TRANSFORMATION_CACHE[func.__code__]
-    else:
+    # The function whose source is rewritten: a decorator below @aggregate wraps it.
+    original = inspect.unwrap(func)
+    code = original.__code__
+    values = {**helpers, **_defaults(original)}
+    cells = {name: types.CellType(value) for name, value in values.items()}
+    cells.update(zip(code.co_freevars, original.__closure__ or ()))
+    if code not in _TRANSFORMATION_CACHE:
         try:
-            tree = _transformed_tree(func)
-            if _DEBUG_AST:
-                print(f"--- Transformed code for {func.__name__} ---")
-                print(ast.unparse(tree))
-                print("--- End transformed code ---")
-            # Compiled at the lines of the original file, so that tracebacks point to the source.
-            ast.increment_lineno(tree, func.__code__.co_firstlineno - 1)
-            code_obj = compile(tree, filename=func.__code__.co_filename, mode="exec")
-            _TRANSFORMATION_CACHE[func.__code__] = code_obj
+            _TRANSFORMATION_CACHE[code] = _factory_code(original, list(cells))
         except Exception as e:
             print(f"WARNING: AST transformation failed ({e}). Using original function.")
             return func
-    scope = func.__globals__.copy()
-    scope.update(helpers)
-    if func.__closure__ and func.__code__.co_freevars:
-        for name, cell in zip(func.__code__.co_freevars, func.__closure__):
-            try:
-                scope[name] = cell.cell_contents
-            except ValueError:
-                pass
-    local_scope = {}
-    exec(code_obj, scope, local_scope)
-    return local_scope[func.__name__]
+    factory_code = _TRANSFORMATION_CACHE[code]
+    closure = tuple(cells[name] for name in factory_code.co_freevars)
+    factory = types.FunctionType(factory_code, original.__globals__, _FACTORY, None, closure)
+    return factory()  # pylint: disable=not-callable  # pylint does not infer FunctionType
 
 
 def str_transformed_code(func: Callable) -> str | None:

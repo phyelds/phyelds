@@ -61,12 +61,17 @@ def aggregate(func):
         func (Callable): The function to wrap.
     """
 
+    rewritten = None
+
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
+        nonlocal rewritten
+        if rewritten is None:  # on the first call, once: the rewriting is costly
+            rewritten = _transformed(func)
         current_engine = engine.get()
         current_engine.enter(func.__name__)
         states_before = current_engine.states_created
-        result = _transformed(func)(*args, **kwargs)
+        result = rewritten(*args, **kwargs)
         current_engine.exit()
         # Only a State created during this call can be returned: those of the calls below
         # were unwrapped when they returned.
