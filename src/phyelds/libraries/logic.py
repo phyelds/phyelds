@@ -185,13 +185,13 @@ def _run_yesterday(condition: bool, scope: PastScope) -> bool:
     if scope == "local":
         return delay(flag, initial=False)
     if scope == "all":
-        set_field, field = exchange(True)
+        _, field, send_field = exchange(True)
         result = field.all()
-        set_field(flag)
+        send_field(flag)
         return result
-    set_field, field = exchange(False)
+    _, field, send_field = exchange(False)
     result = field.any()
-    set_field(flag)
+    send_field(flag)
     return result
 
 
@@ -219,14 +219,12 @@ def _run_since(sustained: bool, triggered: bool, scope: PastScope) -> bool:
         set_state(current)
         return current
     if scope == "all":
-        set_field, field = exchange(False)
+        _, field, send_field = exchange(False)
         current = trig or (sust and field.all())
-        set_field(current)
-        return current
-    set_field, field = exchange(False)
+        return send_field(current)
+    _, field, send_field = exchange(False)
     current = trig or (sust and field.any())
-    set_field(current)
-    return current
+    return send_field(current)
 
 
 def since(
@@ -268,14 +266,12 @@ def _run_historically(condition: bool, scope: PastScope) -> bool:
         set_state(current)
         return current
     if scope == "all":
-        set_field, field = exchange(True)
+        _, field, send_field = exchange(True)
         current = flag and field.all()
-        set_field(current)
-        return current
-    set_field, field = exchange(True)
+        return send_field(current)
+    _, field, send_field = exchange(True)
     current = flag and field.any()
-    set_field(current)
-    return current
+    return send_field(current)
 
 
 def historically(condition: bool, *, scope: PastScope = "local") -> bool:

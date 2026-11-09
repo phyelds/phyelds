@@ -118,11 +118,11 @@ def _candidacy_election_step(
     """Run one step of loop-free priority-based bounded leader election."""
     node_id = local_id()
     local_candidacy = Candidacy(node_id, 0.0, strength_value, ())
-    set_field, neighbor_candidacies = exchange(local_candidacy)
+    _, neighbor_candidacies, send_field = exchange(local_candidacy)
     winner = _select_best_candidacy(
         node_id, local_candidacy, area, neighbor_candidacies, distances
     )
-    set_field(winner)
+    send_field(winner)
     return winner.candidate
 
 
@@ -281,11 +281,12 @@ def breaking_using_uids(
     Returns:
         The identifier of the leader the current device follows after this round.
     """
-    set_lead, lead = remember(uid)
+    lead, neighbors_lead, send_lead = exchange(uid)
     potential: float = distance_to(lead == uid, distances)
-    new_lead: Tuple[float, int] = distance_competition(potential, area, uid, lead, distances)
-    set_lead(new_lead)
-    return lead
+    new_lead: Tuple[float, int] = distance_competition(
+        potential, area, uid, neighbors_lead, distances
+    )
+    return send_lead(new_lead)
 
 
 @aggregate
@@ -317,7 +318,9 @@ def distance_competition(
             edge to them (``uid`` if there are none).
     """
     inf: Tuple[float, int] = (float("inf"), uid[1])
-    neighbors_lead: NeighborhoodField[Tuple[float, int]] = neighbors(lead)
+    neighbors_lead: NeighborhoodField[Tuple[float, int]] = (
+        lead if isinstance(lead, NeighborhoodField) else neighbors(lead)
+    )
     condition: NeighborhoodField[bool] = (neighbors(current_distance) + distances) < (0.5 * area)
     lead_filtered: list[Tuple[float, int]] = neighbors_lead.select(condition)
     result: Tuple[float, int] = min_with_default(lead_filtered, uid)

@@ -11,7 +11,7 @@ from pathlib import Path
 
 from matplotlib import pyplot as plt
 
-from phyelds.calculus import aggregate, neighbors, remember
+from phyelds.calculus import aggregate, exchange
 from phyelds.libraries.device import sense
 from phyelds.libraries.distances import neighbors_distances
 from phyelds.libraries.spreading import distance_to
@@ -39,12 +39,11 @@ LATTICE_DIAMETER = 16.0  # about the distance between opposite corners of a 12x1
 # --8<-- [start:hop_gradient]
 @aggregate
 def hop_gradient(source: bool) -> float:
-    """Number of hops to the nearest source, built from remember and neighbors."""
-    set_distance, distance = remember(INFINITY)
-    through_neighbors = neighbors(distance) + 1
+    """Number of hops to the nearest source, built with exchange."""
+    _, distances, send_distance = exchange(INFINITY)
+    through_neighbors = distances + 1
     nearest = min(through_neighbors.exclude_self().values(), default=INFINITY)
-    set_distance(0 if source else nearest)
-    return distance
+    return send_distance(0 if source else nearest)
 # --8<-- [end:hop_gradient]
 
 

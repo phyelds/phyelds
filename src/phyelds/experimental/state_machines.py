@@ -159,7 +159,7 @@ def collective_state_machine(
         raise ValueError("a window needs a clock: sense the time, or pass clock")
     now = 0.0 if now is None else now
     start = _MachineHistory(0, ((float("-inf"), initial, now),))
-    set_histories, histories = exchange(start)
+    _, histories, send_histories = exchange(start)
     agreed = _merge(list(histories))
     current = agreed.entries[-1][1]
     with align(current):
@@ -167,7 +167,7 @@ def collective_state_machine(
     if not isinstance(proposal, Next):
         proposal = Next(proposal)
     extended = _extend(agreed, proposal, now)
-    set_histories(extended if window is None else _forget(extended, now, window))
+    send_histories(extended if window is None else _forget(extended, now, window))
     return current
 
 

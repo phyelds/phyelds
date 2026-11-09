@@ -8,21 +8,21 @@ source nodes along a potential gradient, with pluggable collection strategies.
 from collections.abc import Callable
 from typing import Any, Optional, Tuple, TypeVar, Union
 
-from phyelds.calculus import aggregate, exchange, neighbors, remember
-from phyelds.data import NeighborhoodField, StateT
+from phyelds.calculus import aggregate, exchange, neighbors
+from phyelds.data import NeighborhoodField
 from phyelds.data.codec import register
 from phyelds.libraries.device import local_id
 from phyelds.libraries.spreading import SpreadingStrategy, broadcast, distance_to
 
 T = TypeVar("T")
 
-CollectStrategy = Callable[[StateT[float], Any, Callable[[Any, Any], Any]], Any]
+CollectStrategy = Callable[[float, Any, Callable[[Any, Any], Any]], Any]
 
 _NO_DATA = register(object(), "collect.no_data")
 
 
 @aggregate
-def find_parent(potential: StateT[float]) -> Optional[int]:
+def find_parent(potential: float) -> Optional[int]:
     """
     Find the neighbor to send data to along a ``potential`` field.
 
@@ -42,7 +42,7 @@ def find_parent(potential: StateT[float]) -> Optional[int]:
 
 @aggregate
 def find_parents(
-    potential: StateT[float],
+    potential: float,
     predicate: Callable[[int, float], bool] | None = None,
 ) -> set[int]:
     """
@@ -67,25 +67,23 @@ def find_parents(
 
 @aggregate
 def _broadcast_collect(
-    potential: StateT[float],
+    potential: float,
     local: T,
     accumulation: Callable[[T, T], T],
-) -> StateT[T]:
+) -> T:
     """Collect values up the potential gradient using broadcast neighbor fields."""
-    set_collections, collections = remember(local)
-    n_collections: NeighborhoodField[T] = neighbors(collections)
+    _, n_collections, send_collections = exchange(local)
     parents: NeighborhoodField[Optional[int]] = neighbors(find_parent(potential))
     operations: T = local
     for parent, value in zip(parents, n_collections):
         if local_id() == parent:
             operations = accumulation(operations, value)
-    set_collections(operations)
-    return collections
+    return send_collections(operations)
 
 
 @aggregate
 def _point_to_point_collect(
-    potential: StateT[float],
+    potential: float,
     local: T,
     accumulation: Callable[[T, T], T],
 ) -> T:
@@ -93,7 +91,7 @@ def _point_to_point_collect(
     node_id = local_id()
     parent = find_parent(potential)
     init_field: NeighborhoodField[Any] = NeighborhoodField({}, node_id, default=_NO_DATA)
-    set_field, incoming = exchange(init_field)
+    _, incoming, send_field = exchange(init_field)
 
     accumulated: T = local
     for value in incoming.exclude_self().values():
@@ -101,15 +99,15 @@ def _point_to_point_collect(
             accumulated = accumulation(accumulated, value)
 
     outgoing_data = {parent: accumulated} if parent is not None else {}
-    set_field(NeighborhoodField(outgoing_data, node_id, default=_NO_DATA))
+    send_field(NeighborhoodField(outgoing_data, node_id, default=_NO_DATA))
     return accumulated
 
 
 def broadcast_collect() -> CollectStrategy:
-    """Create a broadcast-based collection strategy (default, uses ``remember`` + ``neighbors``)."""
+    """Create a broadcast-based collection strategy (default)."""
 
     def strategy(
-        potential: StateT[float],
+        potential: float,
         local: Any,
         accumulation: Callable[[Any, Any], Any],
     ) -> Any:
@@ -122,7 +120,7 @@ def point_to_point() -> CollectStrategy:
     """Create an anisotropic ``exchange``-based collection strategy (sends data only to parent)."""
 
     def strategy(
-        potential: StateT[float],
+        potential: float,
         local: Any,
         accumulation: Callable[[Any, Any], Any],
     ) -> Any:
@@ -133,7 +131,7 @@ def point_to_point() -> CollectStrategy:
 
 @aggregate
 def _multi_path_collect(
-    potential: StateT[float],
+    potential: float,
     local: T,
     accumulation: Callable[[T, T], T],
     divide: Callable[[T, int], T],
@@ -142,7 +140,7 @@ def _multi_path_collect(
     node_id = local_id()
     parents = find_parents(potential)
     init_field: NeighborhoodField[Any] = NeighborhoodField({}, node_id, default=_NO_DATA)
-    set_field, incoming = exchange(init_field)
+    _, incoming, send_field = exchange(init_field)
 
     accumulated: T = local
     for value in incoming.exclude_self().values():
@@ -154,7 +152,7 @@ def _multi_path_collect(
         outgoing_data = {pid: share for pid in parents}
     else:
         outgoing_data = {}
-    set_field(NeighborhoodField(outgoing_data, node_id, default=_NO_DATA))
+    send_field(NeighborhoodField(outgoing_data, node_id, default=_NO_DATA))
     return accumulated
 
 
@@ -175,7 +173,7 @@ def multi_path(
     """
 
     def strategy(
-        potential: StateT[float],
+        potential: float,
         local: Any,
         accumulation: Callable[[Any, Any], Any],
     ) -> Any:
@@ -195,12 +193,12 @@ def _resolve_collect_strategy(strategy: Any) -> CollectStrategy:
 
 @aggregate
 def collect_with(
-    potential: StateT[float],
+    potential: float,
     local: T,
     accumulation: Callable[[T, T], T],
     *,
     strategy: CollectStrategy | None = None,
-) -> StateT[T]:
+) -> T:
     """
     Accumulate ``local`` values from children to parents along ``potential``.
 
@@ -219,10 +217,10 @@ def collect_with(
 
 @aggregate
 def count_nodes(
-    potential: StateT[float],
+    potential: float,
     *,
     strategy: CollectStrategy | None = None,
-) -> StateT[int]:
+) -> int:
     """
     Count the number of nodes in the sub-tree defined by ``potential``.
 
@@ -238,11 +236,11 @@ def count_nodes(
 
 @aggregate
 def sum_values(
-    potential: StateT[float],
+    potential: float,
     local: Union[int, float],
     *,
     strategy: CollectStrategy | None = None,
-) -> StateT[Union[int, float]]:
+) -> Union[int, float]:
     """
     Sum numeric values up the ``potential`` gradient.
 
@@ -259,7 +257,7 @@ def sum_values(
 
 @aggregate
 def mean_values(
-    potential: StateT[float],
+    potential: float,
     local: Union[int, float],
     *,
     strategy: CollectStrategy | None = None,
@@ -286,7 +284,7 @@ def collect_or(
     local: bool,
     *,
     strategy: CollectStrategy | None = None,
-) -> StateT[bool]:
+) -> bool:
     """
     Perform a logical OR collection up the ``potential`` gradient.
 
@@ -310,7 +308,7 @@ def summarize(  # pylint: disable=too-many-arguments
     *,
     spreading_strategy: SpreadingStrategy | None = None,
     collect_strategy: CollectStrategy | None = None,
-) -> StateT[T]:
+) -> T:
     """
     Collect ``local`` values into ``sink`` and broadcast the aggregated result back out.
 

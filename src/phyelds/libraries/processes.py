@@ -370,7 +370,7 @@ def spawn(
     """
     new_keys: set[K] = set(keys)
     init_map: dict[K, bool] = {}
-    set_field, neighbor_maps = exchange(init_map)
+    _, neighbor_maps, send_field = exchange(init_map)
     candidate_keys = _collect_candidate_keys(neighbor_maps, new_keys)
     next_state, outputs = _evaluate_candidates(
         proc_fn,
@@ -380,5 +380,5 @@ def spawn(
         call_args=call_args,
         call_kwargs=call_kwargs,
     )
-    set_field(next_state)
+    send_field(next_state)
     return outputs

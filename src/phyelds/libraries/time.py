@@ -94,12 +94,11 @@ def shared_clock(clock: float | None = None) -> float:
     """
     now = float(local_time() if clock is None else clock)
     local_delta = delta_time(now)
-    set_clock, clocks = exchange(now)
-    local_estimate = float(clocks.local()) + local_delta
+    local_clock, clocks, send_clock = exchange(now)
+    local_estimate = float(local_clock) + local_delta
     network_max = float(clocks.max())
     synchronized = max(local_estimate, network_max, now)
-    set_clock(synchronized)
-    return synchronized
+    return send_clock(synchronized)
 
 
 def _compute_timer_step(
@@ -183,9 +182,9 @@ def _run_time_replicated(
 ) -> T:
     """Aggregate implementation of time_replicated."""
     now = shared_clock(clock)
-    set_timer, timers = exchange(_ReplicaTimer(0, now))
+    _, timers, send_timer = exchange(_ReplicaTimer(0, now))
     next_timer = _step_replica_timer(timers, now, period)
-    set_timer(next_timer)
+    send_timer(next_timer)
     return _evaluate_replica_slots(process, max_replicas, next_timer.replica_id)
 
 

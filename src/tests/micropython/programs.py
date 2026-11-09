@@ -45,9 +45,8 @@ def remembered():
 
 @aggregate
 def exchanged():
-    set_field, field = exchange(local_id())
-    set_field(field.max())
-    return field.max()
+    _, field, send_field = exchange(local_id())
+    return send_field(field.max())
 
 
 @aggregate

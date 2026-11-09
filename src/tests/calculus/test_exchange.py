@@ -13,15 +13,17 @@ def setup_engine():
 
 
 def test_exchange_returns_initial_value_as_local_in_first_round():
-    set_field, field = exchange(42)
-    assert callable(set_field)
+    local, field, send = exchange(42)
+    assert local == 42
+    assert callable(send)
     assert isinstance(field, NeighborhoodField)
     assert field.local() == 42
 
 
 def test_exchange_setter_returns_new_value_without_mutating_received_field():
-    set_field, field = exchange(10)
-    returned = set_field(99)
+    local, field, send = exchange(10)
+    returned = send(99)
+    assert local == 10
     assert returned == 99
     assert field.local() == 10
 
@@ -32,9 +34,9 @@ def test_exchange_persists_self_value_across_rounds():
 
     @aggregate
     def counter():
-        set_field, field = exchange(0)
-        seen_locals.append(field.local())
-        return set_field(field.local() + 1)
+        local, field, send = exchange(0)
+        seen_locals.append(local)
+        return send(field.local() + 1)
 
     simulator.cycle(counter)
     simulator.cycle(counter)
@@ -47,8 +49,8 @@ def test_exchange_shares_scalar_values_with_neighbors():
 
     @aggregate
     def program():
-        set_field, field = exchange(0)
-        set_field(local_id() + 10)
+        _, field, send = exchange(0)
+        send(local_id() + 10)
         return field
 
     simulator.cycle_for(program, 2)
@@ -63,8 +65,8 @@ def test_exchange_sends_anisotropic_neighborhood_field_to_each_neighbor():
     @aggregate
     def program():
         ids = neighbors(local_id())
-        set_field, field = exchange(0)
-        set_field(ids + local_id() * 100)
+        _, field, send = exchange(0)
+        send(ids + local_id() * 100)
         return field
 
     simulator.cycle_for(program, 3)
@@ -78,8 +80,8 @@ def test_exchange_uses_field_default_for_unlisted_neighbor():
 
     @aggregate
     def program():
-        set_field, field = exchange(0)
-        set_field(NeighborhoodField({0: 10, 1: 20}, local_id(), default=77))
+        _, field, send = exchange(0)
+        send(NeighborhoodField({0: 10, 1: 20}, local_id(), default=77))
         return field
 
     simulator.cycle_for(program, 2)
@@ -93,9 +95,9 @@ def test_exchange_keeps_last_sent_field_when_setter_is_not_called():
 
     @aggregate
     def program():
-        set_field, field = exchange(0)
+        _, field, send = exchange(0)
         if round_index == 0:
-            set_field(NeighborhoodField({0: 10, 1: 20}, local_id(), default=77))
+            send(NeighborhoodField({0: 10, 1: 20}, local_id(), default=77))
         return field
 
     simulator.cycle(program)
@@ -113,11 +115,11 @@ def test_exchange_splits_communication_across_aligned_branches():
     @aggregate
     def program():
         if local_id() < 2:
-            set_field, field = exchange(0)
-            set_field(local_id() + 10)
+            _, field, send = exchange(0)
+            send(local_id() + 10)
             return field
-        set_field, field = exchange(0)
-        set_field(local_id() + 10)
+        _, field, send = exchange(0)
+        send(local_id() + 10)
         return field
 
     simulator.cycle_for(program, 2)
@@ -131,16 +133,16 @@ def test_exchange_resets_state_when_branch_is_not_taken():
 
     @aggregate
     def step_counter():
-        set_step, step = exchange(0)
-        return set_step(step.local() + 1)
+        step, _, send_step = exchange(0)
+        return send_step(step + 1)
 
     @aggregate
     def alternating():
         if step_counter() % 2 == 0:
-            set_field, field = exchange(0)
-            return set_field(field.local() + 1)
-        set_field, field = exchange(0)
-        return set_field(field.local() + 1)
+            local, _, send = exchange(0)
+            return send(local + 1)
+        local, _, send = exchange(0)
+        return send(local + 1)
 
     simulator.cycle(alternating)
     assert simulator.nodes[0].root == 1
@@ -150,6 +152,14 @@ def test_exchange_resets_state_when_branch_is_not_taken():
     assert simulator.nodes[0].root == 1
 
 
+def test_exchange_sending_a_local_value_propagates_like_share():
+    simulator = MockSimulator(3)
 
+    @aggregate
+    def hop_gradient():
+        _, distances, send = exchange(float("inf"))
+        nearest = (distances + 1).without_self().min(default=float("inf"))
+        return send(0.0 if local_id() == 0 else nearest)
 
-
+    simulator.cycle(hop_gradient)
+    assert [node.root for node in simulator.nodes] == [0.0, 1.0, 1.0]

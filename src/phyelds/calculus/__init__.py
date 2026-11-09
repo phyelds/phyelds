@@ -170,7 +170,7 @@ def _extract_for_node(value: Any, node_id: int) -> Any:
 @aggregate
 def exchange(
     init: Union[T, "NeighborhoodField[T]"],
-) -> Tuple[Callable[[Any], Any], "NeighborhoodField[T]"]:
+) -> Tuple[T, "NeighborhoodField[T]", Callable[[Any], Any]]:
     """
     Exchange values with neighbors and across rounds at the current alignment point.
 
@@ -178,8 +178,9 @@ def exchange(
         init: Initial value (or field) used when no previous value is available.
 
     Returns:
-        A tuple ``(set_field, field)`` containing the send function for the next round
-            and the ``NeighborhoodField`` received in the current round.
+        A tuple ``(local, field, send)`` containing the local state value, the
+            ``NeighborhoodField`` received in the current round, and the send function
+            for the next round.
     """
     current_engine = engine.get()
     path = current_engine.current_path()
@@ -206,13 +207,13 @@ def exchange(
     )
     field = NeighborhoodField(values, node_id, default=default_value)
 
-    def set_field(new_value: Any) -> Any:
+    def send(new_value: Any) -> Any:
         raw_new = new_value.value if isinstance(new_value, State) else new_value
         current_engine.write_state(raw_new, path)
         current_engine.send(raw_new, path)
         return new_value
 
-    return set_field, field
+    return local_value, field, send
 
 
 def align(name: Any):

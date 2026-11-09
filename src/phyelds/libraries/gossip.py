@@ -10,7 +10,7 @@ from collections.abc import Callable
 import sys
 from typing import Any, Dict, List, Set, TypeVar
 
-from phyelds.calculus import aggregate, align, exchange, neighbors, remember
+from phyelds.calculus import aggregate, align, exchange
 from phyelds.data import NeighborhoodField
 from phyelds.libraries.device import local_id
 from phyelds.libraries.distances import hops_distance
@@ -70,12 +70,10 @@ def _select_best_path(
 
 @aggregate
 def _monotonic_gossip_step(value: T, callback: Callable[..., T]) -> T:
-    """Run a classic monotonic gossip step using ``remember`` and ``neighbors``."""
-    set_gossip, gossip_value = remember(value)
-    neighborhood_value: NeighborhoodField[T] = neighbors(gossip_value)
+    """Run a classic monotonic gossip step using ``exchange``."""
+    _, neighborhood_value, send_gossip = exchange(value)
     new_value: T = callback(value, *neighborhood_value)
-    set_gossip(new_value)
-    return gossip_value.value
+    return send_gossip(new_value)
 
 
 @aggregate
@@ -87,7 +85,7 @@ def _path_coherent_gossip_step(
     """Run a self-stabilizing gossip step over loop-free coherent paths."""
     node_id = local_id()
     local_candidate: PathValue[T] = PathValue(0.0, value, ())
-    set_field, neighbor_data = exchange(local_candidate)
+    _, neighbor_data, send_field = exchange(local_candidate)
     distances = hops_distance()
     candidates = non_looping_paths(neighbor_data, distances, node_id, max_diameter)
     peer_ids = {nid for nid in neighbor_data.data if nid != node_id}
@@ -98,7 +96,7 @@ def _path_coherent_gossip_step(
     ]
     coherent = path_coherence(fresh_candidates)
     winner = _select_best_path(local_candidate, coherent, callback)
-    set_field(winner)
+    send_field(winner)
     return winner.data
 
 
@@ -279,11 +277,10 @@ def gossip_mean(value: float) -> float:
     Returns:
         The locally averaged estimate.
     """
-    set_estimate, neighbor_estimates = exchange(float(value))
+    _, neighbor_estimates, send_estimate = exchange(float(value))
     peer_sum = float(neighbor_estimates.sum(include_self=False))
     avg = (float(value) + peer_sum) / len(neighbor_estimates.data)
-    set_estimate(avg)
-    return avg
+    return send_estimate(avg)
 
 
 @aggregate
