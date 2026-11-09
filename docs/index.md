@@ -81,15 +81,14 @@ Python 3.12 or later. To run programs in simulation, see the [simulator](simulat
 <div class="ph-split" markdown>
 
 ```python
-from phyelds.calculus import aggregate, neighbors, remember
+from phyelds.calculus import aggregate, exchange
 
 @aggregate
 def hop_gradient(source: bool) -> float:
-    set_distance, distance = remember(float("inf"))
-    through_neighbors = neighbors(distance) + 1
+    _, distances, send_distance = exchange(float("inf"))
+    through_neighbors = distances + 1
     nearest = min(through_neighbors.exclude_self().values(), default=float("inf"))
-    set_distance(0 if source else nearest)
-    return distance
+    return send_distance(0 if source else nearest)
 ```
 
 <div markdown>
@@ -97,8 +96,8 @@ def hop_gradient(source: bool) -> float:
 ![The hop-count gradient spreading along a line of ten devices](assets/gradient-hops.gif#only-light)
 ![The hop-count gradient spreading along a line of ten devices](assets/gradient-hops-dark.gif#only-dark)
 
-Every device runs these five lines: it remembers its estimate, shares it with its
-neighbors, and keeps the smallest one plus one hop. Together, the devices compute how many
+Every device runs these four lines: it exchanges its distance estimate with its
+neighbors, and keeps the smallest neighbor estimate plus one hop. Together, the devices compute how many
 hops separate each of them from the nearest source (above, on a line of ten devices), and
 they recompute it when sources move or links change.
 

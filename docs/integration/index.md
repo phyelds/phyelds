@@ -15,7 +15,7 @@ A phyelds program does not know where it runs. For each device and each round, t
   </div>
   <div class="ph-step">
     <div class="ph-step-title">2. Compute</div>
-    <p>Call <code>setup(context, inbox, state)</code> on a fresh engine, run the <code>@aggregate</code> function, and unwrap <code>result.value</code> if it returns a <code>State</code> proxy.</p>
+    <p>Call <code>setup(context, inbox, state)</code> on a fresh engine, and run the <code>@aggregate</code> function.</p>
   </div>
   <div class="ph-step ph-step--purple">
     <div class="ph-step-title">3. Act</div>
@@ -37,7 +37,7 @@ In detail, the host:
 
 The complete, runnable example, which drives a line of devices with plain Python objects, is [`docs/examples/custom_runtime.py`](https://github.com/phyelds/phyelds/blob/master/docs/examples/custom_runtime.py).
 
-`phyelds.vm.rounds.run_round` goes through steps 4 and 5 in one call, in the right order: give it the program, the id, the sensors, the inbox and the state, and it returns a `Round` with the `result` (already unwrapped), the `outbox`, the new `state` and the `outputs`. Gathering the inbox, keeping the states and delivering the outboxes stay with the host:
+`phyelds.vm.rounds.run_round` goes through steps 4 and 5 in one call, in the right order: give it the program, the id, the sensors, the inbox and the state, and it returns a `Round` with the `result`, the `outbox`, the new `state` and the `outputs`. Gathering the inbox, keeping the states and delivering the outboxes stay with the host:
 
 ```python
 from phyelds.vm.rounds import run_round
@@ -58,7 +58,6 @@ The runtimes below and `Device` run their rounds with it.
 - **Keep the state per device.** The state is opaque: store it as it is and give it back in the next round. It must survive between rounds; across a restart, the self-stabilising building blocks converge again without it, but what the program counts or remembers starts over. A `Device` keeps its state for you, and its [snapshot](micropython.md#snapshots) carries it, with the messages it holds, to another process.
 - **Send to the current neighbors only.** Neighbors that disappear simply stop appearing in the inbox; the program adapts.
 - **Read actuations from the outputs.** Programs act on the world through `store(name, value)`; the host applies them (moving a robot, switching a LED).
-- **Unwrap the result.** A program may return a `State` proxy: use `.value` to get the plain value.
 
 ---
 

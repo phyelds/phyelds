@@ -114,10 +114,9 @@ export const STEPS = [
     code: [
       { code: "@aggregate" },
       { code: "def rounds() -> int:" },
-      { code: "    set_count, count = remember(0)" },
-      { code: `    set_count(min(count + 1, ${CAP}))` },
+      { code: "    count, set_count = remember(0)" },
       {
-        code: "    return count",
+        code: `    return set_count(min(count + 1, ${CAP}))`,
         view: "rounds",
         value: ({ state }) => String(state.rounds),
         detail: ({ state }) => (state.rounds === CAP ? `min(${CAP} + 1, ${CAP}): capped` : null),

@@ -28,7 +28,7 @@ found by reading the program, so a module imported by a computed name must be na
   `@aggregate` would do at run time, so the alignment paths are the same on every runtime;
 - annotations, type expressions and docstrings are removed, and unpacking in tuples and
   lists (`(*hops, last)`) is spelled out;
-- the modules MicroPython lacks (`typing`, `dataclasses`, `enum`, `contextvars`, `wrapt`,
+- the modules MicroPython lacks (`typing`, `dataclasses`, `enum`, `contextvars`,
   ...) are replaced by small stand-ins in `phyelds._mpy`;
 - what MicroPython cannot find out by itself is written down: the fields of dataclasses,
   the members of enums, and the parameters of the functions of the program.
@@ -241,8 +241,6 @@ check that each one gives the same results and messages as on CPython (see
 | On MicroPython | Instead |
 |---|---|
 | An accumulation given as a lambda is called with the data only: `cast_from(source, 0, lambda edge, data: ...)` fails. | Define a function at the top of the program; the build records its parameters. |
-| A value on the left of a comparison with a state fails: `2 < count`. | Put the state on the left: `count > 2`. |
-| A state is not an instance of the type of its value: `isinstance(count, int)` is false. | Use `count.value`. |
 | `field.data` is an `OrderedDict`, never equal to a `dict`. | Compare `dict(field.data)`. |
 | Floats are 32-bit on most ports, the ESP32 included. | Expect small differences in distances. |
 
@@ -256,11 +254,11 @@ devices exchanging bytes), on the 64-bit unix port of MicroPython 1.29:
 
 | Build | phyelds on the board | Heap to start | Heap kept after the rounds |
 |---|---|---|---|
-| `.py` | 29 KB of files | ~82 KB | 43 KB |
-| [`--mpy`](#compiled-ahead) | 15 KB of files | ~56 KB | 43 KB |
-| `--mpy` [`--prune`](#pruning) | 12 KB of files | ~52 KB | 37 KB |
-| [frozen](#frozen-into-the-firmware) | 24 KB of firmware | ~30 KB | 21 KB |
-| frozen, `--prune` | 17 KB of firmware | ~28 KB | 19 KB |
+| `.py` | 26 KB of files | ~72 KB | 39 KB |
+| [`--mpy`](#compiled-ahead) | 13 KB of files | ~53 KB | 39 KB |
+| `--mpy` [`--prune`](#pruning) | 10 KB of files | ~47 KB | 34 KB |
+| [frozen](#frozen-into-the-firmware) | 21 KB of firmware | ~28 KB | 19 KB |
+| frozen, `--prune` | 15 KB of firmware | ~26 KB | 17 KB |
 
 A `.py` module is compiled when it is imported, which briefly needs more memory than it then
 keeps: hence the larger heap to start. Objects are about half as large on the 32-bit ESP32,
