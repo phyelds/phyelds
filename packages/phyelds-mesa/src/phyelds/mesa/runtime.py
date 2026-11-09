@@ -9,10 +9,8 @@ from typing import Any
 
 from mesa import Agent
 
-from phyelds import engine
-from phyelds.data import State
-from phyelds.vm import NodeContext
-from phyelds.vm.internal import MutableEngine
+from phyelds.vm.asynchronous import AsynchronousRuntime
+from phyelds.vm.synchronous import SynchronousRuntime
 
 Neighbors = Callable[[Agent], Iterable[Agent]]
 Sensors = Callable[[Agent], Mapping[str, Any]]
@@ -20,11 +18,13 @@ Sensors = Callable[[Agent], Mapping[str, Any]]
 
 class AggregateRuntime:
     """
-    Runs an aggregate program on Mesa agents, one synchronous round at a time.
+    Runs an aggregate program on Mesa agents, in synchronous rounds or asynchronous spikes.
 
-    In a round every agent receives what its neighbors sent in the previous round, so the
-    result does not depend on the order of the agents. Call ``run_round`` from the
-    ``step`` of the model.
+    In a synchronous round (the default), every agent receives what its neighbors sent in the
+    previous round, so the result does not depend on the order of the agents. With
+    ``synchronous=False``, each agent publishes its new message as soon as it runs, so the
+    next agents to run already read it, and ``spike`` runs one agent at a time while keeping
+    the state and messages of the others.
 
     Args:
         program: The ``@aggregate`` function to run on each agent.
@@ -32,18 +32,47 @@ class AggregateRuntime:
             continuous space or ``cell_neighbors`` in a grid.
         sensors: Extra sensors of a given agent, added to ``position`` (its position, or
             the coordinate of its cell) and ``time`` (the time of the model).
+        synchronous: Whether ``run_round`` runs a synchronous round on all agents, or spikes
+            them one after the other.
+        retention: With ``synchronous=False``, for how long in ``model.time`` a silent agent
+            is kept before its state, messages and outputs are forgotten; ``None`` by
+            default, which keeps silent agents until ``forget`` or ``reset``.
+
+    Raises:
+        ValueError: If ``retention`` is given with ``synchronous=True``, or if ``retention``
+            is not positive.
     """
 
-    def __init__(
-        self, program: Callable[[], Any], *, neighbors: Neighbors, sensors: Sensors | None = None
+    def __init__(  # pylint: disable=too-many-arguments
+        self,
+        program: Callable[[], Any],
+        *,
+        neighbors: Neighbors,
+        sensors: Sensors | None = None,
+        synchronous: bool = True,
+        retention: float | None = None,
     ):
-        self.program = program
+        if synchronous and retention is not None:
+            raise ValueError("retention requires synchronous=False")
         self.neighbors = neighbors
         self.sensors = sensors
-        self.outputs: dict[int, dict[str, Any]] = {}
+        self.synchronous = synchronous
+        self._spikes = None if synchronous else AsynchronousRuntime(program, retention=retention)
+        self._rounds = SynchronousRuntime(program) if self._spikes is None else self._spikes
+
+    @property
+    def program(self) -> Callable[[], Any]:
+        """The ``@aggregate`` function run on each agent."""
+        return self._rounds.program
+
+    @program.setter
+    def program(self, program: Callable[[], Any]) -> None:
+        self._rounds.program = program
+
+    @property
+    def outputs(self) -> dict[int, dict[str, Any]]:
         """What the program stored with ``store`` on each agent, in the last round."""
-        self._states: dict[int, dict[str, Any]] = {}
-        self._outboxes: dict[int, dict[str, Any]] = {}
+        return self._rounds.outputs
 
     def run_round(self, agents: Iterable[Agent]) -> dict[int, Any]:
         """
@@ -57,28 +86,52 @@ class AggregateRuntime:
         Returns:
             The result of the program on each agent, by ``unique_id``.
         """
-        states, outboxes, outputs, results = {}, {}, {}, {}
-        for agent in agents:
-            inbox = {
-                neighbor.unique_id: self._outboxes[neighbor.unique_id]
-                for neighbor in self.neighbors(agent)
-                if neighbor.unique_id in self._outboxes
-            }
-            node_engine = MutableEngine()
-            engine.set(node_engine)
-            context = NodeContext(agent.unique_id, self._sense(agent))
-            node_engine.setup(context, inbox, self._states.get(agent.unique_id, {}))
-            result = self.program()
-            outboxes[agent.unique_id] = node_engine.cooldown()
-            states[agent.unique_id] = node_engine.state_trace()
-            outputs[agent.unique_id] = context.outputs
-            results[agent.unique_id] = result.value if isinstance(result, State) else result
-        self._states, self._outboxes, self.outputs = states, outboxes, outputs
-        return results
+        agents = list(agents)
+        sensors = {agent.unique_id: self._sense(agent) for agent in agents}
+        neighbors = {
+            agent.unique_id: [neighbor.unique_id for neighbor in self.neighbors(agent)]
+            for agent in agents
+        }
+        return self._rounds.run_round(sensors, neighbors)
+
+    def spike(self, agent: Agent) -> Any:
+        """
+        Run the program once on ``agent``, keeping the state and messages of the others.
+
+        Args:
+            agent: The agent running the spike.
+
+        Returns:
+            The result of the program on ``agent``.
+
+        Raises:
+            ValueError: If the runtime is synchronous.
+        """
+        neighbors = [neighbor.unique_id for neighbor in self.neighbors(agent)]
+        return self._asynchronous("spike").spike(agent.unique_id, self._sense(agent), neighbors)
+
+    def forget(self, agent: Agent | int) -> None:
+        """
+        Forget the state, the messages and the outputs of ``agent``.
+
+        Args:
+            agent: The agent to forget, or its ``unique_id``.
+
+        Raises:
+            ValueError: If the runtime is synchronous.
+        """
+        agent_id = agent.unique_id if isinstance(agent, Agent) else agent
+        self._asynchronous("forget").forget(agent_id)
 
     def reset(self) -> None:
         """Forget the state and the messages of every agent."""
-        self._states, self._outboxes, self.outputs = {}, {}, {}
+        self._rounds.reset()
+
+    def _asynchronous(self, action: str) -> AsynchronousRuntime:
+        """The underlying ``AsynchronousRuntime``, when ``synchronous=False``."""
+        if self._spikes is None:
+            raise ValueError(f"{action} requires synchronous=False")
+        return self._spikes
 
     def _sense(self, agent: Agent) -> dict[str, Any]:
         """The default sensors of ``agent``, updated with the extra ones."""

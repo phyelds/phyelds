@@ -8,7 +8,7 @@ It also provides a way to schedule events and run the simulation.
 from abc import ABC
 import heapq
 import uuid
-from typing import Dict, Callable, Any, Optional, Tuple, List
+from typing import Dict, Callable, Any, Optional, Protocol, Tuple, List
 
 
 class Node:
@@ -23,11 +23,23 @@ class Node:
             self.id = 0
         else:
             self.id = node_id or str(uuid.uuid4())
+        self.environment = None
         self.position = position
         if data is None:
             data = {}
         self.data = data
-        self.environment = None
+
+    @property
+    def position(self) -> Tuple[float, ...]:
+        """Where the node is; setting it keeps the spatial indexes of its environment up to date."""
+        return self._position
+
+    @position.setter
+    def position(self, position: Tuple[float, ...]) -> None:
+        old_position = getattr(self, "_position", None)
+        self._position = position
+        if self.environment is not None:
+            self.environment.node_moved(self, old_position)
 
     def update(
         self, new_position: Optional[Tuple[float, ...]] = None, new_data: Any = None
@@ -58,6 +70,22 @@ class Node:
         return f"Node(id={self.id}, position={self.position}, data={self.data})"
 
 
+class SpatialIndex(Protocol):
+    """An index of the nodes of an environment by their position, which it keeps up to date."""
+
+    def __len__(self) -> int:
+        """How many nodes the index holds."""
+
+    def added(self, node: Node, replaced: Optional[Node]) -> None:
+        """Index ``node``, in place of ``replaced``: the node it replaced, with the same id."""
+
+    def removed(self, node: Node) -> None:
+        """Forget ``node``."""
+
+    def moved(self, node: Node, old_position: Tuple[float, ...]) -> None:
+        """Index ``node`` at its position, no longer at ``old_position``."""
+
+
 class Environment:
     """
     A class to represent the environment in which nodes exist.
@@ -70,6 +98,7 @@ class Environment:
     ):
         self.nodes: Dict[any, Node] = {}
         self.neighborhood_function = neighborhood_function or self.no_neighbors
+        self._indexes: Dict[Any, SpatialIndex] = {}
 
     def add_data_for_all_nodes(self, data: Dict[str, Any]):
         """Add data to all nodes in the environment"""
@@ -82,14 +111,47 @@ class Environment:
 
     def add_node(self, node: Node):
         """Add a node to the environment"""
+        replaced = self.nodes.get(node.id)
         self.nodes[node.id] = node
         node.environment = self
+        for index in self._indexes.values():
+            index.added(node, replaced)
 
     def remove_node(self, node_id: str):
         """Remove a node from the environment"""
         if node_id in self.nodes:
-            self.nodes[node_id].environment = None
-            del self.nodes[node_id]
+            node = self.nodes.pop(node_id)
+            node.environment = None
+            for index in self._indexes.values():
+                index.removed(node)
+
+    def node_moved(self, node: Node, old_position: Tuple[float, ...]) -> None:
+        """
+        Keep the spatial indexes up to date: a node calls it when its position changes.
+
+        Args:
+            node: The node that moved.
+            old_position: Where it was.
+        """
+        for index in self._indexes.values():
+            index.moved(node, old_position)
+
+    def spatial_index(self, key: Any, build: Callable[[List[Node]], SpatialIndex]) -> SpatialIndex:
+        """
+        The spatial index of ``key``, built on the first request and then kept up to date.
+
+        Args:
+            key: What the index is, e.g. the kind and size of its cells.
+            build: How to build the index from the nodes.
+
+        Returns:
+            The index, rebuilt if nodes were added or removed other than with ``add_node``
+            and ``remove_node``.
+        """
+        index = self._indexes.get(key)
+        if index is None or len(index) != len(self.nodes):
+            index = self._indexes[key] = build(self.node_list())
+        return index
 
     def set_neighborhood_function(self, func: Callable[[Node, "Environment"], List[Node]]):
         """Set the function that determines neighborhoods"""

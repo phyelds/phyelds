@@ -94,7 +94,6 @@ def _merge(histories: Sequence[_MachineHistory]) -> _MachineHistory:
     """
     sequences = [_aligned(history) for history in histories]
     discarded = set()
-    # ponytail: pairwise, quadratic in the number of neighbors; fine for neighborhoods
     for first, mine in enumerate(sequences):
         for second in range(first + 1, len(sequences)):
             theirs = sequences[second]
