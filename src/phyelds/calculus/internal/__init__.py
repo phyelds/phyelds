@@ -107,9 +107,12 @@ def _remember_unpacking(stmt: ast.stmt) -> tuple[str, str] | None:
         target, value = stmt.target, stmt.value
     else:
         return None
-    if not (isinstance(value, ast.Call) and _is_named_call(value, "remember")):
-        return None
-    if not (isinstance(target, (ast.Tuple, ast.List)) and len(target.elts) == 2):
+    if not (
+        isinstance(value, ast.Call)
+        and _is_named_call(value, "remember")
+        and isinstance(target, (ast.Tuple, ast.List))
+        and len(target.elts) == 2
+    ):
         return None
     first, second = target.elts
     if isinstance(first, ast.Name) and isinstance(second, ast.Name):
@@ -119,9 +122,7 @@ def _remember_unpacking(stmt: ast.stmt) -> tuple[str, str] | None:
 
 
 def _child_blocks(stmt: ast.stmt) -> list[Sequence[ast.stmt]]:
-    """Nested statement lists of a compound statement (excluding nested definitions)."""
-    if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-        return []
+    """Nested statement lists of a compound statement."""
     blocks: list[Sequence[ast.stmt]] = []
     for attr in ("body", "orelse", "finalbody"):
         block = getattr(stmt, attr, None)
