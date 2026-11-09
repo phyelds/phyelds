@@ -513,3 +513,16 @@ def test_remember_without_update_passed_to_neighbors_does_not_warn(recwarn):
     """
     _transform_source(source)
     assert len(recwarn) == 0
+
+
+def test_aggregate_function_warns_when_remember_is_shared_before_update():
+    from phyelds.calculus import remember
+
+    @aggregate
+    def delayed_gradient():
+        dist, set_dist = remember(10)
+        field = neighbors(dist)
+        return set_dist(field.min())
+
+    with pytest.warns(UserWarning, match="exchange"):
+        _run_once(delayed_gradient)

@@ -9,7 +9,7 @@ import random
 from typing import Any, Tuple
 
 from phyelds.calculus import aggregate, exchange, neighbors, remember
-from phyelds.data import NeighborhoodField, StateT
+from phyelds.data import NeighborhoodField
 from phyelds.data.codec import register
 from phyelds.libraries.device import local_id
 from phyelds.libraries.distances import hops_distance
@@ -132,7 +132,7 @@ def _uuid_election_step(
     distances: NeighborhoodField[float],
 ) -> int | None:
     """Run one step of UUID-based symmetry-breaking leader election."""
-    result: Tuple[StateT[float], int] = breaking_using_uids(random_uuid(), area, distances)
+    result: Tuple[float, int] = breaking_using_uids(random_uuid(), area, distances)
     if result[0] == float("inf"):
         return None
     return result[1]
@@ -252,7 +252,7 @@ def elect_leaders(
 
 
 @aggregate
-def random_uuid() -> Tuple[StateT[float], int]:
+def random_uuid() -> Tuple[float, int]:
     """
     Draw a random identifier for the current device, kept across rounds.
 
@@ -260,16 +260,16 @@ def random_uuid() -> Tuple[StateT[float], int]:
         A tuple ``(random_value, device_id)``: the random number in ``[0, 1)`` is drawn
             on the first round, and the device ID breaks ties.
     """
-    _, value = remember(random.random())
+    value, _ = remember(random.random())
     return value, local_id()
 
 
 @aggregate
 def breaking_using_uids(
-    uid: Tuple[StateT[float], int],
+    uid: Tuple[float, int],
     area: float,
     distances: NeighborhoodField[float],
-) -> StateT[tuple[float, int]]:
+) -> tuple[float, int]:
     """
     Elect leaders by competition on ``uid``: the lowest one wins within its area.
 
@@ -293,10 +293,10 @@ def breaking_using_uids(
 def distance_competition(
     current_distance: float,
     area: float,
-    uid: Tuple[StateT[float], int],
-    lead: StateT[Tuple[float, int]],
+    uid: Tuple[float, int],
+    lead: Tuple[float, int] | NeighborhoodField[Tuple[float, int]],
     distances: NeighborhoodField[float],
-) -> StateT[Tuple[float, int]]:
+) -> Tuple[float, int]:
     """
     Choose the next leader of the current device from those of its neighbors.
 
@@ -307,7 +307,7 @@ def distance_competition(
         current_distance: The distance of the current device from its leader.
         area: The size of a leader's area, in the units of ``distances``.
         uid: The identifier of the current device.
-        lead: The identifier of the current leader.
+        lead: The identifier of the current leader (or the field of neighbor leaders).
         distances: Field of edge distances to neighbors.
 
     Returns:

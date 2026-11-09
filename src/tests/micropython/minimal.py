@@ -15,7 +15,7 @@ ROUNDS = 3
 
 @aggregate
 def program():
-    set_count, count = remember(0)
+    count, set_count = remember(0)
     set_count(count + 1)
     return neighbors(local_id()).sum()
 

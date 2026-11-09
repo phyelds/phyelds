@@ -160,7 +160,7 @@ from phyelds.calculus import aggregate, remember
 
 @aggregate
 def rounds():
-    set_count, count = remember(0)
+    count, set_count = remember(0)
     return set_count(count + 1)
 """
 
@@ -311,7 +311,7 @@ from phyelds.libraries.device import local_id
 @aggregate
 def program():
     step = 1 if local_id() == 0 else 2
-    set_total, total = remember(0)
+    total, set_total = remember(0)
     return set_total(total + step)
 """
 

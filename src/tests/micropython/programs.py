@@ -10,7 +10,6 @@ import sys
 
 from phyelds import engine
 from phyelds.calculus import aggregate, exchange, neighbors, remember
-from phyelds.data import State
 from phyelds.data.codec import decode, encode
 from phyelds.experimental.formation import circle, formation, leader_positioning, star
 from phyelds.experimental.state_machines import Next, StateMachine, collective_state_machine
@@ -19,7 +18,7 @@ from phyelds.libraries.collect import collect_with, point_to_point, sum_values
 from phyelds.libraries.device import local_id, sense
 from phyelds.libraries.distances import hops_distance
 from phyelds.libraries.gossip import gossip, gossip_max, path_coherent_gossip
-from phyelds.libraries.leader_election import candidacy, elect_leader
+from phyelds.libraries.leader_election import breaking_using_uids, candidacy, elect_leader
 from phyelds.libraries.logic import boundary, everywhere, previously, somewhere
 from phyelds.libraries.processes import bubble, process
 from phyelds.libraries.spreading import broadcast, cast_from, distance_to
@@ -39,7 +38,7 @@ def neighbour_ids():
 
 @aggregate
 def remembered():
-    set_count, count = remember(0)
+    count, set_count = remember(0)
     return set_count(count + 1)
 
 
@@ -63,14 +62,14 @@ def conditional_expression():
 
 @aggregate
 def state_arithmetic():
-    _, count = remember(3)
+    count, _ = remember(3)
     return [count + 1, 1 + count, count * 2, 10 - count, count < 5, count > 2, -count, abs(count),
             count == 3, float(count), int(count), str(count)]
 
 
 @aggregate
 def value_compared_to_state():
-    _, count = remember(3)
+    count, _ = remember(3)
     return 2 < count
 
 
@@ -126,7 +125,11 @@ def gossiped():
 
 @aggregate
 def leader():
-    return elect_leader(2, strategy=candidacy(local_id()))
+    uid = (float(local_id()), local_id())
+    return [
+        elect_leader(2, strategy=candidacy(local_id())),
+        breaking_using_uids(uid, 2.0, hops_distance()),
+    ]
 
 
 @aggregate
@@ -185,7 +188,7 @@ def described_state_machine():
 
 @aggregate
 def state_type():
-    _, count = remember(3)
+    count, _ = remember(3)
     return isinstance(count, int)
 
 
@@ -219,7 +222,7 @@ def run(program, paths="debug"):
             result = program()
             outboxes[device] = engine.get().cooldown()
             states[device] = engine.get().state_trace()
-            results[device] = result.value if isinstance(result, State) else result
+            results[device] = result
     return results, outboxes
 
 

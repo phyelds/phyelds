@@ -21,7 +21,7 @@ MICROPYTHON = shutil.which("micropython")
 HEAP = "512k"
 # The heap minimal.py needs, with a margin: the need is not monotonic, as the heap fragments.
 # Lower them when a change saves memory, so that regressions show up.
-MINIMAL_BUDGET = {"py": "90k", "mpy": "64k", "pruned": "60k"}
+MINIMAL_BUDGET = {"py": "80k", "mpy": "60k", "pruned": "55k"}
 
 pytestmark = pytest.mark.skipif(MICROPYTHON is None, reason="micropython is not on the PATH")
 needs_mpy_cross = pytest.mark.skipif(shutil.which("mpy-cross") is None, reason="mpy-cross is not on the PATH")
@@ -89,6 +89,8 @@ PROGRAMS = [
     "described_state_machine",
     "swarm_blocks",
     "formed",
+    "value_compared_to_state",
+    "state_type",
 ]
 
 
@@ -118,21 +120,6 @@ def test_micropython_cannot_tell_the_parameters_of_a_lambda(bundle):
 
     assert completed.returncode != 0
     assert "TypeError" in completed.stdout + completed.stderr
-
-
-def test_micropython_does_not_reflect_comparisons_onto_states(bundle):
-    # 2 < state fails: MicroPython does not try state > 2. Write state > 2 instead.
-    completed = _on_micropython(bundle, "value_compared_to_state")
-
-    assert completed.returncode != 0
-    assert "unsupported types for __lt__: 'int', 'State'" in completed.stdout + completed.stderr
-
-
-def test_micropython_states_are_not_instances_of_their_value_type(bundle):
-    results, _ = _micropython(bundle, "state_type")
-
-    assert set(results.values()) == {False}
-    assert set(_cpython("state_type")[0].values()) == {True}
 
 
 @pytest.mark.parametrize("kind", BUNDLES)

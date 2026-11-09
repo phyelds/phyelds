@@ -59,10 +59,10 @@ def gather() -> Vector:
 def cross() -> Vector:
     """The leader heads across the centre, to the opposite side; the others move as it does."""
     x, y = local_position()
-    _, goal = remember(tuple(CENTRE + max(-FARTHEST, min(FARTHEST, CENTRE - value)) for value in (x, y)))
-    if leader.sense() and is_close(goal.value, 0.3):
+    goal, _ = remember(tuple(CENTRE + max(-FARTHEST, min(FARTHEST, CENTRE - value)) for value in (x, y)))
+    if leader.sense() and is_close(goal, 0.3):
         mission.go(Phase.CIRCLE, priority=-local_time())
-    heading = align_with_leader(leader.sense(), go_to(goal.value))
+    heading = align_with_leader(leader.sense(), go_to(goal))
     return heading if leader.sense() else moving(heading + sink_at(leader.sense()))
 
 

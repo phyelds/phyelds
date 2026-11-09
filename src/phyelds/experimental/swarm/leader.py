@@ -8,7 +8,7 @@ Each device follows the nearest leader, along the network.
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from phyelds.calculus import aggregate, align, neighbors, remember
+from phyelds.calculus import aggregate, align, exchange, remember
 from phyelds.data import NeighborhoodField
 from phyelds.data.codec import register
 from phyelds.experimental.swarm.flocking import separation
@@ -44,15 +44,13 @@ def cast_along(
         The distance to the nearest source, infinite away from any, and the value.
     """
     offsets = neighbors_vectors() if offsets is None else offsets
-    set_entry, entry = remember((_UNREACHABLE, value))
-    entries = neighbors(entry.value)
+    _, entries, send_entry = exchange((_UNREACHABLE, value))
     best = (_UNREACHABLE, value)
     for node_id, (distance, there) in entries.exclude_self().items():
         offset = offsets.data.get(node_id)
         if offset is not None and distance + offset.length() < best[0]:
             best = (distance + offset.length(), step(there, offset))
-    set_entry((0.0, value) if source else best)
-    return entry.value
+    return send_entry((0.0, value) if source else best)
 
 
 def _broadcast(source: bool, value: object) -> tuple[float, object]:
@@ -185,7 +183,7 @@ def team_formation(  # pylint: disable=too-many-arguments
     Returns:
         The team of the device.
     """
-    set_team, team = remember(Team(local_id(), False, Vector()))
+    team, set_team = remember(Team(local_id(), False, Vector()))
     # The members of a formed team keep electing and relaying, so that the devices still
     # forming learn their leader through them.
     offsets = neighbors_vectors()
@@ -194,10 +192,8 @@ def team_formation(  # pylint: disable=too-many-arguments
         is_leader = elect_leaders(extra_distance, offsets.map(lambda offset: offset.length()))
     known, leader_id = _broadcast(is_leader, local_id())
     formed = condition(is_leader) and known < _UNREACHABLE
-    spacing = separation(team.value.velocity, within=intra_distance) * separation_weight
+    spacing = separation(team.velocity, within=intra_distance) * separation_weight
     gather = sink_at(is_leader) + spacing
-    if team.value.formed:
-        set_team(Team(team.value.leader, True, Vector()))
-    else:
-        set_team(Team(leader_id, bool(formed), gather.normalize()))
-    return team.value
+    if team.formed:
+        return set_team(Team(team.leader, True, Vector()))
+    return set_team(Team(leader_id, bool(formed), gather.normalize()))

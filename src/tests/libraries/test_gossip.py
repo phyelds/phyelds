@@ -14,7 +14,6 @@ from phyelds.libraries.gossip import (
 import pytest
 from phyelds.simulator.runner import schedule_program_for_all
 from tests.libraries.simulator_utils import setup_up_simulator
-from phyelds.data import State
 
 ITERATIONS = 10
 
@@ -45,12 +44,12 @@ def test_gossip_max_returns_a_bare_value_whatever_the_strategy(strategy):
     simulator = setup_up_simulator(3)
     @aggregate
     def program():
-        return isinstance(gossip_max(local_id(), strategy=strategy), State)
+        return type(gossip_max(local_id(), strategy=strategy)) is int
     # Act
     schedule_program_for_all(simulator, 0.0, 1.0, program)
     simulator.run(ITERATIONS)
     # Assert
-    assert not any(node.data["result"] for node in simulator.environment.nodes.values())
+    assert all(node.data["result"] for node in simulator.environment.nodes.values())
 
 def test_normal_gossip_does_not_heal():
     size = 5

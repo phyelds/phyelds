@@ -11,10 +11,10 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_core_depends_only_on_wrapt():
+def test_core_has_no_runtime_dependencies():
     project = tomllib.loads((ROOT / "pyproject.toml").read_text())
 
-    assert set(project["tool"]["poetry"]["dependencies"]) == {"python", "wrapt"}
+    assert set(project["tool"]["poetry"]["dependencies"]) == {"python"}
     assert "extras" not in project["tool"]["poetry"]
 
 

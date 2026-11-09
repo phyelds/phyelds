@@ -34,7 +34,7 @@ from pathlib import Path
 from typing import Any
 
 from phyelds import engine
-from phyelds.data import NeighborhoodField, State
+from phyelds.data import NeighborhoodField
 from phyelds.experimental.formation import Shape
 from phyelds.experimental.swarm import Vector
 from phyelds.libraries.device import velocity
@@ -424,8 +424,6 @@ _SHORT = _Short(maxstring=LONGEST_TEXT, maxother=LONGEST_TEXT)
 def _value(value: Any) -> Value:
     """How the page shows ``value``: on a scale if it is a finite number or a boolean."""
     try:
-        if isinstance(value, State):
-            value = value.value
         if isinstance(value, enum.Enum) and isinstance(value, numbers.Real):
             # A member of an IntEnum: its name, on the scale of all the members.
             members = [float(member) for member in type(value)]

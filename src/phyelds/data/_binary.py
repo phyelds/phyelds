@@ -7,7 +7,7 @@ import struct
 from collections.abc import Mapping
 from typing import Any
 
-from phyelds.data import NeighborhoodField, State
+from phyelds.data import NeighborhoodField
 from phyelds.data._registry import BY_NAME, CLASS_NAMES, CONSTANT_NAMES
 
 _BINARY = 0x01
@@ -48,8 +48,6 @@ def decode(payload: bytes) -> dict[Any, Any]:
 
 def _write(value: Any, out: bytearray) -> None:  # pylint: disable=too-many-branches
     """Append ``value`` to ``out`` in the binary format, as ``_to_json`` does in JSON."""
-    if isinstance(value, State):
-        value = value.value
     if id(value) in CONSTANT_NAMES:
         out.append(_CONSTANT)
         _write_text(CONSTANT_NAMES[id(value)], out)

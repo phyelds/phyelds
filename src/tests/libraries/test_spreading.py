@@ -16,7 +16,6 @@ from phyelds.simulator import Simulator
 from phyelds.simulator.neighborhood import radius_neighborhood
 from phyelds.simulator.runner import schedule_program_for_all
 from tests.libraries.simulator_utils import setup_up_simulator
-from phyelds.data import State
 
 ITERATIONS = 10
 
@@ -43,12 +42,12 @@ def test_distance_to_returns_a_bare_value_whatever_the_strategy(strategy):
     simulator.environment.nodes[0].update(new_data={"source": True})
     @aggregate
     def program():
-        return isinstance(distance_to(sense("source"), strategy=strategy), State)
+        return type(distance_to(sense("source"), strategy=strategy)) is float
     # Act
     schedule_program_for_all(simulator, 0.0, 1.0, program)
     simulator.run(ITERATIONS)
     # Assert
-    assert not any(node.data["result"] for node in simulator.environment.nodes.values())
+    assert all(node.data["result"] for node in simulator.environment.nodes.values())
 
 def test_broadcast_cast_multi_hop():
     size = 5

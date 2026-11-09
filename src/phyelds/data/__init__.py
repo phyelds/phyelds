@@ -17,17 +17,11 @@ from typing import (
     Union,
     cast,
 )
-import wrapt
-from phyelds.vm import Engine
 
 # T represents the type of data held by the Neighborhood (e.g., int, float, bool)
 T = TypeVar("T")
 # U represents the type of data resulting from a map or operation
 U = TypeVar("U")
-# S represents the type of the value held by State
-S = TypeVar("S")
-# StateT is the "mark" type for state values
-StateT = Union[S, "State[S]"]  # pylint: disable=invalid-name
 
 _MISSING = object()
 
@@ -496,78 +490,3 @@ class NeighborhoodField(Generic[T], Iterator[T]):
     def __repr__(self) -> str:
         """String representation of the neighborhood."""
         return f"Neighborhood (id: {self.node_id}) -- data: {self.data} -- local: {self.local()}"
-
-
-class State(wrapt.ObjectProxy, Generic[S]):
-    """
-    A wrapper class that delegates operations to the underlying value
-    while maintaining state management functionality.
-    """
-
-    def __init__(self, default: S, path: List[Any], engine: Engine) -> None:
-        self.__wrapped__ = default
-
-        state = engine.read_state(path)
-        if state is None:
-            value = default
-            engine.write_state(default, path)
-        else:
-            value = state
-
-        super().__init__(value)
-        self._self_path: List[Any] = list(path)
-        self._self_engine: Engine = engine
-
-    @property
-    def value(self) -> S:
-        """Get the current value."""
-        # wrapt proxies delegate attribute access, but explicit access to the wrapped object
-        # is done via __wrapped__
-        return self.__wrapped__
-
-    @property
-    def update_fn(self) -> Callable[["StateT[S]"], "StateT[S]"]:
-        """Get the update function."""
-        return lambda value: self.___update(value)  # pylint: disable=unnecessary-lambda
-
-    def ___update(self, new_value: Union[S, "State[S]"]) -> "State[S]":
-        """Update the stored value."""
-        val_to_store: S
-        if isinstance(new_value, State):
-            val_to_store = new_value.value
-        else:
-            val_to_store = new_value
-
-        self._self_engine.write_state(val_to_store, self._self_path)
-        self.__wrapped__ = val_to_store
-        return self
-
-    def forget(self) -> None:
-        """Forget the stored value."""
-        self._self_engine.forget(self._self_path)
-        self.__wrapped__ = None
-
-    def __str__(self) -> str:
-        """String representation of the state."""
-        return str(self.__wrapped__)
-
-    def __repr__(self) -> str:
-        """String representation of the state."""
-        return f"State: {repr(self.__wrapped__)}"
-
-    def __copy__(self) -> "State[S]":
-        """Create a shallow copy of the state."""
-        # Assuming S is the type of __wrapped__
-        return State(cast(S, self.__wrapped__), self._self_path, self._self_engine)
-
-    def __deepcopy__(self, memo: Dict[int, Any]) -> "State[S]":
-        """Create a deep copy of the state."""
-        return self.__copy__()
-
-    def __reduce__(self) -> Union[str, tuple]:
-        """Reduce the state for pickling."""
-        return self.__wrapped__  # type: ignore
-
-    def __reduce_ex__(self, protocol: int) -> Union[str, tuple]:
-        """Reduce the state for pickling."""
-        return self.__reduce__()

@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from typing import Any
 
 from phyelds import engine
-from phyelds.data import State
 from phyelds.vm import NodeContext
 from phyelds.vm.internal import MutableEngine
 
@@ -16,7 +15,7 @@ class Round:
     """What a round of a device leaves behind."""
 
     result: Any
-    """What the program returned, with a ``State`` unwrapped to its value."""
+    """What the program returned."""
     outbox: dict[str, Any]
     """The messages to send to the neighbors, keyed by alignment path."""
     state: dict[str, Any]
@@ -55,7 +54,7 @@ def run_round(  # pylint: disable=too-many-arguments
     result = program()
     outbox = node_engine.cooldown()  # first: it also drops the state not used
     return Round(
-        result=result.value if isinstance(result, State) else result,
+        result=result,
         outbox=outbox,
         state=node_engine.state_trace(),
         outputs=context.outputs,

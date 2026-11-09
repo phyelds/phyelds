@@ -36,9 +36,9 @@ class Stage(IntEnum):
 def roam(leader: int) -> Vector:
     """Move as the leader of the team, which roams around where the team formed, close to it."""
     is_leader = local_id() == leader
-    _, home = remember(local_position())  # where the device was when its team formed
-    lowest = tuple(max(LOWEST, value - ROAM) for value in home.value)
-    highest = tuple(min(HIGHEST, value + ROAM) for value in home.value)
+    home, _ = remember(local_position())  # where the device was when its team formed
+    lowest = tuple(max(LOWEST, value - ROAM) for value in home)
+    highest = tuple(min(HIGHEST, value + ROAM) for value in home)
     heading = align_with_leader(is_leader, explore(lowest, highest))
     keep = sink_at(is_leader) * 0.5 + separation(Vector(), within=INTRA) * 2
     return heading if is_leader else heading + keep
@@ -49,16 +49,16 @@ def teams() -> Vector:
     """Gather, then roam, in the team of the device: the velocity the device moves by."""
     elected = elect_leaders(EXTRA, neighbors_distances())
     # The leaders elected while the swarm stood still: moving would change who is elected.
-    set_leader, is_leader = remember(False)
+    is_leader, set_leader = remember(False)
     settling = local_time() <= SETTLE
     if settling:
-        set_leader(elected)
+        is_leader = set_leader(elected)
 
     def formed(leader: bool) -> bool:
         # Checked on every device, settling or not, so that the checks stay aligned.
         return is_team_formed(leader, INTRA * 2) and not settling
 
-    team = team_formation(INTRA, EXTRA, leader=is_leader.value, condition=formed)
+    team = team_formation(INTRA, EXTRA, leader=is_leader, condition=formed)
     moving = team.inside(roam)
     stage = Stage.SETTLING if settling else Stage.FORMED if team.formed else Stage.GATHERING  # watch
     return velocity.send(Vector() if stage is Stage.SETTLING else moving)

@@ -8,7 +8,7 @@ from phyelds.vm.rounds import run_round
 
 @aggregate
 def counter():
-    set_count, count = remember(0)
+    count, set_count = remember(0)
     return set_count(count + 1)
 
 

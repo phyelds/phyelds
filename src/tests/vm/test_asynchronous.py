@@ -28,7 +28,7 @@ def gradient_leader_count():
 
 @aggregate
 def rounds():
-    set_count, count = remember(0)
+    count, set_count = remember(0)
     return set_count(count + 1)
 
 

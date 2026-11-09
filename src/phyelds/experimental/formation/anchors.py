@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import math
 
 from phyelds.calculus import aggregate, neighbors, remember
-from phyelds.data import NeighborhoodField, State
+from phyelds.data import NeighborhoodField
 from phyelds.data.codec import register
 from phyelds.experimental.formation.positioning import Frame
 from phyelds.experimental.swarm.vector import Vector
@@ -19,11 +19,6 @@ from phyelds.libraries.spreading import broadcast, distance_to
 
 _NONE, _ANCHOR_1, _ANCHOR_2, _ANCHOR_3 = range(4)
 _NAN = float("nan")
-
-
-def _plain(value):
-    """The value held by a ``State``, or ``value`` itself."""
-    return value.value if isinstance(value, State) else value
 
 
 @register
@@ -112,9 +107,9 @@ def _elect_anchors(  # pylint: disable=too-many-locals
 ) -> int:
     """The role of the robot: anchor 1, the leader, picks anchors 2 and 3 among all."""
     is_anchor1 = bool(elect_leaders(bound, strategy=candidacy(-local_id())))
-    set_choice, previous = remember(_AnchorChoice())
-    choice = previous.value if is_anchor1 else _AnchorChoice()
-    chosen = _plain(broadcast(is_anchor1, choice if is_anchor1 else None, ranges))
+    previous, set_choice = remember(_AnchorChoice())
+    choice = previous if is_anchor1 else _AnchorChoice()
+    chosen = broadcast(is_anchor1, choice if is_anchor1 else None, ranges)
     role = _NONE
     if is_anchor1:
         role = _ANCHOR_1
@@ -135,7 +130,7 @@ def _elect_anchors(  # pylint: disable=too-many-locals
     if candidate is not None and not is_anchor2 and math.isfinite(top_error):
         top = candidate
     anchors = {local_id(): local} if role in (_ANCHOR_2, _ANCHOR_3) else {}
-    reports = _plain(collect_with(to_anchor1, _Reports(candidate, top, anchors), _Reports.merge))
+    reports = collect_with(to_anchor1, _Reports(candidate, top, anchors), _Reports.merge)
     set_choice(choice.update(reports, min_height, patience) if is_anchor1 else choice)
     return role
 
@@ -180,7 +175,7 @@ def anchor_positioning(  # pylint: disable=too-many-arguments,too-many-locals
     is_anchor2, is_anchor3 = role == _ANCHOR_2, role == _ANCHOR_3
     base = float(broadcast(is_anchor2, to_anchors[0] if is_anchor2 else _NAN, ranges))
     anchor3_distances = to_anchors[:2] if is_anchor3 else (_NAN, _NAN)
-    anchor3 = _anchor3(base, *_plain(broadcast(is_anchor3, anchor3_distances, ranges)))
+    anchor3 = _anchor3(base, *broadcast(is_anchor3, anchor3_distances, ranges))
     position = _trilaterate(base, anchor3, to_anchors)
     center = (Vector(base) + anchor3) / 3 if position is not None else Vector()
     return Frame(

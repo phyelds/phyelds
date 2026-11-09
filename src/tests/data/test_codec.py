@@ -6,7 +6,7 @@ import pytest
 
 from phyelds import engine
 from phyelds.calculus import aggregate, neighbors, remember
-from phyelds.data import NeighborhoodField, State
+from phyelds.data import NeighborhoodField
 from phyelds.data.codec import decode, encode, register
 from phyelds.libraries.collect import collect_with, point_to_point
 from phyelds.libraries.device import local_id, sense
@@ -89,16 +89,11 @@ def test_codec_restores_registered_constants_by_identity(binary):
     assert _round_trip([NOTHING], binary)[0] is NOTHING
 
 
-def test_codec_sends_the_value_of_a_state(binary):
-    @aggregate
-    def program():
-        _, state = remember(4)
-        return state
-
+def test_codec_sends_the_value_of_remember(binary):
     engine.set(MutableEngine().setup(MockNodeContext(0)))
-    state = program()
+    state, _ = remember(4)
 
-    assert isinstance(state, State)
+    assert type(state) is int
     assert type(_round_trip(state, binary)) is int
 
 

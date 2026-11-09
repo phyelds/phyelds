@@ -214,10 +214,9 @@ def _run_since(sustained: bool, triggered: bool, scope: PastScope) -> bool:
     sust = bool(sustained)
     trig = bool(triggered)
     if scope == "local":
-        set_state, prev = remember(False)
-        current = trig or (sust and bool(prev.value))
-        set_state(current)
-        return current
+        prev, set_state = remember(False)
+        current = trig or (sust and bool(prev))
+        return set_state(current)
     if scope == "all":
         _, field, send_field = exchange(False)
         current = trig or (sust and field.all())
@@ -261,10 +260,9 @@ def _run_historically(condition: bool, scope: PastScope) -> bool:
     """Aggregate implementation of historically."""
     flag = bool(condition)
     if scope == "local":
-        set_state, prev = remember(True)
-        current = flag and bool(prev.value)
-        set_state(current)
-        return current
+        prev, set_state = remember(True)
+        current = flag and bool(prev)
+        return set_state(current)
     if scope == "all":
         _, field, send_field = exchange(True)
         current = flag and field.all()

@@ -405,7 +405,7 @@ def draw_state_evolution(theme: Theme = LIGHT) -> None:
                 color=color)
 
         _box(ax, (1.2, cy - 0.33), (2.75, 0.66), theme.background, color, lw=1.5)
-        ax.text(2.55, cy + 0.13, "set_count, count = remember(0)", ha="center", va="center",
+        ax.text(2.55, cy + 0.13, "count, set_count = remember(0)", ha="center", va="center",
                 fontsize=SMALL, fontweight="bold", family="monospace", color=theme.text)
         note = "no state yet: uses the initial 0" if first else f"initial 0 ignored: loads {loaded}"
         ax.text(2.55, cy - 0.14, note, ha="center", va="center", fontsize=SMALL, fontweight="bold", color=color)

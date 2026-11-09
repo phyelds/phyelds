@@ -194,7 +194,7 @@ def test_device_snapshot_is_bytes():
 @aggregate
 def counted_gradient():
     """The gradient, and the rounds the device has run: a state it would lose on a restart."""
-    return gradient(), counter().value
+    return gradient(), counter()
 
 
 def _alone(device: Device, rounds: int) -> list:

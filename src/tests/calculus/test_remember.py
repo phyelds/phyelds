@@ -3,7 +3,6 @@ from phyelds.vm.internal import MutableEngine
 
 from phyelds import engine
 from phyelds.calculus import remember, aggregate, align, remember_and_evolve
-from phyelds.data import State
 from tests.calculus.mock import MockSimulator, MockNodeContext
 
 
@@ -36,25 +35,26 @@ def test_remember_should_give_the_value_itself():
     # Setup
     initial_value = 42
     # Execute
-    _, result = remember(initial_value)
+    result, _ = remember(initial_value)
     # Assert
-    assert isinstance(result, State)
-    assert result.value == initial_value
+    assert type(result) is int
+    assert result == initial_value
 
 def test_remember_should_update_value():
     # Setup
     initial_value = 42
     new_value = 100
     # Execute
-    update_state, state = remember(initial_value)
-    update_state(new_value)
+    state, update_state = remember(initial_value)
+    updated = update_state(new_value)
     # Assert
-    assert state.value == new_value
+    assert state == initial_value
+    assert updated == new_value
 
 
 def test_state_could_be_combined():
     # Setup
-    assert remember(1)[1] + remember(2)[1] == 3
+    assert remember(1)[0] + remember(2)[0] == 3
 
 def test_remember_should_update_value_with_function():
     # Setup
@@ -63,7 +63,7 @@ def test_remember_should_update_value_with_function():
     # Execute
     state = remember_and_evolve(initial_value, lambda x: x + increment)
     # Assert
-    assert state.value == initial_value + increment
+    assert state == initial_value + increment
 
 def test_remember_should_not_update_value_with_function_twice():
     # Setup
@@ -103,3 +103,10 @@ def test_remember_should_restart_when_dealing():
     simulator.cycle(double_state)
     assert simulator.nodes[0].root == 1
 
+
+def test_remember_stores_plain_values_unaffected_by_later_state_updates():
+    count, set_count = remember(1)
+    _, set_team = remember([count])
+    set_team([count])
+    set_count(99)
+    assert engine.get().state_trace()[str(["remember@1"])] == [1]

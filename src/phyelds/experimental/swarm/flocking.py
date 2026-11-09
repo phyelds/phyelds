@@ -4,7 +4,7 @@ Flocking blocks: moving together, as Reynolds, Vicsek and Cucker-Smale (MacroSwa
 Each block takes the velocity of the device in the previous round, since flocking
 iterates on velocities; remember it across rounds::
 
-    velocity = remember_and_evolve(Vector(), lambda previous: vicsek(previous.value)).value
+    velocity = remember_and_evolve(Vector(), vicsek)
 
 The neighbors a block looks at can be restricted, as the queries of MacroSwarm: to those
 ``within`` a distance, or to the ``nearest`` few. The device itself never counts as one,
