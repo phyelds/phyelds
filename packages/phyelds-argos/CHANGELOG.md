@@ -1,3 +1,42 @@
+## [10.0.0](https://github.com/phyelds/phyelds/compare/9.5.2...10.0.0) (2026-11-10)
+
+### ⚠ BREAKING CHANGES
+
+* **calculus:** distance_to returns a float, not a State, with the default strategy
+* **calculus:** gossip, gossip_max, gossip_min and any_node return the value, not a State, with the default, monotonic and time-replicated strategies
+* **calculus:** exchange returns (local, field, send) instead of (set_field, field)
+
+* feat(calculus)!: return plain values and update from remember
+* **calculus:** remember returns (value, set_state) with a plain value instead of (set_state, State), and State is removed
+
+* docs: update state, exchange and micropython documentation
+
+* chore(deps): update poetry.lock after removing wrapt
+
+* test(libraries): cover all past-ctl scopes and simplify ast unpack check
+
+### Features
+
+* **calculus:** return plain values from remember and (local, field, send) from exchange ([#79](https://github.com/phyelds/phyelds/issues/79)) ([ba00371](https://github.com/phyelds/phyelds/commit/ba003715ff03b0b0034be480dc37e9660b304837)), closes [#61](https://github.com/phyelds/phyelds/issues/61) [#61](https://github.com/phyelds/phyelds/issues/61) [#61](https://github.com/phyelds/phyelds/issues/61) [#61](https://github.com/phyelds/phyelds/issues/61) [#61](https://github.com/phyelds/phyelds/issues/61) [#61](https://github.com/phyelds/phyelds/issues/61) [#68](https://github.com/phyelds/phyelds/issues/68) [#75](https://github.com/phyelds/phyelds/issues/75) [#76](https://github.com/phyelds/phyelds/issues/76)
+* **vm:** run synchronous and asynchronous rounds of many devices ([#66](https://github.com/phyelds/phyelds/issues/66)) ([e76de83](https://github.com/phyelds/phyelds/commit/e76de83cf736130ef2967df22a99c6b6720626b2)), closes [#37](https://github.com/phyelds/phyelds/issues/37) [#37](https://github.com/phyelds/phyelds/issues/37) [#37](https://github.com/phyelds/phyelds/issues/37) [#37](https://github.com/phyelds/phyelds/issues/37) [#37](https://github.com/phyelds/phyelds/issues/37) [#37](https://github.com/phyelds/phyelds/issues/37) [#37](https://github.com/phyelds/phyelds/issues/37) [#37](https://github.com/phyelds/phyelds/issues/37) [#37](https://github.com/phyelds/phyelds/issues/37) [#37](https://github.com/phyelds/phyelds/issues/37) [#37](https://github.com/phyelds/phyelds/issues/37) [#37](https://github.com/phyelds/phyelds/issues/37) [#37](https://github.com/phyelds/phyelds/issues/37) [#37](https://github.com/phyelds/phyelds/issues/37)
+
+### Performance improvements
+
+* **simulator:** find the neighbors within a radius through a uniform grid ([#67](https://github.com/phyelds/phyelds/issues/67)) ([232b149](https://github.com/phyelds/phyelds/commit/232b1497b04b96238b9807f0fa73c0fabfe0efc8)), closes [#37](https://github.com/phyelds/phyelds/issues/37) [#37](https://github.com/phyelds/phyelds/issues/37) [#37](https://github.com/phyelds/phyelds/issues/37)
+
+### Build and continuous integration
+
+* auto-merge major dependabot updates too ([#73](https://github.com/phyelds/phyelds/issues/73)) ([47ea56c](https://github.com/phyelds/phyelds/commit/47ea56c758c768150c06efe67b2931ec5dd00088))
+* **deps-dev:** bump the npm group across 1 directory with 2 updates ([#70](https://github.com/phyelds/phyelds/issues/70)) ([98c8a1e](https://github.com/phyelds/phyelds/commit/98c8a1e7fcc7df6e9d67f847624343f4bc623e40))
+* **deps-dev:** bump virtualenv from 21.14.11 to 21.14.13 ([#27](https://github.com/phyelds/phyelds/issues/27)) ([feed209](https://github.com/phyelds/phyelds/commit/feed209fdb08bc5045b086fb0acaa4984dab4087))
+* **deps:** bump the actions group across 1 directory with 8 updates ([#19](https://github.com/phyelds/phyelds/issues/19)) ([fc403e8](https://github.com/phyelds/phyelds/commit/fc403e8ec4ddfd114d93d45aa34b142cabe89610))
+* merge dependabot updates automatically once the checks pass ([#72](https://github.com/phyelds/phyelds/issues/72)) ([8552a8a](https://github.com/phyelds/phyelds/commit/8552a8a26513b9d0d04259907f06dcb6cd4b75b5))
+* use the release token for checkout credentials ([#80](https://github.com/phyelds/phyelds/issues/80)) ([3d5c7b0](https://github.com/phyelds/phyelds/commit/3d5c7b05d123a947a4cd60b6324ad93ecc9350db))
+
+### Style improvements
+
+* clean up useless comments ([#71](https://github.com/phyelds/phyelds/issues/71)) ([12594c5](https://github.com/phyelds/phyelds/commit/12594c57d120956f1386863ff28e3aeae252f887))
+
 ## [9.5.2](https://github.com/phyelds/phyelds/compare/9.5.1...9.5.2) (2026-11-03)
 
 ### Bug Fixes
