@@ -1,3 +1,9 @@
+## [10.0.1](https://github.com/phyelds/phyelds/compare/10.0.0...10.0.1) (2026-11-10)
+
+### Documentation
+
+* **assets:** redraw the remember figure with the (value, update) order ([#81](https://github.com/phyelds/phyelds/issues/81)) ([db57167](https://github.com/phyelds/phyelds/commit/db571672bba2b4dd12dd6e6a964257e77437a365))
+
 ## [10.0.0](https://github.com/phyelds/phyelds/compare/9.5.2...10.0.0) (2026-11-10)
 
 ### ⚠ BREAKING CHANGES
