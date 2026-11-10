@@ -17,6 +17,8 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v7
         with:
+          # Use the release identity for Git pushes as well as the GitHub API.
+          token: ${{ secrets.GH_TOKEN }}
           fetch-depth: 0 # all history
 
       - name: Get All Tags
