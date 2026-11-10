@@ -2,7 +2,7 @@
 
 In this tutorial you will build your first aggregate programs step by step:
 
-- **The gradient** (steps 1–5): every device computes its distance from the nearest *source* using only [`remember`](concepts/state.md) (time) and [`neighbors`](concepts/neighborhood-field.md) (space).
+- **The gradient** (steps 1–5): every device computes its distance from the nearest *source* using [`exchange`](concepts/neighborhood-field.md#exchange) (space + time).
 - **Self-healing** (step 6): watch the field automatically repair itself when the source moves.
 - **Composing blocks** (step 7): combine spreading (`distance_to`) and collection (`collect_or`) into a self-healing corridor between two devices, a channel.
 
@@ -10,25 +10,25 @@ The complete runnable code for the gradient animations is in [`docs/examples/gra
 
 ---
 
-## 1. Each device remembers its estimate
+## 1. Each device exchanges its estimate
 
-A device cannot know its distance from a distant source in a single round: it keeps a local estimate and refines it round after round. Local state that survives across rounds is [`remember`](concepts/state.md) (the `rep` of field calculus). Before discovering any path to a source, the estimate starts at infinity:
+A device cannot know its distance from a distant source in a single round: it keeps a local estimate, shares it with its immediate neighbors, and refines it round after round. [`exchange`](concepts/neighborhood-field.md#exchange) combines state across rounds with neighbor communication. Before discovering any path to a source, the estimate starts at infinity:
 
 ```python
-set_distance, distance = remember(float("inf"))
+_, distances, send_distance = exchange(float("inf"))
 ```
 
 ## 2. Look at the neighbors' estimates
 
-[`neighbors(distance)`](concepts/neighborhood-field.md) shares the device's current estimate with its immediate neighbors and returns a `NeighborhoodField`: one value per neighbor (plus the device itself). Arithmetic on fields is element-wise, so `+ 1` adds one hop to every neighbor's estimate, giving the distance *through* that neighbor:
+`distances` is a [`NeighborhoodField`](concepts/neighborhood-field.md): one value per neighbor (plus the device itself). Arithmetic on fields is element-wise, so `+ 1` adds one hop to every neighbor's estimate, giving the distance *through* that neighbor:
 
 ```python
-through_neighbors = neighbors(distance) + 1
+through_neighbors = distances + 1
 ```
 
-## 3. Keep the best one
+## 3. Keep and send the best one
 
-A source device is at distance `0`. Every other device picks the shortest path offered by its neighbors. Calling `exclude_self()` drops the device's own entry so that a node cannot reinforce its own outdated estimate (it returns a plain `dict`, hence `.values()`):
+A source device is at distance `0`. Every other device picks the shortest path offered by its neighbors, and `send_distance(...)` both saves the new estimate for the next round and sends it to the neighbors:
 
 ```python
 --8<-- "gradient.py:hop_gradient"

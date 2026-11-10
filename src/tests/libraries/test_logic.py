@@ -165,3 +165,24 @@ def test_past_ctl_local_and_spatiotemporal_operators():
 
     with pytest.raises(ValueError):
         yesterday(True, scope="invalid")
+
+
+def test_past_ctl_remaining_scopes_all_and_local():
+    simulator = setup_up_simulator(2)
+    for i in range(2):
+        simulator.environment.nodes[i].data["cond"] = True
+
+    @aggregate
+    def program():
+        cond = sense("cond")
+        return (
+            yesterday(cond, scope="all"),
+            since(cond, True, scope="all"),
+            historically(cond, scope="local"),
+            historically(cond, scope="any"),
+        )
+
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
+    simulator.run(2.0)
+    for i in range(2):
+        assert simulator.environment.nodes[i].data["result"] == (True, True, True, True)

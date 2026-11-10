@@ -35,6 +35,20 @@ def test_distance_to_should_compute_the_multi_hop_distance_from_source():
     # last node: size - 1 should be far 4 steps from the source
     assert simulator.environment.nodes[size - 1].data["result"] == (size - 1)
 
+@pytest.mark.parametrize("strategy", [None, bellman_ford(), path_coherent()])
+def test_distance_to_returns_a_bare_value_whatever_the_strategy(strategy):
+    # Arrange
+    simulator = setup_up_simulator(3)
+    simulator.environment.nodes[0].update(new_data={"source": True})
+    @aggregate
+    def program():
+        return type(distance_to(sense("source"), strategy=strategy)) is float
+    # Act
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
+    simulator.run(ITERATIONS)
+    # Assert
+    assert all(node.data["result"] for node in simulator.environment.nodes.values())
+
 def test_broadcast_cast_multi_hop():
     size = 5
     simulator = setup_up_simulator(size)
@@ -175,5 +189,3 @@ def test_distance_between_and_channel_select_shortest_path_in_grid():
 
     with pytest.raises(ValueError):
         channel(True, False, width=-1.0)
-
-

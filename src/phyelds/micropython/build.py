@@ -35,7 +35,6 @@ _SHIMMED = {
     "functools": "functools",
     "inspect": "inspect",
     "typing": "typing",
-    "wrapt": "wrapt",
 }
 _TYPING = ("typing", "collections.abc")
 _LEFT_OUT = ("micropython", "calculus/internal")
@@ -180,7 +179,7 @@ class _Portable(ast.NodeTransformer):
             # once: the nested ones must not be rewritten again here.
             for nested in ast.walk(node):
                 nested.aligned = True
-            node.body = [AggregateTransformer().visit(statement) for statement in node.body]
+            node = AggregateTransformer().visit(node)
             self.aligned = True
         node.returns = None
         node.decorator_list = [

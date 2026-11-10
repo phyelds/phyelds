@@ -1,6 +1,6 @@
 import pytest
 
-from phyelds.calculus import aggregate, exchange, neighbors, remember
+from phyelds.calculus import aggregate, exchange
 from phyelds.data import NeighborhoodField
 from phyelds.libraries.device import local_id, sense, store
 from phyelds.libraries.time import counter
@@ -11,9 +11,9 @@ INFINITY = float("inf")
 
 @aggregate
 def gradient():
-    set_distance, distance = remember(INFINITY)
-    nearest = min((neighbors(distance) + 1).exclude_self().values(), default=INFINITY)
-    set_distance(0 if sense("source") else nearest)
+    _, distances, send_distance = exchange(INFINITY)
+    nearest = min((distances + 1).exclude_self().values(), default=INFINITY)
+    distance = send_distance(0 if sense("source") else nearest)
     store("is_far", distance > 1)
     return distance
 
@@ -21,9 +21,9 @@ def gradient():
 @aggregate
 def addressed():
     """Sends each neighbor 10 times its id plus its own: what a device receives tells who sent it."""
-    set_field, received = exchange(-1)
+    _, received, send_field = exchange(-1)
     own = local_id()
-    set_field(NeighborhoodField({other: 10 * other + own for other in received.data}, own, default=-1))
+    send_field(NeighborhoodField({other: 10 * other + own for other in received.data}, own, default=-1))
     return dict(received.data)
 
 
@@ -60,7 +60,7 @@ def test_device_computes_the_same_values_with_compact_paths():
 
 
 def test_device_computes_the_same_values_with_an_encoding_of_its_own():
-    codes = {"gradient": 1, "remember": 2, "neighbors": 3, "left": 4, "right": 5}
+    codes = {"gradient": 1, "exchange": 2, "left": 4, "right": 5}
 
     class Numbered:
         """``gradient@0`` then ``neighbors@1`` as ``"1.0/3.1"``: readable with ``codes``."""
@@ -194,7 +194,7 @@ def test_device_snapshot_is_bytes():
 @aggregate
 def counted_gradient():
     """The gradient, and the rounds the device has run: a state it would lose on a restart."""
-    return gradient().value, counter().value
+    return gradient(), counter()
 
 
 def _alone(device: Device, rounds: int) -> list:

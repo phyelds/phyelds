@@ -13,8 +13,8 @@ import math
 import sys
 from typing import Any, TypeVar
 
-from phyelds.calculus import aggregate, exchange, neighbors, remember
-from phyelds.data import NeighborhoodField, StateT
+from phyelds.calculus import aggregate, exchange
+from phyelds.data import NeighborhoodField
 from phyelds.libraries.device import local_id
 from phyelds.libraries.distances import hops_distance
 from phyelds.libraries.utils import (
@@ -93,17 +93,15 @@ def _bellman_ford_cast(
     accumulate_step: Callable[[float, float, T], T],
     distances: NeighborhoodField[float],
     bounds: _MetricBounds,
-) -> StateT[T]:
+) -> T:
     """Run a single Bellman-Ford gradient cast step."""
     top_entry: tuple[float, T] = (bounds.top, data)
-    set_state, current_state = remember(top_entry)
-    neighbor_entries: NeighborhoodField[tuple[float, T]] = neighbors(current_state)
+    _, neighbor_entries, send_state = exchange(top_entry)
     best_peer = _best_bellman_ford_neighbor(
         neighbor_entries, distances, data, accumulate_step, bounds
     )
     next_entry: tuple[float, T] = (bounds.bottom, data) if source else best_peer
-    set_state(next_entry)
-    return current_state[1]
+    return send_state(next_entry)[1]
 
 
 def _select_anisotropic_paths(
@@ -148,7 +146,7 @@ def _path_coherent_cast(  # pylint: disable=too-many-arguments,too-many-position
     init_field: NeighborhoodField[PathValue[T] | None] = NeighborhoodField(
         {node_id: local_candidate}, node_id, default=local_candidate
     )
-    set_field, neighbor_data = exchange(init_field)
+    _, neighbor_data, send_field = exchange(init_field)
     candidates = non_looping_paths(
         neighbor_data=neighbor_data,
         distances=distances,
@@ -162,7 +160,7 @@ def _path_coherent_cast(  # pylint: disable=too-many-arguments,too-many-position
     outgoing_field, result = _select_anisotropic_paths(
         node_id, local_candidate, data, candidates, set(distances.data.keys())
     )
-    set_field(outgoing_field)
+    send_field(outgoing_field)
     return result
 
 
@@ -245,7 +243,7 @@ def distance_to(
     distances: NeighborhoodField[float] | None = None,
     *,
     strategy: SpreadingStrategy | None = None,
-) -> StateT[float]:
+) -> float:
     """
     Calculate the distance to the nearest source node in the network.
 
@@ -260,14 +258,13 @@ def distance_to(
     """
     metric = hops_distance() if distances is None else distances
     if strategy is None:
-        set_gradient, gradient = remember(float("inf"))
-        neighbors_gradients: NeighborhoodField[float] = neighbors(gradient) + metric
-        set_gradient(
+        _, neighbor_gradients, send_gradient = exchange(float("inf"))
+        neighbors_gradients: NeighborhoodField[float] = neighbor_gradients + metric
+        return send_gradient(
             0.0
             if source
             else min_with_default(neighbors_gradients.exclude_self(), float("inf"))
         )
-        return gradient
 
     active_strategy = _resolve_strategy(strategy)
     fallback = 0.0 if source else float("inf")
@@ -287,7 +284,7 @@ def cast_from(
     distances: NeighborhoodField[float] | None = None,
     *,
     strategy: SpreadingStrategy | None = None,
-) -> StateT[T]:
+) -> T:
     """
     Propagate and transform ``data`` from the nearest ``source`` node along a gradient.
 
@@ -315,7 +312,7 @@ def broadcast(
     distances: NeighborhoodField[float] | None = None,
     *,
     strategy: SpreadingStrategy | None = None,
-) -> StateT[T]:
+) -> T:
     """
     Broadcast ``data`` from the nearest ``source`` node across the network.
 
@@ -338,7 +335,7 @@ def distance_between(
     distances: NeighborhoodField[float] | None = None,
     *,
     strategy: SpreadingStrategy | None = None,
-) -> StateT[float]:
+) -> float:
     """
     Compute the distance between ``source`` and ``target`` and broadcast it across the network.
 

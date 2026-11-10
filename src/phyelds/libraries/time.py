@@ -8,7 +8,7 @@ from typing import TypeVar
 
 from phyelds import engine
 from phyelds.calculus import aggregate, align, exchange, remember, remember_and_evolve
-from phyelds.data import NeighborhoodField, StateT
+from phyelds.data import NeighborhoodField
 from phyelds.data.codec import register
 
 T = TypeVar("T")
@@ -34,7 +34,7 @@ def local_time() -> float:
 
 
 @aggregate
-def counter() -> StateT[int]:
+def counter() -> int:
     """
     Count the consecutive rounds in which this call runs on the current device.
 
@@ -45,7 +45,7 @@ def counter() -> StateT[int]:
 
 
 @aggregate
-def decay(value: float | int, rate: float | int) -> StateT[float | int]:
+def decay(value: float | int, rate: float | int) -> float | int:
     """
     Decrease a value by ``rate`` each round, down to ``0``.
 
@@ -57,9 +57,9 @@ def decay(value: float | int, rate: float | int) -> StateT[float | int]:
         The decayed value, never below ``0``: ``max(0, value - rate)`` on the first
             round when ``value`` is positive, and ``value`` itself when it is not.
     """
-    set_value, decay_value = remember(value)
+    decay_value, set_value = remember(value)
     if decay_value > 0:
-        set_value(max(0, decay_value - rate))
+        return set_value(max(0, decay_value - rate))
     return decay_value
 
 
@@ -75,7 +75,7 @@ def delta_time(clock: float | None = None) -> float:
         Elapsed time since the last round (``0.0`` on the first round).
     """
     now = float(local_time() if clock is None else clock)
-    set_previous, previous = remember(now)
+    previous, set_previous = remember(now)
     elapsed = max(0.0, now - float(previous))
     set_previous(now)
     return elapsed
@@ -94,12 +94,11 @@ def shared_clock(clock: float | None = None) -> float:
     """
     now = float(local_time() if clock is None else clock)
     local_delta = delta_time(now)
-    set_clock, clocks = exchange(now)
-    local_estimate = float(clocks.local()) + local_delta
+    local_clock, clocks, send_clock = exchange(now)
+    local_estimate = float(local_clock) + local_delta
     network_max = float(clocks.max())
     synchronized = max(local_estimate, network_max, now)
-    set_clock(synchronized)
-    return synchronized
+    return send_clock(synchronized)
 
 
 def _compute_timer_step(
@@ -136,7 +135,7 @@ def timer(
         The time left on the timer (``<= 0.0`` when expired).
     """
     elapsed = delta_time(clock)
-    set_remaining, remaining = remember(float(duration))
+    remaining, set_remaining = remember(float(duration))
     next_remaining, time_left = _compute_timer_step(
         float(remaining), elapsed, float(duration), periodic
     )
@@ -183,9 +182,9 @@ def _run_time_replicated(
 ) -> T:
     """Aggregate implementation of time_replicated."""
     now = shared_clock(clock)
-    set_timer, timers = exchange(_ReplicaTimer(0, now))
+    _, timers, send_timer = exchange(_ReplicaTimer(0, now))
     next_timer = _step_replica_timer(timers, now, period)
-    set_timer(next_timer)
+    send_timer(next_timer)
     return _evaluate_replica_slots(process, max_replicas, next_timer.replica_id)
 
 
@@ -238,10 +237,9 @@ def delay(value: T, initial: T | None = None) -> T:
         The previous round's value (or ``initial`` on the first round).
     """
     first_value = value if initial is None else initial
-    set_previous, previous = remember(first_value)
-    old_value: T = previous.value
+    previous, set_previous = remember(first_value)
     set_previous(value)
-    return old_value
+    return previous
 
 
 @aggregate
@@ -256,8 +254,8 @@ def has_changed(value: T, *, initially: bool = False) -> bool:
     Returns:
         True if ``value`` changed since the last round, False otherwise.
     """
-    set_state, state = remember((_UNSET, False))
-    prev_value, initialized = state.value
+    state, set_state = remember((_UNSET, False))
+    prev_value, initialized = state
     changed = initially if not initialized else bool(prev_value != value)
     set_state((value, True))
     return changed
@@ -282,8 +280,8 @@ def falling_edge(condition: bool) -> bool:
 @aggregate
 def once(value: T) -> T | None:
     """Return ``value`` on the first round it is evaluated, and ``None`` thereafter."""
-    set_done, done = remember(False)
-    is_first = not bool(done.value)
+    done, set_done = remember(False)
+    is_first = not bool(done)
     set_done(True)
     return value if is_first else None
 
@@ -322,9 +320,9 @@ def recently_true(
         True if ``condition`` held within the last ``duration`` time units.
     """
     elapsed = delta_time(clock)
-    set_remaining, remaining = remember(0.0)
+    remaining, set_remaining = remember(0.0)
     next_remaining = (
-        float(duration) if condition else max(0.0, float(remaining.value) - elapsed)
+        float(duration) if condition else max(0.0, float(remaining) - elapsed)
     )
     set_remaining(next_remaining)
     return bool(condition) or next_remaining > 0.0
@@ -333,10 +331,9 @@ def recently_true(
 @aggregate
 def _run_exponential_filter(signal: float, alpha: float) -> float:
     """Aggregate implementation of exponential_filter."""
-    set_filtered, filtered = remember(float(signal))
-    updated = alpha * float(filtered.value) + (1.0 - alpha) * float(signal)
-    set_filtered(updated)
-    return updated
+    filtered, set_filtered = remember(float(signal))
+    updated = alpha * float(filtered) + (1.0 - alpha) * float(signal)
+    return set_filtered(updated)
 
 
 def exponential_filter(signal: float, alpha: float) -> float:

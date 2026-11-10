@@ -103,7 +103,7 @@ def test_flocking_rules_align_a_swarm(rule, order):
     simulator.environment.set_neighborhood_function(radius_neighborhood(5.0))
 
     def program():
-        velocity = remember_and_evolve(sense("heading"), lambda previous: rule(previous.value)).value
+        velocity = remember_and_evolve(sense("heading"), rule)
         store("velocity", velocity.limit(1.0))
 
     schedule_program_for_all(simulator, 0.0, 1.0, program)

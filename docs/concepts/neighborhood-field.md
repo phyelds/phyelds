@@ -80,12 +80,13 @@ While `neighbors(v)` broadcasts the **same** value `v` to every neighbor, `excha
 ![Comparison between isotropic neighbors(v) and anisotropic exchange(init)](../assets/neighbors-vs-exchange.png#only-light)
 ![Comparison between isotropic neighbors(v) and anisotropic exchange(init)](../assets/neighbors-vs-exchange-dark.png#only-dark)
 
-`exchange(initial)` returns a pair `(set_field, field)`:
+`exchange(initial)` returns a triple `(local, field, send)`:
 
-- **`field`** is the `NeighborhoodField` containing the values received from aligned neighbors in their last round and from the device itself in its previous round (or `initial` in the first round);
-- **`set_field(next_value)`** sets what to keep for the device and send to neighbors for the next round, and returns `next_value` without mutating `field`.
+- **`local`** is the device's own current state (or `initial` in the first round);
+- **`field`** is the `NeighborhoodField` containing the values received from aligned neighbors in their last round and `local` for the device itself;
+- **`send(next_value)`** sets what to keep for the device and send to neighbors for the next round, and returns `next_value` without mutating `field`.
 
-If you pass a `NeighborhoodField` to `set_field(next_value)`, each neighbor `j` receives `next_value.for_node(j)` (falling back to `next_value.default` if `j` is not in `next_value.data`). This is what powers directed collection strategies like `point_to_point()` and `multi_path()` in `phyelds.libraries.collect`.
+When `next_value` is a scalar (not a `NeighborhoodField`), `exchange` works like `share` in field calculus: every neighbor receives `next_value` in its next round, and the device keeps `next_value` as its own state. If you pass a `NeighborhoodField` to `send(next_value)`, each neighbor `j` receives `next_value.for_node(j)` (falling back to `next_value.default` if `j` is not in `next_value.data`). This is what powers directed collection strategies like `point_to_point()` and `multi_path()` in `phyelds.libraries.collect`.
 
 ```python
 from phyelds.calculus import aggregate, exchange, neighbors
@@ -94,8 +95,8 @@ from phyelds.libraries.device import local_id
 @aggregate
 def anisotropic_counter():
     ids = neighbors(local_id())
-    set_field, field = exchange(0)
-    return set_field(field + ids)   # each neighbor j receives field[j] + j
+    _, field, send = exchange(0)
+    return send(field + ids)   # each neighbor j receives field[j] + j
 ```
 
 ---

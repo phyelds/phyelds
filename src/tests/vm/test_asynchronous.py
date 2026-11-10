@@ -23,12 +23,12 @@ ROUNDS = 12
 @aggregate
 def gradient_leader_count():
     potential = distance_to(sense("source"))
-    return potential.value, gossip_max(local_id()).value, count_nodes(potential).value
+    return potential, gossip_max(local_id()), count_nodes(potential)
 
 
 @aggregate
 def rounds():
-    set_count, count = remember(0)
+    count, set_count = remember(0)
     return set_count(count + 1)
 
 

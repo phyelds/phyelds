@@ -113,10 +113,10 @@ def explore(
     Returns:
         The velocity towards the current goal.
     """
-    set_goal, goal = remember(_random_in(minimum, maximum))
-    if is_close(goal.value, speed if tolerance is None else tolerance):
-        set_goal(_random_in(minimum, maximum))
-    return go_to(goal.value, speed)
+    goal, set_goal = remember(_random_in(minimum, maximum))
+    if is_close(goal, speed if tolerance is None else tolerance):
+        goal = set_goal(_random_in(minimum, maximum))
+    return go_to(goal, speed)
 
 
 @aggregate
@@ -133,10 +133,10 @@ def maintain_trajectory(velocity: Callable[[], Vector], period: float) -> Vector
         The velocity drawn last.
     """
     drawn = velocity()
-    set_kept, kept = remember(drawn)
+    kept, set_kept = remember(drawn)
     if periodic_impulse(period):
-        set_kept(drawn)
-    return kept.value
+        kept = set_kept(drawn)
+    return kept
 
 
 def maintain_until(velocity: Vector, condition: bool) -> Vector:

@@ -33,8 +33,6 @@ async function setUp() {
   const pyodide = await loadPyodide();
   pyodide.setStdout({ batched: (text) => post("stdout", { text: `${text}\n` }) });
   pyodide.setStderr({ batched: (text) => post("stderr", { text: `${text}\n` }) });
-  // Besides the standard library, the simulator and the libraries of phyelds need only wrapt.
-  await pyodide.loadPackage(["wrapt"], QUIET);
 
   post("status", { text: "Installing phyelds…" });
   const sitePackages = pyodide.runPython("import site; site.getsitepackages()[0]");

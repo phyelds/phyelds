@@ -1,10 +1,16 @@
 import functools
 import sys
 import types
+from dataclasses import dataclass
+from typing import NamedTuple
 
-from phyelds.calculus import aggregate, neighbors
+import pytest
+
+from phyelds import engine
+from phyelds.calculus import aggregate, neighbors, remember
 from phyelds.libraries.device import local_id
-from tests.calculus.mock import MockSimulator
+from phyelds.vm.internal import MutableEngine
+from tests.calculus.mock import MockNodeContext, MockSimulator
 
 SCALE = 1
 COUNTER = 0
@@ -29,6 +35,11 @@ _RECORDED = []
 def recorded(fn):
     _RECORDED.append(fn.__name__)
     return fn
+
+
+@pytest.fixture(autouse=True)
+def setup_engine():
+    engine.set(MutableEngine().setup(MockNodeContext(0)))
 
 
 def test_aggregate_keeps_the_metadata_of_the_wrapped_function():
@@ -291,3 +302,14 @@ def test_aggregate_method_imports_private_modules_as_python_does(monkeypatch):
 
     assert expected == (1, 2, 3)
     assert _run(_Imports().load) == expected
+
+
+def test_aggregate_returns_the_plain_value_of_remember():
+    @aggregate
+    def program():
+        return remember(42)[0]
+
+    result = program()
+
+    assert type(result) is int
+    assert result == 42

@@ -97,21 +97,19 @@ def test_transpile_removes_annotations():
 
 def test_transpile_redirects_modules_missing_on_micropython():
     output = _transpiled("""
-        import wrapt
         import math
         from typing import Any
         from collections.abc import Callable
         from contextvars import ContextVar
-        used = (wrapt, math, Any, Callable, ContextVar)
+        used = (math, Any, Callable, ContextVar)
     """)
 
     assert output.splitlines() == [
-        "import phyelds._mpy.wrapt as wrapt",
         "import math",
         "from phyelds._mpy.typing import Any",
         "from phyelds._mpy.typing import Callable",
         "from phyelds._mpy.contextvars import ContextVar",
-        "used = (wrapt, math, Any, Callable, ContextVar)",
+        "used = (math, Any, Callable, ContextVar)",
     ]
 
 
@@ -274,7 +272,7 @@ def test_build_writes_the_library_without_the_parts_needing_cpython(tmp_path):
     build([], tmp_path)
 
     assert (tmp_path / "phyelds" / "__init__.py").exists()
-    assert (tmp_path / "phyelds" / "_mpy" / "wrapt.py").exists()
+    assert (tmp_path / "phyelds" / "_mpy" / "typing.py").exists()
     assert not (tmp_path / "phyelds" / "simulator").exists()
     assert not (tmp_path / "phyelds" / "micropython").exists()
     assert not (tmp_path / "phyelds" / "calculus" / "internal").exists()
@@ -395,7 +393,7 @@ def test_build_output_runs_a_program_like_the_library(tmp_path):
 
         @aggregate
         def program():
-            set_count, count = remember(0)
+            count, set_count = remember(0)
             if count < 2:
                 return set_count(count + neighbors(1).sum())
             return count

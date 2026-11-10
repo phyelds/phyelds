@@ -23,7 +23,7 @@ ROUNDS = 12
 @aggregate
 def gradient_leader_count():
     potential = distance_to(sense("source"))
-    return potential.value, gossip_max(local_id()).value, count_nodes(potential).value
+    return potential, gossip_max(local_id()), count_nodes(potential)
 
 
 def _grid_with_phases() -> tuple[Simulator, dict[int, float]]:

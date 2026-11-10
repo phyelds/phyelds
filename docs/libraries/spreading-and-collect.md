@@ -22,7 +22,7 @@ When `distances` is omitted, `hops_distance()` (1 per hop) is used; pass `neighb
 
 All spreading functions accept a pluggable `strategy`:
 
-- **`bellman_ford()`** *(default)*: classic Bellman-Ford relaxation using `remember` and `neighbors`. Lightweight, but suffers from the *rising-value problem* when all sources disappear or jump far away (stale low estimates slowly count up).
+- **`bellman_ford()`** *(default)*: classic Bellman-Ford relaxation using `exchange`. Lightweight, but suffers from the *rising-value problem* when all sources disappear or jump far away (stale low estimates slowly count up).
 - **`path_coherent(max_diameter=...)`**: fast self-healing gradient built on [`exchange`](../concepts/neighborhood-field.md#exchange) and loop-free `PathValue` routes. When a source disappears, any route that previously depended on it is invalidated immediately instead of looping through neighbors.
 
 ```python
@@ -107,6 +107,6 @@ Gossip functions compute global extrema or consensus across the network **withou
 
 ### Choosing a gossip strategy
 
-- **`monotonic_gossip()`** *(default)*: fast 1-state gossip (`remember` + `neighbors`). Note that monotonic gossip never forgets an extreme value (e.g., if the node holding the global minimum leaves, its minimum remains in the network).
+- **`monotonic_gossip()`** *(default)*: fast 1-state gossip using `exchange`. Note that monotonic gossip never forgets an extreme value (e.g., if the node holding the global minimum leaves, its minimum remains in the network).
 - **`path_coherent_gossip(max_diameter=...)`**: spatial self-stabilizing gossip based on loop-free `PathValue` routes. Immediately adapts when values increase or devices leave.
 - **`time_replicated_gossip(period, max_replicas=2)`**: temporal self-stabilizing gossip that runs overlapping time-windowed replicas and periodically discards obsolete values.

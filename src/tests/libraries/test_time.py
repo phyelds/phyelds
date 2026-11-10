@@ -68,7 +68,7 @@ def test_decay_should_restart():
     simulator.environment.add_node(node)
     @aggregate
     def program():
-        set_should_decay, should_decay = remember(True)
+        should_decay, set_should_decay = remember(True)
         decay_result = 0
         if should_decay:
             decay_result = decay(10, 1)
@@ -255,5 +255,3 @@ def test_periodic_impulse_recently_true_and_exponential_filter():
 
     with pytest.raises(ValueError):
         exponential_filter(1.0, alpha=1.5)
-
-

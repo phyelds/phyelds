@@ -8,7 +8,7 @@ settled and may change in any release; a study that settles moves to `libraries`
 `packages/phyelds-vmas/`, the Mesa extension in `packages/phyelds-mesa/`, the
 Webots extension in `packages/phyelds-webots/` and the ARGoS extension in
 `packages/phyelds-argos/`; all of them share the `phyelds` namespace. The core
-depends only on `wrapt`: the simulator is a development dependency, used by the
+has no external runtime dependencies: the simulator is a development dependency, used by the
 tests, the examples and the playground. The documentation site (MkDocs Material) is in `docs/`,
 with runnable, tested examples in `docs/examples/`.
 

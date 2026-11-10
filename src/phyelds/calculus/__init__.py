@@ -22,7 +22,7 @@ from typing import TypeVar, Callable, Tuple, Union, Any
 
 from phyelds import engine
 from phyelds.calculus.align import AlignContext
-from phyelds.data import State, NeighborhoodField
+from phyelds.data import NeighborhoodField
 
 try:
     from phyelds.calculus.internal.transform import (  # noqa: F401 (str_transformed_code is public)
@@ -64,16 +64,16 @@ def aggregate(func):
         nonlocal rewritten
         if rewritten is None:  # on the first call, once: the rewriting is costly
             rewritten = _transformed(func)
-        engine.get().enter(func.__name__)
+        current_engine = engine.get()
+        current_engine.enter(func.__name__)
         result = rewritten(*args, **kwargs)
-        engine.get().exit()
+        current_engine.exit()
         return result
 
     return wrapper
 
 
-@aggregate
-def remember(init: T) -> Tuple[Callable[[Union[T, "State[T]"]], "State[T]"], "State[T]"]:
+def remember(init: T) -> Tuple[T, Callable[[T], T]]:
     """
     Keep a value across the rounds of the current device.
 
@@ -82,27 +82,39 @@ def remember(init: T) -> Tuple[Callable[[Union[T, "State[T]"]], "State[T]"], "St
 
     Example:
         ```python
-        set_count, count = remember(0)
-        set_count(count + 1)  # count is now 1 more than in the previous round
+        count, set_count = remember(0)
+        count = set_count(count + 1)  # count is now 1 more than in the previous round
         ```
 
     Args:
         init: The value of the state on the first round.
 
     Returns:
-        A tuple ``(set_state, state)``: ``set_state`` stores a new value (which ``state``
-            reflects at once) and returns ``state``; ``state`` is a ``State`` proxy that
-            behaves like the value it holds.
+        A tuple ``(state, set_state)``: ``state`` is the current value, and
+            ``set_state`` stores a new value for the next round and returns it.
     """
-    # engine.get() returns the context/engine instance
-    state = State(init, engine.get().current_path(), engine.get())
-    return state.update_fn, state
+    current_engine = engine.get()
+    current_engine.enter("remember")
+    path = current_engine.current_path()
+    stored = current_engine.read_state(path)
+    if stored is None:
+        value: T = init
+        current_engine.write_state(init, path)
+    else:
+        value = stored
+    current_engine.exit()
+
+    def set_state(new_value: T) -> T:
+        current_engine.write_state(new_value, path)
+        return new_value
+
+    return value, set_state
 
 
 def remember_and_evolve(
         init: T,
-        evolve_fn: Callable[["State[T]"], T]
-) -> "State[T]":
+        evolve_fn: Callable[[T], T]
+) -> T:
     """
     Keep a value across rounds, replacing it every round with ``evolve_fn`` of itself.
 
@@ -113,16 +125,18 @@ def remember_and_evolve(
 
     Args:
         init: The value the state starts from, before the first evolution.
-        evolve_fn: Function that receives the current ``State`` and returns the new value.
+        evolve_fn: Function that receives the current value and returns the new value.
 
     Returns:
-        The ``State`` after this round's evolution: ``evolve_fn(init)`` on the first round.
+        The value after this round's evolution: ``evolve_fn(init)`` on the first round.
     """
-    state = State(init, engine.get().current_path(), engine.get())
-    # evolve_fn takes the state and returns the new value (T)
-    # state.update_fn takes the new value and returns the State object
-    state.update_fn(evolve_fn(state))
-    return state
+    current_engine = engine.get()
+    path = current_engine.current_path()
+    stored = current_engine.read_state(path)
+    current: T = init if stored is None else stored
+    updated: T = evolve_fn(current)
+    current_engine.write_state(updated, path)
+    return updated
 
 
 @aggregate
@@ -159,9 +173,7 @@ def neighbors(value: T) -> "NeighborhoodField[T]":
 
 
 def _extract_for_node(value: Any, node_id: int) -> Any:
-    """Extract the value addressed to ``node_id`` from a scalar, ``State``, or field."""
-    if isinstance(value, State):
-        value = value.value
+    """Extract the value addressed to ``node_id`` from a scalar or field."""
     if isinstance(value, NeighborhoodField):
         return value.for_node(node_id)
     return value
@@ -170,7 +182,7 @@ def _extract_for_node(value: Any, node_id: int) -> Any:
 @aggregate
 def exchange(
     init: Union[T, "NeighborhoodField[T]"],
-) -> Tuple[Callable[[Any], Any], "NeighborhoodField[T]"]:
+) -> Tuple[T, "NeighborhoodField[T]", Callable[[Any], Any]]:
     """
     Exchange values with neighbors and across rounds at the current alignment point.
 
@@ -178,18 +190,18 @@ def exchange(
         init: Initial value (or field) used when no previous value is available.
 
     Returns:
-        A tuple ``(set_field, field)`` containing the send function for the next round
-            and the ``NeighborhoodField`` received in the current round.
+        A tuple ``(local, field, send)`` containing the local state value, the
+            ``NeighborhoodField`` received in the current round, and the send function
+            for the next round.
     """
     current_engine = engine.get()
     path = current_engine.current_path()
     node_id = current_engine.node_context.node_id
     stored = current_engine.read_state(path)
     if stored is None:
-        raw_init = init.value if isinstance(init, State) else init
-        local_value = _extract_for_node(raw_init, node_id)
-        current_engine.write_state(raw_init, path)
-        current_engine.send(raw_init, path)
+        local_value = _extract_for_node(init, node_id)
+        current_engine.write_state(init, path)
+        current_engine.send(init, path)
     else:
         local_value = _extract_for_node(stored, node_id)
         current_engine.send(stored, path)
@@ -206,13 +218,12 @@ def exchange(
     )
     field = NeighborhoodField(values, node_id, default=default_value)
 
-    def set_field(new_value: Any) -> Any:
-        raw_new = new_value.value if isinstance(new_value, State) else new_value
-        current_engine.write_state(raw_new, path)
-        current_engine.send(raw_new, path)
+    def send(new_value: Any) -> Any:
+        current_engine.write_state(new_value, path)
+        current_engine.send(new_value, path)
         return new_value
 
-    return set_field, field
+    return local_value, field, send
 
 
 def align(name: Any):

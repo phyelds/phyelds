@@ -36,5 +36,5 @@ def steer(heading: Vector) -> Vector:
 @aggregate
 def flock() -> Vector:
     """Fly with the flock: the velocity the device moves by."""
-    heading = remember_and_evolve(brownian(), lambda previous: steer(previous.value))
-    return velocity.send(heading.value)
+    heading = remember_and_evolve(brownian(), steer)
+    return velocity.send(heading)

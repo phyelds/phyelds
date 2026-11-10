@@ -480,3 +480,49 @@ def test_decorator_below_aggregate_is_kept():
     assert _run_once(program) == 1
     assert len(_CALLS) == 1
 
+
+# ---------- Static check for remember + neighbors + update ----------
+
+def test_remember_passed_to_neighbors_and_updated_emits_warning():
+    source = """
+    def f():
+        count, set_count = remember(0)
+        field = neighbors(count)
+        return set_count(field.min())
+    """
+    with pytest.warns(UserWarning, match="exchange"):
+        _transform_source(source)
+
+
+def test_remember_updated_before_neighbors_does_not_warn(recwarn):
+    source = """
+    def f():
+        count, set_count = remember(0)
+        count = set_count(count + 1)
+        return neighbors(count)
+    """
+    _transform_source(source)
+    assert len(recwarn) == 0
+
+
+def test_remember_without_update_passed_to_neighbors_does_not_warn(recwarn):
+    source = """
+    def f():
+        count, _ = remember(0)
+        return neighbors(count)
+    """
+    _transform_source(source)
+    assert len(recwarn) == 0
+
+
+def test_aggregate_function_warns_when_remember_is_shared_before_update():
+    from phyelds.calculus import remember
+
+    @aggregate
+    def delayed_gradient():
+        dist, set_dist = remember(10)
+        field = neighbors(dist)
+        return set_dist(field.min())
+
+    with pytest.warns(UserWarning, match="exchange"):
+        _run_once(delayed_gradient)

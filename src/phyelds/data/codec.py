@@ -13,7 +13,7 @@ import json
 from collections.abc import Mapping
 from typing import Any
 
-from phyelds.data import NeighborhoodField, State
+from phyelds.data import NeighborhoodField
 from phyelds.data._registry import BY_NAME, CLASS_NAMES, CONSTANT_NAMES
 
 _NON_FINITE = {"inf": float("inf"), "-inf": float("-inf"), "nan": float("nan")}
@@ -89,8 +89,6 @@ def decode(payload: bytes) -> dict[Any, Any]:
 
 def _to_json(value: Any) -> Any:  # pylint: disable=too-many-return-statements
     """Rewrite ``value`` with JSON types only."""
-    if isinstance(value, State):
-        value = value.value
     if id(value) in CONSTANT_NAMES:
         return {"c": CONSTANT_NAMES[id(value)]}
     if value is None or isinstance(value, (bool, int, str)):

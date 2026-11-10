@@ -35,6 +35,22 @@ def test_gossip_max_min_should_gossip_the_correct_values():
     for node in simulator.environment.nodes.values():
         assert node.data["result"] == (size - 1, 0, set(range(size)))
 
+@pytest.mark.parametrize(
+    "strategy",
+    [None, monotonic_gossip(), path_coherent_gossip(), time_replicated_gossip(5.0)],
+)
+def test_gossip_max_returns_a_bare_value_whatever_the_strategy(strategy):
+    # Arrange
+    simulator = setup_up_simulator(3)
+    @aggregate
+    def program():
+        return type(gossip_max(local_id(), strategy=strategy)) is int
+    # Act
+    schedule_program_for_all(simulator, 0.0, 1.0, program)
+    simulator.run(ITERATIONS)
+    # Assert
+    assert all(node.data["result"] for node in simulator.environment.nodes.values())
+
 def test_normal_gossip_does_not_heal():
     size = 5
     # 0 - 1 - 2 - 3 - 4
@@ -162,5 +178,3 @@ def test_gossip_mean_converges_to_harmonic_equilibrium_and_self_stabilizes():
     assert simulator.environment.nodes[0].data["result"] == pytest.approx(15.0, abs=1e-2)
     assert simulator.environment.nodes[1].data["result"] == pytest.approx(30.0, abs=1e-2)
     assert simulator.environment.nodes[2].data["result"] == pytest.approx(45.0, abs=1e-2)
-
-

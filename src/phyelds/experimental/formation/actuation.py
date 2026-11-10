@@ -121,27 +121,27 @@ def self_aligned(  # pylint: disable=too-many-arguments,too-many-locals
     Returns:
         The command, in the body frame of the robot.
     """
-    set_command, last_command = remember(Vector())
-    set_travelled, travelled = remember(Vector())
-    commanded = travelled.value + last_command.value
+    last_command, set_command = remember(Vector())
+    travelled, set_travelled = remember(Vector())
+    commanded = travelled + last_command
     set_travelled(commanded)
-    set_alignment, alignment = remember(_Alignment())
-    learned = alignment.value.learn(frame.position, commanded, forgetting, max_displacement)
+    alignment, set_alignment = remember(_Alignment())
+    learned = alignment.learn(frame.position, commanded, forgetting, max_displacement)
     set_alignment(learned)
-    set_steering, steering = remember(False)
-    set_steering(steering.value or learned.is_confident(min_energy, min_confidence))
-    set_probe, probe = remember((Vector(), False))
-    direction, out = probe.value
+    steering, set_steering = remember(False)
+    steering = set_steering(steering or learned.is_confident(min_energy, min_confidence))
+    probe, set_probe = remember((Vector(), False))
+    direction, out = probe
     # Run and tumble: a random step out, then the same step back.
-    set_probe((-direction, False) if out else (brownian(), True))
-    set_waiting, waiting = remember(0)
-    set_waiting(waiting.value + 1 if velocity is None else 0)
+    probe = set_probe((-direction, False) if out else (brownian(), True))
+    waiting, set_waiting = remember(0)
+    waiting = set_waiting(waiting + 1 if velocity is None else 0)
     if velocity is None:
-        command = probe.value[0] * exploration_speed if waiting.value > max_frame_wait else Vector()
+        command = probe[0] * exploration_speed if waiting > max_frame_wait else Vector()
     elif frame.is_reference:
         command = Vector()
-    elif not steering.value:
-        command = probe.value[0] * exploration_speed
+    elif not steering:
+        command = probe[0] * exploration_speed
     else:
         command = learned.to_body(velocity)
     command = command.limit(max_speed)

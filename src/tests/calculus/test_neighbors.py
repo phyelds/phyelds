@@ -29,11 +29,11 @@ def test_neighbors_should_get_value_from_neighbors():
     for value in simulator.nodes[0].root:
         assert value == initial_value
 
-def test_neighbors_should_work_as_share():
-    set_state, state = remember(0)
+def test_neighbors_keeps_the_value_passed_when_remember_updates_later():
+    state, set_state = remember(0)
     field = neighbors(state)
     set_state(state + 1)
-    assert field.local() == 1
+    assert field.local() == 0
 
 def test_neighbors_of_neighbors_should_not_work():
     with pytest.raises(TypeError):

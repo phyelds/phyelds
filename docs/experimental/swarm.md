@@ -94,7 +94,7 @@ velocities; remember it across rounds:
 ```python
 from phyelds.calculus import remember_and_evolve
 
-velocity = remember_and_evolve(Vector(), lambda previous: vicsek(previous.value)).value
+velocity = remember_and_evolve(Vector(), vicsek)
 ```
 
 `separation`, `alignment` and `cohesion` return a steering, the heading minus

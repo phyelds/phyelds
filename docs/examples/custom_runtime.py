@@ -19,8 +19,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from phyelds import engine
-from phyelds.calculus import aggregate, neighbors, remember
-from phyelds.data import State
+from phyelds.calculus import aggregate, exchange
 from phyelds.libraries.device import sense, store
 from phyelds.vm import NodeContext
 from phyelds.vm.internal import MutableEngine
@@ -57,7 +56,7 @@ def run_round(device: Device, inbox: dict[int, dict[str, Any]], program: Callabl
     device.outbox = engine.get().cooldown()  # first: it also drops the state not used
     device.state = engine.get().state_trace()
     device.outputs = engine.get().node_context.outputs
-    return result.value if isinstance(result, State) else result
+    return result
 # --8<-- [end:run_round]
 
 
@@ -88,10 +87,10 @@ def run_rounds(
 @aggregate
 def gradient() -> float:
     """Hop count from the source; stores whether the device is more than one hop away."""
-    set_distance, distance = remember(INFINITY)
-    through_neighbors = neighbors(distance) + 1
+    _, distances, send_distance = exchange(INFINITY)
+    through_neighbors = distances + 1
     nearest = min(through_neighbors.exclude_self().values(), default=INFINITY)
-    set_distance(0 if sense("source") else nearest)
+    distance = send_distance(0 if sense("source") else nearest)
     store("is_far", distance > 1)
     return distance
 

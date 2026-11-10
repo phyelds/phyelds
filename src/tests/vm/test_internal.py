@@ -8,13 +8,13 @@ from tests.calculus.mock import MockNodeContext, MockSimulator
 
 @aggregate
 def counter():
-    set_count, count = remember(0)
+    count, set_count = remember(0)
     return set_count(count + 1)
 
 
 @aggregate
 def neighbour_sum():
-    set_total, total = remember(0)
+    total, set_total = remember(0)
     return set_total(neighbors(1).sum() + total)
 
 

@@ -114,15 +114,16 @@ In the phyelds simulator, values are delivered by reference: the list a neighbor
 
 ```python
 # ❌ appends directly to the neighbors' remembered lists
-for other in neighbors(items.value).exclude_self().values():
+for other in neighbors(items).exclude_self().values():
     other.append(item)
 
-# ✅ build a new immutable value instead
-received = neighbors(items.value).exclude_self().values()
-set_items(tuple({*items.value, *(x for other in received for x in other)}))
+# ✅ build a new immutable value with exchange instead
+items, field, send_items = exchange(())
+received = field.exclude_self().values()
+send_items(tuple({*items, *(x for other in received for x in other)}))
 ```
 
-Prefer immutable types (`tuple`, `frozenset`, frozen `dataclass`) in `remember` and `neighbors`. Real-network runtimes serialize messages anyway, so code that relies on shared references only works by accident in the simulator.
+Prefer immutable types (`tuple`, `frozenset`, frozen `dataclass`) in `remember`, `neighbors`, and `exchange`. Real-network runtimes serialize messages anyway, so code that relies on shared references only works by accident in the simulator.
 
 ---
 
@@ -141,8 +142,8 @@ def program():
 # ✅ per-device state belongs in remember
 @aggregate
 def program():
-    set_seen, seen = remember(())
-    set_seen((*seen, local_id()))
+    seen, set_seen = remember(())
+    return set_seen((*seen, local_id()))
 ```
 
 Module-level constants (`INFINITY = float("inf")`) are fine; mutable globals are not.
@@ -156,7 +157,7 @@ The same holds for a mutable default argument (`def program(seen=[])`): as in Py
 Because the program runs from the top at every round, calling `random.random()` directly produces a **new** random number in every round. If a device needs a stable random value (such as a tie-breaking UUID or priority), store it in `remember`:
 
 ```python
-_, priority = remember(random.random())   # drawn in round 1, remembered afterwards
+priority, _ = remember(random.random())   # drawn in round 1, remembered afterwards
 ```
 
 The same applies to side effects: `print(...)`, logging, and file I/O execute on every device in every round. To expose a result to the outside world or simulator monitors, write it with `store(name, value)`.

@@ -9,7 +9,7 @@ import random
 from typing import Any, Tuple
 
 from phyelds.calculus import aggregate, exchange, neighbors, remember
-from phyelds.data import NeighborhoodField, StateT
+from phyelds.data import NeighborhoodField
 from phyelds.data.codec import register
 from phyelds.libraries.device import local_id
 from phyelds.libraries.distances import hops_distance
@@ -118,11 +118,11 @@ def _candidacy_election_step(
     """Run one step of loop-free priority-based bounded leader election."""
     node_id = local_id()
     local_candidacy = Candidacy(node_id, 0.0, strength_value, ())
-    set_field, neighbor_candidacies = exchange(local_candidacy)
+    _, neighbor_candidacies, send_field = exchange(local_candidacy)
     winner = _select_best_candidacy(
         node_id, local_candidacy, area, neighbor_candidacies, distances
     )
-    set_field(winner)
+    send_field(winner)
     return winner.candidate
 
 
@@ -132,7 +132,7 @@ def _uuid_election_step(
     distances: NeighborhoodField[float],
 ) -> int | None:
     """Run one step of UUID-based symmetry-breaking leader election."""
-    result: Tuple[StateT[float], int] = breaking_using_uids(random_uuid(), area, distances)
+    result: Tuple[float, int] = breaking_using_uids(random_uuid(), area, distances)
     if result[0] == float("inf"):
         return None
     return result[1]
@@ -252,7 +252,7 @@ def elect_leaders(
 
 
 @aggregate
-def random_uuid() -> Tuple[StateT[float], int]:
+def random_uuid() -> Tuple[float, int]:
     """
     Draw a random identifier for the current device, kept across rounds.
 
@@ -260,16 +260,16 @@ def random_uuid() -> Tuple[StateT[float], int]:
         A tuple ``(random_value, device_id)``: the random number in ``[0, 1)`` is drawn
             on the first round, and the device ID breaks ties.
     """
-    _, value = remember(random.random())
+    value, _ = remember(random.random())
     return value, local_id()
 
 
 @aggregate
 def breaking_using_uids(
-    uid: Tuple[StateT[float], int],
+    uid: Tuple[float, int],
     area: float,
     distances: NeighborhoodField[float],
-) -> StateT[tuple[float, int]]:
+) -> tuple[float, int]:
     """
     Elect leaders by competition on ``uid``: the lowest one wins within its area.
 
@@ -281,21 +281,22 @@ def breaking_using_uids(
     Returns:
         The identifier of the leader the current device follows after this round.
     """
-    set_lead, lead = remember(uid)
+    lead, neighbors_lead, send_lead = exchange(uid)
     potential: float = distance_to(lead == uid, distances)
-    new_lead: Tuple[float, int] = distance_competition(potential, area, uid, lead, distances)
-    set_lead(new_lead)
-    return lead
+    new_lead: Tuple[float, int] = distance_competition(
+        potential, area, uid, neighbors_lead, distances
+    )
+    return send_lead(new_lead)
 
 
 @aggregate
 def distance_competition(
     current_distance: float,
     area: float,
-    uid: Tuple[StateT[float], int],
-    lead: StateT[Tuple[float, int]],
+    uid: Tuple[float, int],
+    lead: Tuple[float, int] | NeighborhoodField[Tuple[float, int]],
     distances: NeighborhoodField[float],
-) -> StateT[Tuple[float, int]]:
+) -> Tuple[float, int]:
     """
     Choose the next leader of the current device from those of its neighbors.
 
@@ -306,7 +307,7 @@ def distance_competition(
         current_distance: The distance of the current device from its leader.
         area: The size of a leader's area, in the units of ``distances``.
         uid: The identifier of the current device.
-        lead: The identifier of the current leader.
+        lead: The identifier of the current leader (or the field of neighbor leaders).
         distances: Field of edge distances to neighbors.
 
     Returns:
@@ -317,7 +318,9 @@ def distance_competition(
             edge to them (``uid`` if there are none).
     """
     inf: Tuple[float, int] = (float("inf"), uid[1])
-    neighbors_lead: NeighborhoodField[Tuple[float, int]] = neighbors(lead)
+    neighbors_lead: NeighborhoodField[Tuple[float, int]] = (
+        lead if isinstance(lead, NeighborhoodField) else neighbors(lead)
+    )
     condition: NeighborhoodField[bool] = (neighbors(current_distance) + distances) < (0.5 * area)
     lead_filtered: list[Tuple[float, int]] = neighbors_lead.select(condition)
     result: Tuple[float, int] = min_with_default(lead_filtered, uid)

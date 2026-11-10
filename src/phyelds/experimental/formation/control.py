@@ -150,8 +150,8 @@ def voronoi_centroid(
 @aggregate
 def _adaptive_step(control: Vector, decrease: float, increase: float, min_gain: float) -> float:
     """The step of Rprop: it shrinks when ``control`` reverses, and grows back while it holds."""
-    set_step, step = remember((1.0, Vector()))
-    gain, last_control = step.value
+    step, set_step = remember((1.0, Vector()))
+    gain, last_control = step
     if last_control.dot(control) < 0:
         gain = max(min_gain, gain * decrease)
     else:
