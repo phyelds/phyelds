@@ -13,3 +13,11 @@
 ::: phyelds.experimental.swarm.leader
 
 ::: phyelds.experimental.wavefront
+
+::: phyelds.experimental.wavefront.clocks
+
+::: phyelds.experimental.wavefront.channel
+
+::: phyelds.experimental.wavefront.schedule
+
+::: phyelds.experimental.wavefront.runtime
