@@ -262,7 +262,7 @@ class WavefrontRuntime:  # pylint: disable=too-many-instance-attributes
         for peer in peers:
             slot = slots.get(peer)
             if slot is not None:
-                payload = slot.read_at(now, self.channel.retention)
+                payload = slot.read_at(now, self.channel)
                 if payload is not None:
                     inbox[peer] = payload
         return inbox
@@ -289,12 +289,9 @@ class WavefrontRuntime:  # pylint: disable=too-many-instance-attributes
         receivers: Sequence[Hashable],
         now: float,
     ) -> None:
-        loss = self.channel.loss
-        delay = self.channel.delay
-        jitter = self.channel.jitter
+        channel, draw = self.channel, self._channel_rng.random
         for receiver in receivers:
-            if loss > 0.0 and self._channel_rng.random() < loss:
+            if channel.lost(draw()):
                 continue
-            extra = self._channel_rng.uniform(0.0, jitter) if jitter > 0.0 else 0.0
             slot = self._links.setdefault(receiver, {}).setdefault(sender, _LinkSlot())
-            slot.transmit(outbox, now + delay + extra)
+            slot.transmit(outbox, channel.arrival(now, draw()))

@@ -1,6 +1,10 @@
 """
 The channel between devices: how late messages arrive, how many are lost, and for how long a
 silent neighbor is still heard.
+
+Like a clock, a channel turns randomness drawn by the runtime into deliveries, with arithmetic
+operators and comparisons only: the same channel works on the floats of one message and on
+arrays, such as tensors, holding one value per message.
 """
 from dataclasses import dataclass
 import math
@@ -35,6 +39,45 @@ class Channel:
         if self.retention is not None and self.retention <= 0:
             raise ValueError(f"retention must be positive, not {self.retention}")
 
+    def lost(self, uniform: Any) -> Any:
+        """
+        Whether a message is lost.
+
+        Args:
+            uniform: A uniform draw in ``[0, 1)``, new for each message.
+
+        Returns:
+            Whether ``uniform`` falls below ``loss``.
+        """
+        return uniform < self.loss
+
+    def arrival(self, sent: Any, uniform: Any) -> Any:
+        """
+        When a message arrives.
+
+        Args:
+            sent: The time the message was sent.
+            uniform: A uniform draw in ``[0, 1)``, new for each message.
+
+        Returns:
+            ``sent`` plus ``delay`` plus the share ``uniform`` of ``jitter``.
+        """
+        return sent + self.delay + self.jitter * uniform
+
+    def heard(self, age: Any) -> Any:
+        """
+        Whether a message is heard, given how long ago it arrived.
+
+        Args:
+            age: The time since the message arrived; negative if it has not arrived yet.
+
+        Returns:
+            Whether the message has arrived and, with a ``retention``, is not older than it.
+        """
+        if self.retention is None:
+            return age >= 0.0
+        return (age >= 0.0) & (age <= self.retention)
+
 
 @dataclass
 class _LinkSlot:
@@ -53,15 +96,13 @@ class _LinkSlot:
         self.pending = payload
         self.pending_at = arrival
 
-    def read_at(self, now: float, retention: float | None) -> dict[str, Any] | None:
-        """Return the latest packet delivered by ``now`` and still within ``retention``."""
+    def read_at(self, now: float, channel: Channel) -> dict[str, Any] | None:
+        """Return the latest packet delivered by ``now`` that ``channel`` still hears."""
         if self.pending is not None and self.pending_at <= now:
             self.committed = self.pending
             self.committed_at = self.pending_at
             self.pending = None
             self.pending_at = math.inf
-        if self.committed is None:
-            return None
-        if retention is not None and (now - self.committed_at) > retention:
+        if self.committed is None or not channel.heard(now - self.committed_at):
             return None
         return self.committed

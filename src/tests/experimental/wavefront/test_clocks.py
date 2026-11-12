@@ -3,39 +3,12 @@ The clocks of a wavefront simulation: when each device runs its rounds, computed
 randomness the runtime draws, the same way for one device as for an array of them.
 """
 import math
-import operator
 import random
 
 import pytest
 
 from phyelds.experimental.wavefront import Draws, ExponentialClock, PeriodicClock, WeibullClock
-
-
-class _Array:
-    """A minimal array with elementwise arithmetic, as tensors have."""
-
-    def __init__(self, values):
-        self.values = list(values)
-
-    def apply(self, other, function):
-        """``function`` of each value and of ``other``, or of its value at the same index."""
-        others = other.values if isinstance(other, _Array) else [other] * len(self.values)
-        return _Array(function(mine, theirs) for mine, theirs in zip(self.values, others))
-
-
-for _name, _function in {
-    "add": operator.add,
-    "sub": operator.sub,
-    "mul": operator.mul,
-    "truediv": operator.truediv,
-    "pow": operator.pow,
-}.items():
-    setattr(_Array, f"__{_name}__", lambda self, other, f=_function: self.apply(other, f))
-    setattr(
-        _Array,
-        f"__r{_name}__",
-        lambda self, other, f=_function: self.apply(other, lambda mine, theirs: f(theirs, mine)),
-    )
+from tests.experimental.wavefront.arrays import Array
 
 
 def _draws(device=0.5, uniform=0.5, exponential=1.0):
@@ -98,7 +71,7 @@ def test_exponential_clock_waits_an_exponential_time_of_mean_one_over_its_rate()
 def test_clocks_compute_on_arrays_of_draws_as_on_floats(clock):
     device, uniform, exponential = [0.1, 0.6], [0.3, 0.9], [0.5, 2.0]
     each = [Draws(*values) for values in zip(device, uniform, exponential)]
-    together = Draws(_Array(device), _Array(uniform), _Array(exponential))
+    together = Draws(Array(device), Array(uniform), Array(exponential))
 
     for method in (clock.first, clock.interval):
         assert method(together).values == pytest.approx([method(draws) for draws in each])

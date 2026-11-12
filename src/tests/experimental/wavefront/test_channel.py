@@ -1,12 +1,13 @@
 """
 The channel of a wavefront simulation: when a message arrives, which ones are lost, and for how
-long a silent neighbor is still heard.
+long a silent neighbor is still heard, computed from the randomness the runtime draws.
 """
 import pytest
 
 from phyelds.calculus import aggregate, neighbors
 from phyelds.experimental.wavefront import Channel, PeriodicClock, WavefrontRuntime
 from phyelds.libraries.time import local_time
+from tests.experimental.wavefront.arrays import Array
 
 PAIR = {0: [1], 1: [0]}
 APART = {0: [], 1: []}
@@ -51,6 +52,44 @@ def test_channel_loses_every_message_with_full_loss():
     rounds = _rounds_on_aligned_clocks(Channel(delay=0.1, loss=1.0), [PAIR, PAIR])
 
     assert rounds[-1] == {0: {}, 1: {}}
+
+
+def test_channel_delays_a_message_by_its_delay_and_a_share_of_its_jitter():
+    channel = Channel(delay=0.5, jitter=0.2)
+
+    assert channel.arrival(1.0, 0.5) == pytest.approx(1.6)
+
+
+def test_channel_loses_a_message_whose_draw_falls_below_the_loss():
+    channel = Channel(loss=0.25)
+
+    assert channel.lost(0.2)
+    assert not channel.lost(0.3)
+    assert not Channel().lost(0.0)
+
+
+def test_channel_hears_a_delivered_message_until_the_retention():
+    channel = Channel(retention=1.0)
+
+    assert channel.heard(0.5)
+    assert not channel.heard(1.5)
+    assert not channel.heard(-0.1)  # not delivered yet
+    assert Channel().heard(100.0)
+
+
+@pytest.mark.parametrize(
+    "channel", [Channel(), Channel(delay=0.5, jitter=0.2, loss=0.25, retention=1.0)]
+)
+def test_channel_computes_on_arrays_of_draws_as_on_floats(channel):
+    sent, uniform, ages = [1.0, 2.0, 3.0], [0.1, 0.5, 0.9], [-0.1, 0.5, 1.5]
+
+    arrivals = channel.arrival(Array(sent), Array(uniform))
+    losses = channel.lost(Array(uniform))
+    heard = channel.heard(Array(ages))
+
+    assert arrivals.values == pytest.approx([channel.arrival(*pair) for pair in zip(sent, uniform)])
+    assert losses.values == [channel.lost(draw) for draw in uniform]
+    assert heard.values == [channel.heard(age) for age in ages]
 
 
 @pytest.mark.parametrize(
