@@ -1,0 +1,28 @@
+name: GPU batch runtime (phyelds-gpu)
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+jobs:
+  gpu-cpu:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install core and CPU PyTorch
+        run: |
+          pip install --index-url https://download.pytorch.org/whl/cpu torch
+          pip install -e . -e packages/phyelds-gpu pytest pytest-cov pylint flake8
+      - name: Test phyelds-gpu
+        run: python -m pytest packages/phyelds-gpu/tests -v --cov=packages/phyelds-gpu/src/phyelds --cov-report=term-missing
+      - name: Lint phyelds-gpu
+        run: |
+          python -m pylint --rcfile=.pylintrc packages/phyelds-gpu/src packages/phyelds-gpu/tests
+          python -m flake8 packages/phyelds-gpu/src packages/phyelds-gpu/tests
