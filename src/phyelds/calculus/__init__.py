@@ -62,9 +62,12 @@ def aggregate(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         nonlocal rewritten
+        current_engine = engine.get()
+        runner = getattr(current_engine, "_run_aggregate", None)
+        if runner is not None:
+            return runner(func, *args, **kwargs)
         if rewritten is None:  # on the first call, once: the rewriting is costly
             rewritten = _transformed(func)
-        current_engine = engine.get()
         current_engine.enter(func.__name__)
         result = rewritten(*args, **kwargs)
         current_engine.exit()
@@ -283,6 +286,10 @@ def _aligned_branch(condition: Any, if_true: Callable[[], T], if_false: Callable
     branches do not exchange values. ``@aggregate`` rewrites ``a if c else b`` into a
     call to this function.
     """
+    if not isinstance(condition, bool):
+        branch = getattr(engine.get(), "_branch", None)
+        if branch is not None:
+            return branch(condition, if_true, if_false)
     if condition:
         with align_left():
             return if_true()
