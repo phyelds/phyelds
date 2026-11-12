@@ -6,6 +6,7 @@ with the same messages.
 import pytest
 
 from phyelds.calculus import aggregate, exchange, neighbors, remember
+from phyelds.libraries.collect import collect_or, count_nodes, sum_values
 from phyelds.libraries.device import local_id, sense, store
 from phyelds.libraries.gossip import gossip_max
 from phyelds.libraries.spreading import distance_to
@@ -93,7 +94,14 @@ def state_in_branches():
 
 @aggregate
 def libraries():
-    return distance_to(sense("source")), gossip_max(local_id())
+    potential = distance_to(sense("source"))
+    return (
+        potential,
+        gossip_max(local_id()),
+        count_nodes(potential),
+        sum_values(potential, sense("value")),
+        collect_or(potential, sense("value") == 3),
+    )
 
 
 PROGRAMS = [

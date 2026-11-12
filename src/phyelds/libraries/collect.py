@@ -6,6 +6,7 @@ source nodes along a potential gradient, with pluggable collection strategies.
 """
 
 from collections.abc import Callable
+import operator
 from typing import Any, Optional, TypeVar, Union
 
 from phyelds.calculus import aggregate, exchange, neighbors
@@ -75,11 +76,8 @@ def _broadcast_collect(
     """Collect values up the potential gradient using broadcast neighbor fields."""
     _, n_collections, send_collections = exchange(local)
     parents: NeighborhoodField[Optional[int]] = neighbors(find_parent(potential))
-    my_id = local_id()
-    accumulated = local
-    for child_value in n_collections.select(parents.map(lambda parent: parent == my_id)):
-        accumulated = accumulation(accumulated, child_value)
-    return send_collections(accumulated)
+    children = parents.map(operator.eq, local_id())
+    return send_collections(n_collections.where(children).fold(local, accumulation))
 
 
 @aggregate
@@ -232,7 +230,7 @@ def count_nodes(
     Returns:
         The count of nodes in the sub-tree rooted at the current device.
     """
-    return collect_with(potential, 1, lambda x, y: x + y, strategy=strategy)
+    return collect_with(potential, 1, operator.add, strategy=strategy)
 
 
 @aggregate
@@ -253,7 +251,7 @@ def sum_values(
     Returns:
         The sum of values in the sub-tree rooted at the current device.
     """
-    return collect_with(potential, local, lambda x, y: x + y, strategy=strategy)
+    return collect_with(potential, local, operator.add, strategy=strategy)
 
 
 @aggregate
@@ -297,7 +295,7 @@ def collect_or(
     Returns:
         True if any node in the sub-tree satisfies ``local``.
     """
-    return collect_with(potential, local, lambda x, y: x or y, strategy=strategy)
+    return collect_with(potential, local, operator.or_, strategy=strategy)
 
 
 @aggregate
