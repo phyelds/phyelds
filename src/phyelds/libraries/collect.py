@@ -75,9 +75,10 @@ def _broadcast_collect(
     """Collect values up the potential gradient using broadcast neighbor fields."""
     _, n_collections, send_collections = exchange(local)
     parents: NeighborhoodField[Optional[int]] = neighbors(find_parent(potential))
-    accumulated = n_collections._fold_where_equal(  # pylint: disable=protected-access
-        parents, local_id(), local, accumulation
-    )
+    my_id = local_id()
+    accumulated = local
+    for child_value in n_collections.select(parents.map(lambda parent: parent == my_id)):
+        accumulated = accumulation(accumulated, child_value)
     return send_collections(accumulated)
 
 

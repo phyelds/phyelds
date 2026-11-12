@@ -31,16 +31,6 @@ def test_select_returns_empty_when_no_overlap():
     assert neighborhood1.select(neighborhood2) == []
 
 
-def test_internal_field_helpers_preserve_immutability_and_reductions():
-    # pylint: disable=protected-access
-    field = NeighborhoodField({1: 10, 2: 20, 3: 30}, 1, default=99)
-    parents = NeighborhoodField({1: None, 2: 1, 3: 1}, 1)
-    assert field._fold_where_equal(parents, 1, 5, lambda a, b: a + b) == 55
-
-    positions = NeighborhoodField({1: (1.0, 2.0, 2.0), 2: (1.0, 2.0, 5.0)}, 1)
-    assert positions._distances_to((1.0, 2.0, 2.0)).data == {1: 0.0, 2: 3.0}
-    assert NeighborhoodField({1: 3, 2: 7}, 1)._reduce_all(10, max) == 10
-
 def test_any_returns_true_when_at_least_one_truthy():
     neighborhood = NeighborhoodField({1: False, 2: True, 3: False}, 1)
     assert neighborhood.any() is True

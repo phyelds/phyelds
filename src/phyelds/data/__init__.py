@@ -5,7 +5,6 @@ Internal classes used to manage the state and the neighborhood of the system
 
 import sys
 from collections import OrderedDict
-from collections.abc import Sequence
 from typing import (
     Any,
     Callable,
@@ -157,29 +156,6 @@ class NeighborhoodField(Generic[T], Iterator[T]):
         """
         # We look at keys present in both, where the *other* neighborhood's value is truthy
         return [self.data[k] for k in self.data if neighborhood.data.get(k, False)]
-
-    def _fold_where_equal(
-        self,
-        keys_field: "NeighborhoodField[Any]",
-        expected: Any,
-        initial: U,
-        accumulator: Callable[[U, T], U],
-    ) -> U:
-        """Fold entries whose corresponding node in ``keys_field`` equals ``expected``."""
-        result = initial
-        for k, value in self.data.items():
-            if k in keys_field.data and keys_field.data[k] == expected:
-                result = accumulator(result, value)
-        return result
-
-    def _distances_to(self, origin: Sequence[float]) -> "NeighborhoodField[float]":
-        """Compute Euclidean distances from ``origin`` to each coordinate vector in the field."""
-        coords = tuple(origin)
-        return self.map(lambda other: sum((a - b) ** 2 for a, b in zip(coords, other)) ** 0.5)
-
-    def _reduce_all(self, initial: T, callback: Callable[..., T]) -> T:
-        """Combine ``initial`` and every value of this field with a variadic ``callback``."""
-        return callback(initial, *self._values(include_self=True))
 
     def any(
         self,

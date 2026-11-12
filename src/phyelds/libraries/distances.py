@@ -4,6 +4,7 @@ These functions may be used by other libraries to compute system-wise properties
 """
 
 from collections.abc import Sequence
+import math
 
 from phyelds.calculus import aggregate, neighbors
 from phyelds.data import NeighborhoodField
@@ -34,9 +35,9 @@ def neighbors_distances(
         data = {node_id: float(measured[node_id]) for node_id in peers if node_id in measured}
         data[local_id()] = 0.0
         return NeighborhoodField(data, local_id(), default=float("inf"))
-    my_position = local_position() if position is None else position
-    positions = neighbors(my_position)
-    return positions._distances_to(my_position)  # pylint: disable=protected-access
+    my_position = tuple(local_position() if position is None else position)
+    positions: NeighborhoodField[tuple[float, ...]] = neighbors(my_position)
+    return positions.map(lambda other: math.dist(my_position, other))
 
 
 @aggregate
