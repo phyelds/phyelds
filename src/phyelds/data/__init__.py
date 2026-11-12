@@ -426,19 +426,25 @@ class NeighborhoodField(Generic[T], Iterator[T]):  # pylint: disable=too-many-pu
         """
         return self.map(lambda value: replacement if predicate(value) else value)
 
-    def map(self, func: Callable[[T], U]) -> "NeighborhoodField[U]":
+    def map(self, func: Callable[..., U], *values: Any) -> "NeighborhoodField[U]":
         """
         Apply ``func`` to every value of the field.
 
+        Values of the device go to ``func`` through ``values``, after each entry, rather than
+        through a closure: ``parents.map(operator.eq, local_id())`` rather than
+        ``parents.map(lambda parent: parent == my_id)``. An engine running many devices at
+        once then gives each entry the values of its own device.
+
         Args:
             func: The function to apply to each value (and to the default, if any).
+            *values: Values of the device, passed to ``func`` after each value.
 
         Returns:
             A new ``NeighborhoodField`` with the mapped values.
         """
-        mapped_default = None if self.default is None else func(self.default)
+        mapped_default = None if self.default is None else func(self.default, *values)
         return NeighborhoodField(
-            {k: func(v) for k, v in self.data.items()},
+            {k: func(v, *values) for k, v in self.data.items()},
             self.node_id,
             default=mapped_default,
             _sorted=True,

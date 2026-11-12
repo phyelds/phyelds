@@ -224,3 +224,12 @@ def test_derived_fields_preserve_sorted_node_order():
     assert list((~first).data.keys()) == [1, 2, 3, 5]
 
 
+
+
+def test_map_passes_the_values_of_the_device_after_each_entry():
+    field = NeighborhoodField({1: 10, 2: 20}, 1, default=0)
+
+    shifted = field.map(lambda value, low, high: value - low + high, 5, 1)
+
+    assert shifted.data == {1: 6, 2: 16}
+    assert shifted.default == -4

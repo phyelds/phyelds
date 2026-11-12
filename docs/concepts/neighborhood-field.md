@@ -47,7 +47,7 @@ A `NeighborhoodField` maps device IDs to values (`{device_id: value}`) and alway
 
 | Operation | Result |
 | --- | --- |
-| `field.map(fn)` | A new field with `fn` applied to each value |
+| `field.map(fn, *values)` | A new field with `fn(value, *values)` applied to each value: pass values of the device as `values`, not in a closure, so that a batch engine runs it too |
 | `field.coerce_in(lower, upper)` | A new field with values clamped to `[lower, upper]` |
 | `field.replace_matching(replacement, predicate)` | A new field where entries satisfying `predicate` are replaced |
 | `field.min(*, include_self=True, default=None, key=None)` | Minimum value (with optional `key` and `default`) |
