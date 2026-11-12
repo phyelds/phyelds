@@ -3,8 +3,6 @@ The wavefront runtime: runs an aggregate program in batches of devices that do n
 each other, from event-by-event asynchronous rounds to synchronous rounds of every device.
 """
 from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
-# In Python 3.14 concurrent.futures loads ThreadPoolExecutor in __getattr__, which astroid misses.
-from concurrent.futures import ThreadPoolExecutor  # pylint: disable=no-name-in-module
 from dataclasses import dataclass
 import math
 import random
@@ -13,9 +11,8 @@ from typing import Any
 from phyelds.experimental.wavefront.channel import Channel, _LinkSlot
 from phyelds.experimental.wavefront.clocks import Clock, PeriodicClock
 from phyelds.experimental.wavefront.schedule import WorldNeighbors, select_wavefront
-from phyelds.vm.rounds import Round, run_round
+from phyelds.vm.rounds import RoundRunner
 
-_CHUNKS_PER_WORKER = 4
 WorldSensors = Mapping[Hashable, Mapping[str, Any]]
 
 
@@ -69,8 +66,7 @@ class WavefrontRuntime:  # pylint: disable=too-many-instance-attributes
     ):
         if window is not None and window < 0:
             raise ValueError(f"window must be non-negative, not {window}")
-        if workers < 1:
-            raise ValueError(f"workers must be at least 1, not {workers}")
+        self._runner = RoundRunner(program, workers=workers)
         self.program = program
         self.clock: Clock = PeriodicClock(1.0) if clock is None else clock
         self.channel: Channel = Channel() if channel is None else channel
@@ -129,19 +125,22 @@ class WavefrontRuntime:  # pylint: disable=too-many-instance-attributes
             dev: self._gather_inbox(dev, neighbors.get(dev, ()), batch_times[dev])
             for dev in batch
         }
-        rounds = self._execute_batch(batch, sensors, batch_times, inboxes)
+        # The sensors of a device win over the time of its round, as for the other runtimes.
+        batch_sensors = {dev: {"time": batch_times[dev], **sensors[dev]} for dev in batch}
+        done = self._runner.run(batch_sensors, inboxes.__getitem__, self._states)
 
         step_results: dict[Hashable, Any] = {}
         step_outputs: dict[Hashable, dict[str, Any]] = {}
         outgoing = self._reverse_edges(batch, neighbors, sensors)
         for dev in batch:
-            done = rounds[dev]
             now = batch_times[dev]
-            self._states[dev] = done.state
-            self.results[dev] = step_results[dev] = done.result
-            self.outputs[dev] = step_outputs[dev] = done.outputs
+            self._states[dev] = done.states[dev]
+            self.results[dev] = step_results[dev] = done.results[dev]
+            self.outputs[dev] = step_outputs[dev] = done.outputs[dev]
             self._last_time[dev] = now
-            self._transmit(outbox=done.outbox, sender=dev, receivers=outgoing[dev], now=now)
+            self._transmit(
+                outbox=done.outboxes[dev], sender=dev, receivers=outgoing[dev], now=now
+            )
             self._next_time[dev] = now + self.clock.next_delta(dev, now, self._rng_for(dev))
 
         horizon = max(batch_times.values())
@@ -260,26 +259,3 @@ class WavefrontRuntime:  # pylint: disable=too-many-instance-attributes
             extra = self._channel_rng.uniform(0.0, jitter) if jitter > 0.0 else 0.0
             slot = self._links.setdefault(receiver, {}).setdefault(sender, _LinkSlot())
             slot.transmit(outbox, now + delay + extra)
-
-    def _execute_batch(
-        self,
-        batch: Sequence[Hashable],
-        sensors: WorldSensors,
-        batch_times: Mapping[Hashable, float],
-        inboxes: Mapping[Hashable, Mapping[Hashable, Mapping[str, Any]]],
-    ) -> dict[Hashable, Round]:
-        def run_one(dev: Hashable) -> tuple[Hashable, Round]:
-            dev_sensors = dict(sensors[dev])
-            dev_sensors.setdefault("time", batch_times[dev])
-            done = run_round(
-                self.program, dev, dev_sensors, inboxes[dev], self._states.get(dev), paths="compact"
-            )
-            return dev, done
-
-        if self.workers == 1 or len(batch) <= 1:
-            return dict(run_one(dev) for dev in batch)
-        size = max(1, math.ceil(len(batch) / (self.workers * _CHUNKS_PER_WORKER)))
-        chunks = [batch[i:i + size] for i in range(0, len(batch), size)]
-        with ThreadPoolExecutor(self.workers) as pool:
-            parts = list(pool.map(lambda chunk: [run_one(dev) for dev in chunk], chunks))
-        return {dev: done for part in parts for dev, done in part}
