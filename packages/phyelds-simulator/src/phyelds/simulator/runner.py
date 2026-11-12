@@ -1,62 +1,87 @@
 """
-This module contains the event to run the aggregate program in the simulator
+This module contains the event to run the aggregate program in the simulator.
 """
 from abc import ABC
-
-from phyelds.vm.internal import MutableEngine
+from collections.abc import Callable
+from typing import Any
 
 from phyelds import engine
+from phyelds.simulator import Node, Simulator
 from phyelds.vm import NodeContext
-from phyelds.simulator import Simulator, Node
+from phyelds.vm.internal import MutableEngine
 
 
 class SimulatorNodeContext(NodeContext, ABC):
     """
     A class to represent the context of a node in the simulator.
-    This class is used to pass the node's data and messages to the aggregate program.
+    This class exposes the node's data and position as sensors without copying ``node.data``.
     """
 
+    def __init__(
+        self,
+        node_id: Any,
+        sensors: dict[str, Any] | None = None,
+        outputs: dict[str, Any] | None = None,
+        *,
+        default_position: tuple[float, ...] | None = None,
+    ):
+        super().__init__(node_id, sensors, outputs)
+        self._default_position = default_position
+
     @staticmethod
-    def from_node(node: Node):
+    def from_node(node: Node) -> "SimulatorNodeContext":
         """
-        Create the context of a simulated node: its sensors are the node's data and position.
+        Create the context of a simulated node backed by ``node.data`` and ``node.position``.
 
         Args:
             node: The node to create the context from.
+
+        Returns:
+            The node's ``SimulatorNodeContext``.
         """
-        sensors = {
-            "position": node.position,
-            **node.data,
-        }
-        return SimulatorNodeContext(node.id, sensors)
+        return SimulatorNodeContext(node.id, node.data, default_position=node.position)
+
+    def sense(self, sensor_name: str) -> Any:
+        if sensor_name == "position" and "position" not in self.sensors:
+            return self._default_position
+        return self.sensors.get(sensor_name)
+
+    def position(self) -> Any:
+        return self.sensors.get("position", self._default_position)
 
 
 def aggregate_program_runner(
-    simulator: Simulator, time_delta: float, node: Node, program: callable, **kwargs
-):
+    simulator: Simulator,
+    time_delta: float,
+    node: Node,
+    program: Callable[..., Any],
+    **kwargs: Any,
+) -> None:
     """
-    Run the program for a node.
+    Run ``program`` once for ``node`` and reschedule its next round after ``time_delta``.
+
+    Args:
+        simulator: The simulator owning ``node``.
+        time_delta: Period until the next round of ``node``.
+        node: The simulated node executing the round.
+        program: The aggregate program to run.
+        **kwargs: Keyword arguments forwarded to ``program``.
     """
-    if node.id not in simulator.environment.nodes.keys():
-        # If the node is not in the environment, do not run the program
+    if node.id not in simulator.environment.nodes:
         return
-    node.data["time"] = simulator.current_time  # prepare time sensor, the round of the node
-    # get neighbors
+    node.data["time"] = simulator.current_time
     all_neighbors = simulator.environment.get_neighbors(node)
-    # take the messages from the neighbors, create a dict like id -> messages (that is a dict)
     neighbors_messages = {
         neighbor.id: neighbor.data.get("messages", {}) for neighbor in all_neighbors
     }
-    engine.set(MutableEngine())
-    engine.get().setup(
-        SimulatorNodeContext.from_node(node),
-        neighbors_messages,
-        node.data.get("state", {})
-    )
+    context = SimulatorNodeContext.from_node(node)
+    node_engine = MutableEngine()
+    engine.set(node_engine)
+    node_engine.setup(context, neighbors_messages, node.data.get("state", {}))
     node.data["result"] = program(**kwargs)
-    node.data["messages"] = engine.get().cooldown()
-    node.data["state"] = engine.get().state_trace()
-    node.data["outputs"] = engine.get().node_context.outputs
+    node.data["messages"] = node_engine.cooldown()
+    node.data["state"] = node_engine.state_trace()
+    node.data["outputs"] = context.outputs
     simulator.schedule_event(
         time_delta, aggregate_program_runner, simulator, time_delta, node, program, **kwargs
     )
@@ -66,8 +91,9 @@ def schedule_program_for_all(
     simulator: Simulator,
     start: float,
     frequency: float,
-    program: callable, **kwargs
-):
+    program: Callable[..., Any],
+    **kwargs: Any,
+) -> None:
     """
     Run an aggregate program on every node of the simulator, round after round.
 
@@ -80,7 +106,7 @@ def schedule_program_for_all(
         start: The delay before the first round.
         frequency: The time between two rounds of a node (a period, not a rate).
         program: The aggregate program to run.
-        **kwargs (Any): Keyword arguments passed to ``program`` at each round.
+        **kwargs: Keyword arguments passed to ``program`` at each round.
     """
     for node in simulator.environment.nodes.values():
         simulator.schedule_event(

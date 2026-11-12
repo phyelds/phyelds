@@ -283,3 +283,173 @@ def test_radius_neighborhood_reads_only_the_positions_of_the_nodes_nearby():
 
     assert found == []
     assert _CountedPosition.reads < 10
+
+
+def _assert_same_adaptive_neighbors(fast, reference, environment, time_step):
+    for node in environment.node_list():
+        node.data["time"] = time_step
+        found = [other.id for other in fast(node, environment)]
+        expected = [other.id for other in reference(node, environment)]
+        assert found == expected, node.id
+        assert fast.range_of(node) == reference.range_of(node)
+
+
+def _reference_adaptive_range(radius, **kwargs):
+    """Reference O(N) scan matching AdaptiveRange semantics."""
+    reference = adaptive_range(radius, **kwargs)
+
+    def scan(node, environment):
+        reach = reference.range_of(node)
+        found = [
+            other for other in environment.node_list()
+            if other.id != node.id
+            and sum((a - b) ** 2 for a, b in zip(node.position, other.position)) ** 0.5
+            <= min(reach, reference.range_of(other))
+        ]
+        time_val = node.data.get("time")
+        if reference._adapted_at.get(node.id, object()) != time_val:  # pylint: disable=protected-access
+            reference._adapted_at[node.id] = time_val  # pylint: disable=protected-access
+            fewest, most = reference._wanted  # pylint: disable=protected-access
+            if len(found) > most:
+                reference.ranges[node.id] = max(reach - reference.step, reference.min_range)
+            elif len(found) < fewest:
+                reference.ranges[node.id] = min(reach + reference.step, reference.max_range)
+        return found
+
+    scan.range_of = reference.range_of
+    return scan
+
+
+@pytest.mark.parametrize("dimensions", [2, 3])
+def test_adaptive_range_finds_the_nodes_a_scan_of_every_node_finds(dimensions):
+    rng = random.Random(11)
+    environment = Environment()
+    _scattered(environment, rng, 120, dimensions)
+    options = {"neighbors": 6, "tolerance": 2, "step": 0.4, "min_range": 0.2, "max_range": 8.0}
+    fast = adaptive_range(1.5, **options)
+    reference = _reference_adaptive_range(1.5, **options)
+    _assert_same_adaptive_neighbors(fast, reference, environment, 0.0)
+
+    for node in environment.node_list()[::3]:
+        node.position = tuple(coord + rng.uniform(-2, 2) for coord in node.position)
+    _assert_same_adaptive_neighbors(fast, reference, environment, 1.0)
+
+    for node_id in range(0, 120, 7):
+        environment.remove_node(node_id)
+    _scattered(environment, rng, 15, dimensions, start=120)
+    environment.nodes[2].position = (math.nan,) * dimensions
+    environment.nodes[3].position = (math.inf,) + (0.0,) * (dimensions - 1)
+    _assert_same_adaptive_neighbors(fast, reference, environment, 2.0)
+
+
+def test_adaptive_range_reads_only_the_positions_of_the_nodes_nearby():
+    environment = Environment()
+    for node_id in range(1000):
+        environment.add_node(Node(position=_CountedPosition((node_id * 10.0, 0.0)), node_id=node_id))
+    neighborhood = adaptive_range(1.0, neighbors=2, tolerance=1, min_range=0.5, max_range=100.0)
+    neighborhood(environment.nodes[0], environment)
+    _CountedPosition.reads = 0
+
+    found = neighborhood(environment.nodes[500], environment)
+
+    assert found == []
+    assert _CountedPosition.reads < 10
+
+
+def test_k_nearest_neighbors_breaks_ties_in_environment_order():
+    environment = Environment()
+    origin = Node(node_id="origin", position=(0.0, 0.0))
+    east = Node(node_id="east", position=(1.0, 0.0))
+    west = Node(node_id="west", position=(-1.0, 0.0))
+    north = Node(node_id="north", position=(0.0, 1.0))
+    for node in (origin, east, west, north):
+        environment.add_node(node)
+
+    found = k_nearest_neighbors(2)(origin, environment)
+
+    assert [node.id for node in found] == ["east", "west"]
+
+
+def _scanning_k_nearest(k):
+    """Reference scan for k_nearest_neighbors breaking ties by environment order."""
+    def neighborhood(node, environment):
+        if k <= 0:
+            return []
+        ranked = []
+        for rank, other in enumerate(environment.node_list()):
+            if other.id == node.id:
+                continue
+            dist = sum((a - b) ** 2 for a, b in zip(node.position, other.position)) ** 0.5
+            is_nan = math.isnan(dist)
+            ranked.append((is_nan, 0.0 if is_nan else dist, rank, other))
+        ranked.sort()
+        return [other for _, _, _, other in ranked[:k]]
+
+    return neighborhood
+
+
+@pytest.mark.parametrize("dimensions", [2, 3])
+@pytest.mark.parametrize("k", [-1, 0, 1, 5, 200])
+def test_k_nearest_neighbors_finds_the_nodes_a_scan_of_every_node_finds(dimensions, k):
+    rng = random.Random(19)
+    environment = Environment()
+    _scattered(environment, rng, 120, dimensions)
+    neighborhood = k_nearest_neighbors(k)
+    reference = _scanning_k_nearest(k)
+    for node in environment.node_list():
+        assert [n.id for n in neighborhood(node, environment)] == [
+            n.id for n in reference(node, environment)
+        ]
+
+    for node in environment.node_list()[::2]:
+        node.position = tuple(coord + rng.uniform(-3, 3) for coord in node.position)
+    environment.nodes[1].update(new_position=environment.nodes[4].position)
+    for node_id in range(0, 120, 6):
+        environment.remove_node(node_id)
+    _scattered(environment, rng, 15, dimensions, start=120)
+    environment.nodes[5].position = (math.nan,) * dimensions
+    environment.nodes[7].position = (math.inf,) + (0.0,) * (dimensions - 1)
+    for node in environment.node_list():
+        assert [n.id for n in neighborhood(node, environment)] == [
+            n.id for n in reference(node, environment)
+        ]
+
+
+def test_k_nearest_neighbors_reads_only_the_positions_of_the_nodes_nearby():
+    environment = Environment()
+    for node_id in range(1000):
+        row, col = divmod(node_id, 50)
+        environment.add_node(
+            Node(position=_CountedPosition((col * 1.0, row * 1.0)), node_id=node_id)
+        )
+    neighborhood = k_nearest_neighbors(4)
+    neighborhood(environment.nodes[0], environment)
+    _CountedPosition.reads = 0
+
+    found = neighborhood(environment.nodes[525], environment)
+
+    assert len(found) == 4
+    assert _CountedPosition.reads < 60
+
+
+def test_k_nearest_and_adaptive_range_handle_coincident_mixed_and_infinite_bounds():
+    coincident = Environment()
+    for node_id in range(4):
+        coincident.add_node(Node(position=(1.0, 1.0), node_id=node_id))
+    assert [n.id for n in k_nearest_neighbors(2)(coincident.nodes[0], coincident)] == [1, 2]
+
+    sparse = Environment()
+    sparse.add_node(Node(position=(math.nan, 0.0), node_id="nan"))
+    sparse.add_node(Node(position=None, node_id="bad"))  # type: ignore[arg-type]
+    sparse.add_node(Node(position=(0.0, 0.0), node_id="2d"))
+    sparse.add_node(Node(position=(1.0, 2.0, 3.0), node_id="3d"))
+    knn = k_nearest_neighbors(2)
+    assert len(knn(sparse.nodes["bad"], sparse)) == 2
+    sparse.nodes["nan"].position = (0.5, 0.5)
+    sparse.remove_node("bad")
+    assert len(knn(sparse.nodes["2d"], sparse)) == 2
+
+    unbounded = adaptive_range(math.inf, neighbors=1, tolerance=0, min_range=1.0, max_range=math.inf)
+    assert unbounded(coincident.nodes[0], coincident) == [
+        coincident.nodes[1], coincident.nodes[2], coincident.nodes[3]
+    ]
