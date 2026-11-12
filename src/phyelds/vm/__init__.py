@@ -102,15 +102,16 @@ class EngineState:
 class Engine(ABC):
     """
     Abstract base class for the engine. This class should be implemented by the user.
+
+    Attributes:
+        vectorized: Whether the engine runs many devices at once, each value holding one per
+            device: ``@aggregate`` then rewrites the ``if`` statements, the conditional
+            expressions, ``and``, ``or``, ``not``, ``min`` and ``max`` into ``branch`` and
+            ``choose``, which run each side for the devices choosing it. ``False`` by
+            default: one device, plain Python.
     """
 
     vectorized: bool = False
-    """
-    Whether the engine runs many devices at once, each value holding one per device:
-    ``@aggregate`` then rewrites the ``if`` statements, the conditional expressions, ``and``,
-    ``or``, ``not``, ``min`` and ``max`` into ``branch`` and ``choose``, which run each side
-    for the devices choosing it. ``False`` by default: one device, plain Python.
-    """
 
     def __init__(self):
         self.node_context: NodeContext | None = None
