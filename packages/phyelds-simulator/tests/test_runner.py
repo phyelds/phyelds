@@ -1,10 +1,11 @@
 from phyelds.calculus import aggregate, neighbors, remember_and_evolve
+from phyelds.libraries.device import local_position, sense
 from phyelds.simulator import Node
 from phyelds.simulator import Simulator
 from phyelds.simulator.deployments import random_in_circle
 from phyelds.simulator.neighborhood import full_neighborhood
 from phyelds.simulator.runner import (
-    aggregate_program_runner, schedule_program_for_all,
+    SimulatorNodeContext, aggregate_program_runner, schedule_program_for_all,
 )
 
 
@@ -78,3 +79,21 @@ def test_aggregate_program_with_parameters():
     schedule_program_for_all(sim, 0.0, 1.0, program, value=1)
     sim.run(2)
     assert node.data['result'] == 1
+
+
+def test_simulator_node_context_reads_node_position_without_copying_node_data():
+    sim = Simulator()
+    node = sim.create_node((3.0, 4.0), data={"source": True}, node_id=1)
+    context = SimulatorNodeContext.from_node(node)
+
+    assert context.sensors is node.data
+    assert context.position() == (3.0, 4.0)
+    assert context.sense("position") == (3.0, 4.0)
+
+    @aggregate
+    def read_pos():
+        return local_position(), sense("position"), sense("source")
+
+    schedule_program_for_all(sim, 0.0, 1.0, read_pos)
+    sim.run(0.5)
+    assert node.data["result"] == ((3.0, 4.0), (3.0, 4.0), True)

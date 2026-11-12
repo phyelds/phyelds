@@ -86,7 +86,8 @@ the order of the environment.
 
 Move a node by giving it a new position, `node.position = (x, y)` or
 `node.update(new_position=(x, y))`, not by changing its position in place, so that the
-grid sees the move.
+grid sees the move. `adaptive_range` and `k_nearest_neighbors` query the same spatial
+grid, breaking distance ties in `k_nearest_neighbors` by the order of the environment.
 
 ## Ranges that adapt
 
