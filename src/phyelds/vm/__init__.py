@@ -142,21 +142,21 @@ class Engine(ABC):
             first, as the engine encodes them: pass it back to the other methods.
         """
 
-    def write_state(self, value: any, stack: list) -> None:
+    def write_state(self, value: any, stack: list | None = None) -> None:
         """
         Store a value of the device's state, to be read in the next rounds.
 
         Args:
             value: The value to store.
-            stack: The alignment path the value belongs to.
+            stack: The alignment path the value belongs to; the current one by default.
         """
 
-    def read_state(self, stack: list) -> any:
+    def read_state(self, stack: list | None = None) -> any:
         """
         Read a value of the device's state, marking it as still in use.
 
         Args:
-            stack: The alignment path the value belongs to.
+            stack: The alignment path the value belongs to; the current one by default.
 
         Returns:
             The stored value, or ``None`` if there is none.
@@ -195,15 +195,35 @@ class Engine(ABC):
             The IDs of the neighbors that sent a value at the current alignment path.
         """
 
-    def aligned_values(self, path: list) -> dict[int, any]:
+    def aligned_values(self, path: list | None = None) -> dict[int, any]:
         """
         Return the values the aligned neighbors sent at ``path``.
 
         Args:
-            path: The alignment path of the values.
+            path: The alignment path of the values; the current one by default.
 
         Returns:
             A dictionary mapping each neighbor ID to the value it sent at ``path``.
+        """
+
+    def begin_process(self, name: str) -> Any:
+        """
+        Enter an isolated alignment point for a process key, saving current round effects.
+
+        Args:
+            name: The process alignment segment name.
+
+        Returns:
+            An opaque checkpoint token for ``end_process``.
+        """
+
+    def end_process(self, token: Any, commit: bool) -> None:
+        """
+        Leave a process alignment point, committing or rolling back its round effects.
+
+        Args:
+            token: The checkpoint token returned by ``begin_process``.
+            commit: True to keep state and outgoing messages, False to restore ``token``.
         """
 
     def cooldown(self) -> dict[str, Any]:

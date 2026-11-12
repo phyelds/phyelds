@@ -75,21 +75,11 @@ class _ProcessTransaction:
         self.committed = False
         self.should_emit = True
         self._engine = engine.get()
-        self._saved_to_send: dict[str, Any] = {}
-        self._saved_state_trace: dict[str, Any] = {}
-        self._saved_reads: set[str] = set()
+        self._token: Any = None
 
     def __enter__(self) -> "_ProcessTransaction":
-        state = self._engine.engine_state
-        self._saved_to_send = state.to_send.copy()
-        self._saved_state_trace = state.state_trace.copy()
-        self._saved_reads = state.reads.copy()
-        # The key alone aligns a process, whatever the processes before it: enter it as the
-        # first point of its parent, then give the parent back its count.
-        counter = state.count_stack[-1]
-        state.count_stack[-1] = 0
-        self._engine.enter(f"process:{self.key!r}")
-        state.count_stack[-2] = counter
+        # The key alone aligns a process, whatever the processes before it.
+        self._token = self._engine.begin_process(f"process:{self.key!r}")
         _ACTIVE_TRANSACTIONS.append(self)
         return self
 
@@ -100,14 +90,7 @@ class _ProcessTransaction:
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         if _ACTIVE_TRANSACTIONS:
             _ACTIVE_TRANSACTIONS.pop()
-        state = self._engine.engine_state
-        if state.stack:
-            state.stack.pop()
-            state.count_stack.pop()
-        if not self.committed:
-            state.to_send = self._saved_to_send
-            state.state_trace = self._saved_state_trace
-            state.reads = self._saved_reads
+        self._engine.end_process(self._token, self.committed)
 
 
 _ACTIVE_TRANSACTIONS: list[_ProcessTransaction] = []

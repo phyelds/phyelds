@@ -131,11 +131,10 @@ def remember_and_evolve(
         The value after this round's evolution: ``evolve_fn(init)`` on the first round.
     """
     current_engine = engine.get()
-    path = current_engine.current_path()
-    stored = current_engine.read_state(path)
+    stored = current_engine.read_state()
     current: T = init if stored is None else stored
     updated: T = evolve_fn(current)
-    current_engine.write_state(updated, path)
+    current_engine.write_state(updated)
     return updated
 
 
@@ -163,13 +162,12 @@ def neighbors(value: T) -> "NeighborhoodField[T]":
     if isinstance(value, NeighborhoodField):
         raise TypeError("Neighborhood is not supported as a value")
 
-    engine.get().send(value)
-
-    # aligned_values returns a Dict[int, Any], strictly speaking Dict[int, T] here
-    values = engine.get().aligned_values(engine.get().current_path())
-    values[engine.get().node_context.node_id] = value
-
-    return NeighborhoodField(values, engine.get().node_context.node_id)
+    current_engine = engine.get()
+    node_id = current_engine.node_context.node_id
+    current_engine.send(value)
+    values = current_engine.aligned_values()
+    values[node_id] = value
+    return NeighborhoodField(values, node_id)
 
 
 def _extract_for_node(value: Any, node_id: int) -> Any:
@@ -208,7 +206,7 @@ def exchange(
 
     values = {
         neighbor_id: _extract_for_node(neighbor_value, node_id)
-        for neighbor_id, neighbor_value in current_engine.aligned_values(path).items()
+        for neighbor_id, neighbor_value in current_engine.aligned_values().items()
     }
     values[node_id] = local_value
     default_value = (
