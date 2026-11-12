@@ -279,6 +279,8 @@ def _transformed(func: Callable, vectorized: bool = False) -> Callable:
     """
     if transform_code is None:
         return func
+    # No ** in the dictionary: the MicroPython bundle keeps this module, and its syntax.
     helpers = {"align_left": align_left, "align_right": align_right,
-               "_aligned_branch": _aligned_branch, **_VECTOR_HELPERS}
+               "_aligned_branch": _aligned_branch}
+    helpers.update(_VECTOR_HELPERS)
     return transform_code(func, helpers, vectorized)
