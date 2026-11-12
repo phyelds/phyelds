@@ -12,7 +12,7 @@ from phyelds.libraries.spreading import distance_to
 from phyelds.libraries.time import local_time
 from phyelds.vm.asynchronous import AsynchronousRuntime
 from phyelds.vm.synchronous import SynchronousRuntime
-from phyelds.vm.wavefront import (
+from phyelds.experimental.wavefront import (
     Channel,
     ExponentialClock,
     PeriodicClock,

@@ -11,3 +11,5 @@
 ::: phyelds.experimental.swarm.flocking
 
 ::: phyelds.experimental.swarm.leader
+
+::: phyelds.experimental.wavefront

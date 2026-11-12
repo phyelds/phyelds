@@ -8,4 +8,3 @@
 
 ::: phyelds.vm.asynchronous
 
-::: phyelds.vm.wavefront
