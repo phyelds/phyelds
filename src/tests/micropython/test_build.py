@@ -113,6 +113,18 @@ def test_transpile_redirects_modules_missing_on_micropython():
     ]
 
 
+def test_transpile_redirects_operator_to_its_stand_in():
+    output = _transpiled("""
+        import operator
+        total = operator.add(1, 2)
+    """)
+
+    assert output.splitlines() == [
+        "import phyelds._mpy.operator as operator",
+        "total = operator.add(1, 2)",
+    ]
+
+
 def test_transpile_drops_the_names_imported_from_stand_ins_and_no_longer_used():
     output = _transpiled("""
         import functools

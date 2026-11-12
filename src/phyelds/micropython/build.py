@@ -34,6 +34,7 @@ _SHIMMED = {
     "enum": "enum",
     "functools": "functools",
     "inspect": "inspect",
+    "operator": "operator",
     "typing": "typing",
 }
 _TYPING = ("typing", "collections.abc")
