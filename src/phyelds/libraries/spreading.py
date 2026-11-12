@@ -20,7 +20,6 @@ from phyelds.libraries.distances import hops_distance
 from phyelds.libraries.utils import (
     PathValue,
     accumulate_distance,
-    min_with_default,
     non_looping_paths,
     path_coherence,
 )
@@ -263,7 +262,7 @@ def distance_to(
         return send_gradient(
             0.0
             if source
-            else min_with_default(neighbors_gradients.exclude_self(), float("inf"))
+            else neighbors_gradients.without_self().min(default=float("inf"))
         )
 
     active_strategy = _resolve_strategy(strategy)
