@@ -430,3 +430,26 @@ def test_k_nearest_neighbors_reads_only_the_positions_of_the_nodes_nearby():
 
     assert len(found) == 4
     assert _CountedPosition.reads < 60
+
+
+def test_k_nearest_and_adaptive_range_handle_coincident_mixed_and_infinite_bounds():
+    coincident = Environment()
+    for node_id in range(4):
+        coincident.add_node(Node(position=(1.0, 1.0), node_id=node_id))
+    assert [n.id for n in k_nearest_neighbors(2)(coincident.nodes[0], coincident)] == [1, 2]
+
+    sparse = Environment()
+    sparse.add_node(Node(position=(math.nan, 0.0), node_id="nan"))
+    sparse.add_node(Node(position=None, node_id="bad"))  # type: ignore[arg-type]
+    sparse.add_node(Node(position=(0.0, 0.0), node_id="2d"))
+    sparse.add_node(Node(position=(1.0, 2.0, 3.0), node_id="3d"))
+    knn = k_nearest_neighbors(2)
+    assert len(knn(sparse.nodes["bad"], sparse)) == 2
+    sparse.nodes["nan"].position = (0.5, 0.5)
+    sparse.remove_node("bad")
+    assert len(knn(sparse.nodes["2d"], sparse)) == 2
+
+    unbounded = adaptive_range(math.inf, neighbors=1, tolerance=0, min_range=1.0, max_range=math.inf)
+    assert unbounded(coincident.nodes[0], coincident) == [
+        coincident.nodes[1], coincident.nodes[2], coincident.nodes[3]
+    ]

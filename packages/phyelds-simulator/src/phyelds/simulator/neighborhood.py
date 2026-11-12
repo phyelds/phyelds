@@ -89,8 +89,6 @@ class _UniformGrid:
 
     def near(self, position: Tuple[float, ...], radius: Optional[float] = None) -> List[Node]:
         """The nodes that may be within ``radius`` (or ``side`` by default) of ``position``."""
-        if radius is not None and radius < 0:
-            return []
         if radius is not None and not math.isfinite(radius):
             return self.all_nodes()
         cell = self.cell_of(position)
