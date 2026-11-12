@@ -41,6 +41,7 @@ A `NeighborhoodField` maps device IDs to values (`{device_id: value}`) and alway
 | `field.without_self()` | A new `NeighborhoodField` without the device itself |
 | `field.exclude_self()` | A plain `dict` (`id → value`) without the device itself |
 | `field.select(mask)` | List of values whose entry in the boolean field `mask` is `True` |
+| `field.where(mask)` | A new `NeighborhoodField` with the entries whose value in the boolean field `mask` is truthy |
 | `field.data` | The underlying `dict` (`id → value`) |
 
 ### Transformations and reductions

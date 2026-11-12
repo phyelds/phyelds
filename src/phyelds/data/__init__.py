@@ -158,6 +158,23 @@ class NeighborhoodField(Generic[T], Iterator[T]):  # pylint: disable=too-many-pu
         # We look at keys present in both, where the *other* neighborhood's value is truthy
         return [self.data[k] for k in self.data if neighborhood.data.get(k, False)]
 
+    def where(self, mask: "NeighborhoodField[Any]") -> "NeighborhoodField[T]":
+        """
+        Return the field restricted to the entries for which ``mask`` holds.
+
+        Unlike ``select``, the result is a field: reduce it as any other, as in
+        ``values.where(children).fold(local, operator.add)``.
+
+        Args:
+            mask: The field used as a filter, typically a field of booleans.
+
+        Returns:
+            A new ``NeighborhoodField`` with the entries whose node is truthy in ``mask``;
+                nodes missing from ``mask`` are left out. The default stays the same.
+        """
+        kept = {k: v for k, v in self.data.items() if mask.data.get(k, False)}
+        return NeighborhoodField(kept, self.node_id, default=self.default, _sorted=True)
+
     def any(
         self,
         predicate: Optional[Callable[[T], bool]] = None,

@@ -233,3 +233,22 @@ def test_map_passes_the_values_of_the_device_after_each_entry():
 
     assert shifted.data == {1: 6, 2: 16}
     assert shifted.default == -4
+
+
+def test_where_keeps_the_entries_whose_mask_holds():
+    field = NeighborhoodField({1: 10, 2: 20, 3: 30}, 1, default=0)
+    mask = NeighborhoodField({1: False, 2: True, 3: 1}, 1)
+
+    kept = field.where(mask)
+
+    assert kept.data == {2: 20, 3: 30}
+    assert kept.node_id == 1
+    assert kept.default == 0
+
+
+def test_where_leaves_out_the_entries_missing_from_the_mask():
+    field = NeighborhoodField({1: 10, 2: 20, 3: 30}, 1)
+
+    kept = field.where(NeighborhoodField({2: True}, 2))
+
+    assert kept.data == {2: 20}
