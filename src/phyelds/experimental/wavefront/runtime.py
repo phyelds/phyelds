@@ -11,7 +11,7 @@ from typing import Any
 from phyelds.experimental.wavefront.channel import Channel, _LinkSlot
 from phyelds.experimental.wavefront.clocks import Clock, PeriodicClock
 from phyelds.experimental.wavefront.schedule import WorldNeighbors, select_wavefront
-from phyelds.vm.rounds import RoundRunner
+from phyelds.vm.synchronous import RoundRunner
 
 WorldSensors = Mapping[Hashable, Mapping[str, Any]]
 
