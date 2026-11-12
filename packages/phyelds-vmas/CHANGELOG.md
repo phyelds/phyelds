@@ -1,3 +1,9 @@
+## [10.0.2](https://github.com/phyelds/phyelds/compare/10.0.1...10.0.2) (2026-11-12)
+
+### Performance improvements
+
+* **simulator:** write csv metrics with csv and drop pandas ([#82](https://github.com/phyelds/phyelds/issues/82)) ([5f46457](https://github.com/phyelds/phyelds/commit/5f4645786b39e8b1ea0830eb89e5cc3f0c3a2371)), closes [#37](https://github.com/phyelds/phyelds/issues/37)
+
 ## [10.0.1](https://github.com/phyelds/phyelds/compare/10.0.0...10.0.1) (2026-11-10)
 
 ### Documentation
