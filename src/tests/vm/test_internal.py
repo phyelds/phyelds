@@ -144,6 +144,17 @@ def test_compact_paths_handles_unhashable_segment_names():
     assert engine_.cooldown() == {_compact_key([("[1, 2]", 0)]): "payload"}
 
 
+def test_compact_paths_bounds_segment_cache_and_recomputes_after_eviction():
+    from phyelds.vm.internal import CompactPaths  # pylint: disable=import-outside-toplevel
+
+    paths = CompactPaths()
+    first = paths.segment(None, "loop", 0)
+    for idx in range(1, 4100):
+        paths.segment(None, "loop", idx)
+
+    assert paths.segment(None, "loop", 0) == first == _compact_key([("loop", 0)])
+
+
 def test_mutable_engine_process_transaction_commits_or_rolls_back():
     engine_ = MutableEngine(paths="compact").setup(MockNodeContext(0))
     engine_.enter("root")
