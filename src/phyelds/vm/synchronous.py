@@ -2,13 +2,15 @@
 Synchronous rounds of many devices in one process: the building block of hosts that step all
 their agents together, such as the model of a multi-agent simulator.
 """
-import math
 from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
 # In Python 3.14 concurrent.futures loads ThreadPoolExecutor in __getattr__, which astroid misses.
 from concurrent.futures import ThreadPoolExecutor  # pylint: disable=no-name-in-module
+import math
 from typing import Any
 
-from phyelds.vm.rounds import run_round
+from phyelds import engine
+from phyelds.vm import Engine, NodeContext
+from phyelds.vm.internal import MutableEngine
 
 # More chunks than workers, so that a worker that drew slow devices does not hold the others.
 _CHUNKS_PER_WORKER = 4
@@ -33,20 +35,34 @@ class SynchronousRuntime:
         program: The ``@aggregate`` function to run on each device.
         workers: How many threads run the rounds of the devices; with 1, the calling thread
             runs them.
+        paths: Alignment path encoding for the default ``MutableEngine`` (``"compact"`` by
+            default).
+        engine_factory: Optional factory building one ``Engine`` per worker thread.
 
     Raises:
         ValueError: If ``workers`` is below 1.
     """
 
-    def __init__(self, program: Callable[[], Any], *, workers: int = 1):
+    def __init__(
+        self,
+        program: Callable[[], Any],
+        *,
+        workers: int = 1,
+        paths: Any = "compact",
+        engine_factory: Callable[[], Engine] | None = None,
+    ):
         if workers < 1:
             raise ValueError(f"workers must be at least 1, not {workers}")
         self.program = program
         self.workers = workers
+        self._make_engine: Callable[[], Engine] = (
+            engine_factory if engine_factory is not None else lambda: MutableEngine(paths=paths)
+        )
         self.outputs: dict[Hashable, dict[str, Any]] = {}
         """What the program stored with ``store`` on each device, in the last round."""
         self._states: dict[Hashable, dict[str, Any]] = {}
         self._outboxes: dict[Hashable, dict[str, Any]] = {}
+        self._engine: Engine | None = None
 
     def run_round(
         self,
@@ -67,7 +83,9 @@ class SynchronousRuntime:
         """
         devices = list(sensors)
         if self.workers == 1:
-            parts = [self._run(devices, sensors, neighbors)]
+            if self._engine is None:
+                self._engine = self._make_engine()
+            parts = [self._run(devices, sensors, neighbors, self._engine)]
         else:
             # A pool per round: starting its threads costs far less than a round worth splitting.
             with ThreadPoolExecutor(self.workers) as pool:
@@ -85,18 +103,28 @@ class SynchronousRuntime:
         devices: Sequence[Hashable],
         sensors: Mapping[Hashable, Mapping[str, Any]],
         neighbors: Mapping[Hashable, Iterable[Hashable]],
+        node_engine: Engine | None = None,
     ) -> _Round:
         """The rounds of ``devices``: their states, outboxes, outputs and results."""
+        if node_engine is None:
+            node_engine = self._make_engine()
+        engine.set(node_engine)
+        prev_outboxes = self._outboxes
+        prev_states = self._states
+        program = self.program
         states, outboxes, outputs, results = {}, {}, {}, {}
         for device in devices:
             inbox = {
-                other: self._outboxes[other]
+                other: prev_outboxes[other]
                 for other in neighbors.get(device, ())
-                if other in self._outboxes
+                if other in prev_outboxes
             }
-            done = run_round(self.program, device, sensors[device], inbox, self._states.get(device))
-            states[device], outboxes[device] = done.state, done.outbox
-            outputs[device], results[device] = done.outputs, done.result
+            context = NodeContext(device, sensors[device])  # type: ignore[arg-type]
+            node_engine.setup(context, inbox, prev_states.get(device))  # type: ignore[arg-type]
+            results[device] = program()
+            outboxes[device] = node_engine.cooldown()
+            states[device] = node_engine.state_trace()
+            outputs[device] = context.outputs
         return states, outboxes, outputs, results
 
 
@@ -108,8 +136,11 @@ def _chunks(devices: Sequence[Hashable], workers: int) -> list[Sequence[Hashable
 
 def _merge(parts: Iterable[_Round]) -> _Round:
     """The rounds of all the chunks, in their order."""
+    parts_list = list(parts)
+    if len(parts_list) == 1:
+        return parts_list[0]
     merged: _Round = ({}, {}, {}, {})
-    for part in parts:
+    for part in parts_list:
         for whole, piece in zip(merged, part):
             whole.update(piece)
     return merged

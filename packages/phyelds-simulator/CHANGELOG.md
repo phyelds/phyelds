@@ -1,3 +1,9 @@
+## [10.0.4](https://github.com/phyelds/phyelds/compare/10.0.3...10.0.4) (2026-11-12)
+
+### Performance improvements
+
+* **vm:** speed up compact paths, engine rounds and sorted fields ([#84](https://github.com/phyelds/phyelds/issues/84)) ([35c4790](https://github.com/phyelds/phyelds/commit/35c479051ef11946c2d1a3e8958fce81c96077dc)), closes [#37](https://github.com/phyelds/phyelds/issues/37)
+
 ## [10.0.3](https://github.com/phyelds/phyelds/compare/10.0.2...10.0.3) (2026-11-12)
 
 ### Performance improvements

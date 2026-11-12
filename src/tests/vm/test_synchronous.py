@@ -125,3 +125,23 @@ def test_synchronous_runtime_computes_the_same_rounds_in_worker_threads(program)
 def test_synchronous_runtime_rejects_fewer_than_one_worker():
     with pytest.raises(ValueError, match="at least 1"):
         SynchronousRuntime(rounds, workers=0)
+
+
+def test_synchronous_runtime_uses_compact_paths_by_default_and_accepts_engine_factory():
+    topology = {0: [1], 1: [0]}
+    calls = []
+
+    def custom_factory():
+        calls.append(1)
+        return MutableEngine(paths="debug")
+
+    from phyelds.vm.internal import MutableEngine  # pylint: disable=import-outside-toplevel
+
+    default_runtime = SynchronousRuntime(neighbor_count)
+    default_runtime.run_round(_sensors(topology), topology)
+    assert all(isinstance(key, int) for outbox in default_runtime._outboxes.values() for key in outbox)  # pylint: disable=protected-access
+
+    custom_runtime = SynchronousRuntime(neighbor_count, engine_factory=custom_factory)
+    assert custom_runtime.run_round(_sensors(topology), topology) == {0: 0, 1: 0}
+    assert custom_runtime.run_round(_sensors(topology), topology) == {0: 1, 1: 1}
+    assert calls
