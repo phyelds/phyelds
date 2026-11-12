@@ -10,7 +10,9 @@ from phyelds.libraries.device import local_id, sense, store
 from phyelds.libraries.gossip import gossip_max
 from phyelds.libraries.spreading import distance_to
 from phyelds.vm.device import Device
-from phyelds.vm.synchronous import SynchronousRuntime
+from phyelds.vm.internal import MutableEngine
+from phyelds.vm.rounds import run_round
+from phyelds.vm.synchronous import RoundRunner, SynchronousRuntime
 
 ROUNDS = 12
 
@@ -135,8 +137,6 @@ def test_synchronous_runtime_uses_compact_paths_by_default_and_accepts_engine_fa
         calls.append(1)
         return MutableEngine(paths="debug")
 
-    from phyelds.vm.internal import MutableEngine  # pylint: disable=import-outside-toplevel
-
     default_runtime = SynchronousRuntime(neighbor_count)
     default_runtime.run_round(_sensors(topology), topology)
     assert all(isinstance(key, int) for outbox in default_runtime._outboxes.values() for key in outbox)  # pylint: disable=protected-access
@@ -145,3 +145,78 @@ def test_synchronous_runtime_uses_compact_paths_by_default_and_accepts_engine_fa
     assert custom_runtime.run_round(_sensors(topology), topology) == {0: 0, 1: 0}
     assert custom_runtime.run_round(_sensors(topology), topology) == {0: 1, 1: 1}
     assert calls
+
+@aggregate
+def neighbor_ids():
+    return sorted(neighbors(local_id()).exclude_self().values())
+
+
+@aggregate
+def stored_sensor():
+    store("seen", sense("temperature"))
+    return None
+
+
+def _no_messages(_device):
+    return {}
+
+
+def test_round_runner_runs_each_device_with_its_own_inbox():
+    sent = {
+        device: run_round(neighbor_ids, device, {}, {}, paths="compact").outbox
+        for device in (1, 2)
+    }
+    inboxes = {0: {1: sent[1], 2: sent[2]}, 3: {2: sent[2]}}
+    runner = RoundRunner(neighbor_ids)
+
+    done = runner.run({0: {}, 3: {}}, inboxes.__getitem__, {})
+
+    assert done.results == {0: [1, 2], 3: [2]}
+
+
+def test_round_runner_continues_each_device_from_its_state():
+    runner = RoundRunner(rounds)
+    first = runner.run({0: {}, 1: {}}, _no_messages, {})
+
+    second = runner.run({0: {}, 1: {}}, _no_messages, {0: first.states[0]})
+
+    assert second.results == {0: 2, 1: 1}
+
+
+def test_round_runner_collects_the_outboxes_and_outputs_of_each_device():
+    runner = RoundRunner(stored_sensor)
+
+    done = runner.run({0: {"temperature": 20.0}, 1: {"temperature": 21.5}}, _no_messages, {})
+
+    assert done.outputs == {0: {"seen": 20.0}, 1: {"seen": 21.5}}
+    assert list(done.outboxes) == [0, 1]
+
+
+def test_round_runner_computes_the_same_rounds_in_worker_threads():
+    sensors = {device: {"temperature": float(device)} for device in range(40)}
+
+    sequential = RoundRunner(stored_sensor).run(sensors, _no_messages, {})
+    threaded = RoundRunner(stored_sensor, workers=4).run(sensors, _no_messages, {})
+
+    assert threaded == sequential
+    assert list(threaded.outputs) == list(sensors)
+
+
+def test_round_runner_builds_one_engine_on_the_calling_thread():
+    built = []
+
+    def factory():
+        built.append(1)
+        return MutableEngine(paths="compact")
+
+    runner = RoundRunner(rounds, engine_factory=factory)
+
+    runner.run({0: {}}, _no_messages, {})
+    runner.run({0: {}}, _no_messages, {})
+
+    assert len(built) == 1
+
+
+def test_round_runner_rejects_fewer_than_one_worker():
+    with pytest.raises(ValueError, match="at least 1"):
+        RoundRunner(rounds, workers=0)
