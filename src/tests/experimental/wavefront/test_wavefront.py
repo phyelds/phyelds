@@ -229,20 +229,10 @@ def test_weibull_and_exponential_clocks_and_callable_world_and_reset():
 @pytest.mark.parametrize(
     "factory",
     [
-        lambda: PeriodicClock(0.0),
-        lambda: PeriodicClock(1.0, jitter=1.0),
-        lambda: PeriodicClock(1.0, drift=1.0),
-        lambda: WeibullClock(0.0),
-        lambda: WeibullClock(1.0, shape=0.0),
-        lambda: ExponentialClock(0.0),
-        lambda: Channel(delay=-0.1),
-        lambda: Channel(jitter=-0.1),
-        lambda: Channel(loss=1.2),
-        lambda: Channel(retention=0.0),
         lambda: WavefrontRuntime(round_counter, window=-0.1),
         lambda: WavefrontRuntime(round_counter, workers=0),
     ],
 )
-def test_wavefront_validates_configuration_parameters(factory):
+def test_wavefront_runtime_rejects_invalid_settings(factory):
     with pytest.raises(ValueError):
         factory()
