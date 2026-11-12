@@ -6,8 +6,9 @@ tests in `src/tests/`. `experimental` holds studies in progress, whose API is no
 settled and may change in any release; a study that settles moves to `libraries`. The simulator (`phyelds.simulator`) is a separate package in
 `packages/phyelds-simulator/`, and so are the VMAS extension in
 `packages/phyelds-vmas/`, the Mesa extension in `packages/phyelds-mesa/`, the
-Webots extension in `packages/phyelds-webots/` and the ARGoS extension in
-`packages/phyelds-argos/`; all of them share the `phyelds` namespace. The core
+Webots extension in `packages/phyelds-webots/`, the ARGoS extension in
+`packages/phyelds-argos/` and the PyTorch backend in `packages/phyelds-gpu/` (in progress,
+not released yet); all of them share the `phyelds` namespace. The core
 has no external runtime dependencies: the simulator is a development dependency, used by the
 tests, the examples and the playground. The documentation site (MkDocs Material) is in `docs/`,
 with runnable, tested examples in `docs/examples/`.
@@ -25,6 +26,8 @@ poetry run pip install "mesa[network]==3.5.1"   # once, for the Mesa extension
 PYTHONPATH="packages/phyelds-mesa/src" poetry run pytest packages/phyelds-mesa/tests
 PYTHONPATH="packages/phyelds-webots/src" poetry run pytest packages/phyelds-webots/tests  # runs Webots if on the PATH
 PYTHONPATH="packages/phyelds-argos/src" poetry run pytest packages/phyelds-argos/tests    # needs ARGoS3 and CMake
+poetry run pip install --index-url https://download.pytorch.org/whl/cpu torch   # once, for the GPU backend
+PYTHONPATH="packages/phyelds-gpu/src" poetry run pytest packages/phyelds-gpu/tests
 poetry run python benchmarks/run.py --hosts simulator mesa --nodes 100 1000   # scaling benchmarks (benchmarks/README.md)
 poetry install --with docs         # documentation dependencies
 poetry run mkdocs build --strict   # build the docs, as in CI (mkdocs serve to preview)

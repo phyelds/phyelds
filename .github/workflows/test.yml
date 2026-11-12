@@ -152,6 +152,44 @@ jobs:
       working-directory: packages/phyelds-mesa
       run: poetry build
 
+  gpu:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.13", "3.14"]
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v7
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install Poetry
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 -
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - name: Configure Poetry to not create virtualenvs (CI-friendly)
+      run: poetry config virtualenvs.create false
+
+    - name: Install core and PyTorch for CPU
+      run: |
+        poetry install
+        poetry run pip install --index-url https://download.pytorch.org/whl/cpu torch
+
+    - name: Lint GPU extension
+      run: PYTHONPATH="packages/phyelds-gpu/src" poetry run pylint packages/phyelds-gpu/src packages/phyelds-gpu/tests
+
+    - name: Test GPU extension
+      run: PYTHONPATH="packages/phyelds-gpu/src" poetry run pytest packages/phyelds-gpu/tests
+
+    - name: Build GPU extension
+      working-directory: packages/phyelds-gpu
+      run: poetry build
+
   webots:
     runs-on: ubuntu-latest
     # Webots and xvfb come with the image; its Python is too old for phyelds, so the
