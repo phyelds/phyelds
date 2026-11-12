@@ -5,7 +5,7 @@ with the same messages.
 """
 import pytest
 
-from phyelds.calculus import aggregate, exchange, neighbors, remember
+from phyelds.calculus import aggregate, exchange, neighbors, remember, str_transformed_code
 from phyelds.libraries.collect import collect_or, count_nodes, sum_values
 from phyelds.libraries.device import local_id, sense, store
 from phyelds.libraries.gossip import gossip_max
@@ -104,7 +104,31 @@ def libraries():
     )
 
 
+@aggregate
+def without_locals():
+    if sense("value") > 1:
+        return neighbors(1).sum()
+    return 0
+
+
+@aggregate
+def scoped_names():
+    import math  # pylint: disable=import-outside-toplevel  # a name the function binds
+    value = sense("value")
+    try:
+        ratio = 1 / (value - 1)
+    except ZeroDivisionError as error:
+        ratio = type(error).__name__
+    # Expressions bound to their scope stay as they are: := would bind in a lambda.
+    doubled = (total := neighbors(1).sum()) + total if value > 1 else 0
+    either = value > 2 or (counted := neighbors(value).sum()) == counted
+    if value > 2:
+        ratio = math.floor(ratio * 10)
+    return ratio, doubled, either
+
+
 PROGRAMS = [
+    without_locals,
     branches_assigning_locals,
     early_returns,
     nested_branches_without_else,
@@ -135,7 +159,9 @@ def _device_rounds(program, engine_type) -> list[dict]:
     return history
 
 
-@pytest.mark.parametrize("program", PROGRAMS, ids=lambda program: program.__name__)
+@pytest.mark.parametrize(
+    "program", [*PROGRAMS, scoped_names], ids=lambda program: program.__name__
+)
 def test_vectorized_rewriting_computes_on_one_device_what_the_aligned_one_does(program):
     aligned = _device_rounds(program, MutableEngine)
 
@@ -165,3 +191,18 @@ def branch_in_a_loop():
 def test_vectorized_rewriting_leaves_the_branches_in_loops_to_single_truth_values():
     with pytest.raises(TypeError, match="truth value"):
         lanes_rounds(branch_in_a_loop, SENSORS, LINE, 1)
+
+
+@aggregate
+def countdown():
+    value = sense("value")
+    if not value:
+        yield 0
+    yield value
+
+
+def test_vectorized_rewriting_leaves_the_statements_of_a_generator():
+    rewritten = str_transformed_code(countdown, vectorized=True)
+
+    assert "_aligned_branch" not in rewritten
+    assert "_vector_not(value)" in rewritten
