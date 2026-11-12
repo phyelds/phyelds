@@ -36,6 +36,7 @@ A `NeighborhoodField` maps device IDs to values (`{device_id: value}`) and alway
 | Operation | Result |
 | --- | --- |
 | `field.local()` | The device's own value |
+| `field.with_local(value)` | A new `NeighborhoodField` where the device's own value is `value` |
 | `field.for_node(id)` | The value for `id`, or `field.default` if `id` is not in the field |
 | `field.without_self()` | A new `NeighborhoodField` without the device itself |
 | `field.exclude_self()` | A plain `dict` (`id → value`) without the device itself |

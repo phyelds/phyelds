@@ -47,4 +47,4 @@ def hops_distance() -> NeighborhoodField[int]:
     Returns:
         A field that is ``1`` for every neighbor and ``0`` for the current device.
     """
-    return neighbors(1)._with_local(0)  # pylint: disable=protected-access
+    return neighbors(1).with_local(0)

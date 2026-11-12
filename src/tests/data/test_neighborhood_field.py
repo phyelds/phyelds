@@ -34,11 +34,6 @@ def test_select_returns_empty_when_no_overlap():
 def test_internal_field_helpers_preserve_immutability_and_reductions():
     # pylint: disable=protected-access
     field = NeighborhoodField({1: 10, 2: 20, 3: 30}, 1, default=99)
-    updated = field._with_local(0)
-    assert updated.data == {1: 0, 2: 20, 3: 30}
-    assert updated.for_node(99) == 99
-    assert field.data == {1: 10, 2: 20, 3: 30}
-
     parents = NeighborhoodField({1: None, 2: 1, 3: 1}, 1)
     assert field._fold_where_equal(parents, 1, 5, lambda a, b: a + b) == 55
 
@@ -128,6 +123,33 @@ def test_without_self_returns_neighborhood_field_excluding_local_node():
     assert peers.data == {1: 10, 3: 30}
     assert peers.node_id == 2
     assert peers.for_node(99) == 99
+
+
+def test_with_local_replaces_the_value_of_the_device_and_keeps_the_others():
+    field = NeighborhoodField({1: 10, 2: 20, 3: 30}, 2, default=99)
+
+    updated = field.with_local(0)
+
+    assert updated.data == {1: 10, 2: 0, 3: 30}
+    assert updated.node_id == 2
+    assert updated.for_node(4) == 99
+
+
+def test_with_local_leaves_the_original_field_unchanged():
+    field = NeighborhoodField({1: 10, 2: 20, 3: 30}, 2)
+
+    field.with_local(0)
+
+    assert field.data == {1: 10, 2: 20, 3: 30}
+
+
+def test_with_local_adds_the_device_when_the_field_has_no_value_for_it():
+    peers = NeighborhoodField({1: 10, 2: 20, 3: 30}, 2).without_self()
+
+    updated = peers.with_local(0)
+
+    assert updated.data == {1: 10, 2: 0, 3: 30}
+    assert list(updated) == [10, 0, 30]
 
 
 def test_ge_operator_compares_values_and_propagates_default():

@@ -114,6 +114,24 @@ class NeighborhoodField(Generic[T], Iterator[T]):
         """
         return self.data.get(self.node_id, None)
 
+    def with_local(self, value: T) -> "NeighborhoodField[T]":
+        """
+        Return a copy of the field where the current node has ``value``.
+
+        The values of the neighbors and the default stay the same, and the field itself is
+        not changed. If the field has no value for the current node, the copy adds it.
+
+        Args:
+            value: The new value of the current node.
+
+        Returns:
+            A new ``NeighborhoodField`` mapping the current node to ``value``.
+        """
+        updated = self.data.copy()
+        replacing = self.node_id in updated  # a replaced value keeps the IDs in order
+        updated[self.node_id] = value
+        return NeighborhoodField(updated, self.node_id, default=self.default, _sorted=replacing)
+
     def for_node(self, target_id: int) -> Optional[T]:
         """
         Return the value addressed to ``target_id``, falling back to ``default``.
@@ -139,12 +157,6 @@ class NeighborhoodField(Generic[T], Iterator[T]):
         """
         # We look at keys present in both, where the *other* neighborhood's value is truthy
         return [self.data[k] for k in self.data if neighborhood.data.get(k, False)]
-
-    def _with_local(self, value: T) -> "NeighborhoodField[T]":
-        """Return a new field whose entry for ``node_id`` is ``value``."""
-        updated = self.data.copy()
-        updated[self.node_id] = value
-        return NeighborhoodField(updated, self.node_id, default=self.default)
 
     def _fold_where_equal(
         self,
