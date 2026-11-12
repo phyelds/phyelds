@@ -61,8 +61,8 @@ jobs:
         use_oidc: true
 
   free-threaded:
-    # The rounds of many devices can run in threads only if the core never enables the GIL
-    # (test_dependencies checks it). The simulator's pandas does, so the suite runs as usual.
+    # The rounds of many devices can run in threads only if neither the core nor the
+    # headless simulator enables the GIL (checked by test_dependencies and test_import_boundary).
     runs-on: ubuntu-latest
 
     steps:
