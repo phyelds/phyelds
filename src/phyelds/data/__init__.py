@@ -30,7 +30,8 @@ _IS_MICROPYTHON = sys.implementation.name == "micropython"
 _Sorted = OrderedDict if _IS_MICROPYTHON else dict
 
 
-class NeighborhoodField(Generic[T], Iterator[T]):
+# A field is a collection with its own algebra: its many public methods are its API.
+class NeighborhoodField(Generic[T], Iterator[T]):  # pylint: disable=too-many-public-methods
     """
     NeighborhoodField class used to manage the interactions between nodes
     (namely `nbr` of neighborhood calculus).
