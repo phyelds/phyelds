@@ -5,10 +5,12 @@ round (a spike), so the next devices to run already read its new message.
 from collections.abc import Callable, Hashable, Iterable, Mapping
 from typing import Any
 
+from phyelds.vm import Engine
+from phyelds.vm.internal import MutableEngine
 from phyelds.vm.rounds import run_round
 
 
-class AsynchronousRuntime:
+class AsynchronousRuntime:  # pylint: disable=too-many-instance-attributes
     """
     Runs an aggregate program on many devices, one spike or sequential round at a time.
 
@@ -20,21 +22,35 @@ class AsynchronousRuntime:
         retention: For how long, in the units of the ``"time"`` sensor or ``time``, a silent
             device is kept before its state, messages and outputs are forgotten; ``None`` by
             default, which keeps silent devices until ``forget`` or ``reset``.
+        paths: Alignment path encoding for the default ``MutableEngine`` (``"compact"`` by
+            default).
+        engine_factory: Optional factory building the ``Engine`` used to run rounds.
 
     Raises:
         ValueError: If ``retention`` is not positive.
     """
 
-    def __init__(self, program: Callable[[], Any], *, retention: float | None = None):
+    def __init__(
+        self,
+        program: Callable[[], Any],
+        *,
+        retention: float | None = None,
+        paths: Any = "compact",
+        engine_factory: Callable[[], Engine] | None = None,
+    ):
         if retention is not None and retention <= 0:
             raise ValueError(f"retention must be positive, not {retention}")
         self.program = program
         self.retention = retention
-        self.outputs: dict[Hashable, dict[str, Any]] = {}
-        """What the program stored with ``store`` on each device, in its last spike."""
+        self._engine: Engine | None = None
+        self._factory: Callable[[], Engine] = (
+            engine_factory if engine_factory is not None else lambda: MutableEngine(paths=paths)
+        )
+        self._last_seen: dict[Hashable, float] = {}
         self._states: dict[Hashable, dict[str, Any]] = {}
         self._outboxes: dict[Hashable, dict[str, Any]] = {}
-        self._last_seen: dict[Hashable, float] = {}
+        self.outputs: dict[Hashable, dict[str, Any]] = {}
+        """What the program stored with ``store`` on each device, in its last spike."""
 
     def spike(
         self,
@@ -60,9 +76,12 @@ class AsynchronousRuntime:
             ValueError: If ``retention`` is set and neither ``time`` nor ``sensors["time"]``
                 is given.
         """
-        device_sensors = dict(sensors)
-        if time is not None and "time" not in device_sensors:
-            device_sensors["time"] = time
+        if time is not None and "time" not in sensors:
+            copied_sensors = dict(sensors)
+            copied_sensors["time"] = time
+            device_sensors: Mapping[str, Any] = copied_sensors
+        else:
+            device_sensors = sensors
         if self.retention is not None:
             now = device_sensors.get("time")
             if now is None:
@@ -71,8 +90,17 @@ class AsynchronousRuntime:
                 if now - seen > self.retention:
                     self.forget(other)
             self._last_seen[device] = now
+        if self._engine is None:
+            self._engine = self._factory()
         inbox = {other: self._outboxes[other] for other in neighbors if other in self._outboxes}
-        done = run_round(self.program, device, device_sensors, inbox, self._states.get(device))
+        done = run_round(
+            self.program,
+            device,
+            device_sensors,
+            inbox,
+            self._states.get(device),
+            engine_instance=self._engine,
+        )
         self._states[device], self._outboxes[device] = done.state, done.outbox
         self.outputs[device] = done.outputs
         return done.result

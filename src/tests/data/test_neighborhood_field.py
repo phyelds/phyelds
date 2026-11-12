@@ -185,3 +185,14 @@ def test_coerce_in_and_replace_matching_transform_field():
     assert replaced.data == {1: 0, 2: 5, 3: 15}
 
 
+def test_derived_fields_preserve_sorted_node_order():
+    first = NeighborhoodField({5: 50, 1: 10, 3: 30, 2: 20}, 3)
+    second = NeighborhoodField({4: 4, 3: 3, 2: 2, 1: 1}, 3)
+
+    assert list(first.without_self().data.keys()) == [1, 2, 5]
+    assert list(first.map(lambda x: x + 1).data.keys()) == [1, 2, 3, 5]
+    assert list((first + second).data.keys()) == [1, 2, 3]
+    assert list((first + 1).data.keys()) == [1, 2, 3, 5]
+    assert list((~first).data.keys()) == [1, 2, 3, 5]
+
+

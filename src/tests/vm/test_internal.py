@@ -132,4 +132,54 @@ def test_mutable_engine_reads_the_messages_of_neighbors_by_path(paths):
 
     assert engine_.aligned() == [1]
     assert engine_.aligned_values(engine_.current_path()) == {1: "one"}
+    assert engine_.aligned_values() == {1: "one"}
     assert engine_.aligned_values(deeper) == {1: "one deeper"}
+
+
+def test_compact_paths_handles_unhashable_segment_names():
+    engine_ = MutableEngine(paths="compact").setup(MockNodeContext(0))
+    engine_.enter([1, 2])
+    engine_.send("payload")
+
+    assert engine_.cooldown() == {_compact_key([("[1, 2]", 0)]): "payload"}
+
+
+def test_compact_paths_bounds_segment_cache_and_recomputes_after_eviction():
+    from phyelds.vm.internal import CompactPaths  # pylint: disable=import-outside-toplevel
+
+    paths = CompactPaths()
+    first = paths.segment(None, "loop", 0)
+    for idx in range(1, 4100):
+        paths.segment(None, "loop", idx)
+
+    assert paths.segment(None, "loop", 0) == first == _compact_key([("loop", 0)])
+
+
+def test_mutable_engine_process_transaction_commits_or_rolls_back():
+    engine_ = MutableEngine(paths="compact").setup(MockNodeContext(0))
+    engine_.enter("root")
+    engine_.enter("before")
+    engine_.exit()
+
+    token = engine_.begin_process("process:1")
+    engine_.write_state("temp", engine_.current_path())
+    engine_.send("temp_msg")
+    engine_.end_process(token, commit=False)
+
+    engine_.enter("after")
+    after_path = engine_.current_path()
+    engine_.exit()
+    assert after_path == [_compact_key([("root", 0)]), _compact_key([("root", 0), ("after", 1)])]
+    assert engine_.state_trace() == {}
+    assert engine_.cooldown() == {}
+
+    engine_.setup(MockNodeContext(0))
+    token = engine_.begin_process("process:2")
+    proc_path = engine_.current_path()
+    engine_.read_state(proc_path)
+    engine_.write_state("kept", proc_path)
+    engine_.send("kept_msg")
+    engine_.end_process(token, commit=True)
+
+    assert engine_.cooldown() == {_compact_key([("process:2", 0)]): "kept_msg"}
+    assert engine_.state_trace() == {_compact_key([("process:2", 0)]): "kept"}
