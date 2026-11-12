@@ -155,8 +155,6 @@ def radius_neighborhood(radius: float):
 
 def _knn_grid_side(nodes: List[Node], target_k: int) -> float:
     """Choose a uniform-grid cell size expecting roughly ``target_k`` nodes per cell."""
-    if len(nodes) <= 1:
-        return 1.0
     mins: List[float] = []
     maxs: List[float] = []
     placed = 0
