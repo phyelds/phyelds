@@ -14,7 +14,7 @@ from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 from phyelds.calculus.internal import AggregateTransformer
-from phyelds.calculus.internal.vectorize import REWRITABLE_BUILTINS, vectorize
+from phyelds.calculus.internal.vectorize import HELPERS, REWRITABLE_BUILTINS, vectorize
 
 
 _TRANSFORMATION_CACHE = {}
@@ -282,8 +282,8 @@ def transform_code(
     Args:
         func: The function to transform.
         helpers: Names the rewritten code calls (``align_left``, ``align_right``,
-            ``_aligned_branch`` and the ``_vector_*`` ones); the closure variables of
-            ``func`` take precedence.
+            ``_aligned_branch``), besides the ``_vector_*`` ones of the vectorized
+            rewriting; the closure variables of ``func`` take precedence.
         vectorized: Whether to rewrite ``func`` for a vectorized engine (see
             ``phyelds.calculus.internal.vectorize``) rather than align its branches.
 
@@ -293,7 +293,7 @@ def transform_code(
     # The function whose source is rewritten: a decorator below @aggregate wraps it.
     original = inspect.unwrap(func)
     code = original.__code__
-    values = {**helpers, **_defaults(original)}
+    values = {**HELPERS, **helpers, **_defaults(original)}
     cells = {name: types.CellType(value) for name, value in values.items()}
     cells.update(zip(code.co_freevars, original.__closure__ or ()))
     cached = (code, vectorized)

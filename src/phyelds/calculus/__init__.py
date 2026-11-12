@@ -28,11 +28,9 @@ try:
     from phyelds.calculus.internal.transform import (  # noqa: F401 (str_transformed_code is public)
         transform_code, str_transformed_code,
     )
-    from phyelds.calculus.internal.vectorize import HELPERS as _VECTOR_HELPERS
 except ImportError:
     # The MicroPython bundle has no ``ast``: its code is rewritten when it is built, aligned.
     transform_code = None
-    _VECTOR_HELPERS = {}
 
 
 # Generic type variable to preserve types through functions
@@ -59,21 +57,16 @@ def aggregate(func):
         func (Callable): The function to wrap.
     """
 
-    # Rewritten on the first call for each kind of engine, once: the rewriting is costly.
-    aligned = batched = None
+    # Aligned and vectorized, rewritten on the first call of each, once: the rewriting is costly.
+    rewritten = [None, None]
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        nonlocal aligned, batched
         current_engine = engine.get()
-        if current_engine.vectorized:
-            if batched is None:
-                batched = _transformed(func, vectorized=True)
-            function = batched
-        else:
-            if aligned is None:
-                aligned = _transformed(func)
-            function = aligned
+        vectorized = current_engine.vectorized
+        function = rewritten[vectorized]
+        if function is None:
+            function = rewritten[vectorized] = _transformed(func, vectorized)
         current_engine.enter(func.__name__)
         result = function(*args, **kwargs)
         current_engine.exit()
@@ -279,8 +272,8 @@ def _transformed(func: Callable, vectorized: bool = False) -> Callable:
     """
     if transform_code is None:
         return func
-    # No ** in the dictionary: the MicroPython bundle keeps this module, and its syntax.
-    helpers = {"align_left": align_left, "align_right": align_right,
-               "_aligned_branch": _aligned_branch}
-    helpers.update(_VECTOR_HELPERS)
-    return transform_code(func, helpers, vectorized)
+    return transform_code(
+        func,
+        {"align_left": align_left, "align_right": align_right, "_aligned_branch": _aligned_branch},
+        vectorized,
+    )
