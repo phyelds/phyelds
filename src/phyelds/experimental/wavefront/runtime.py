@@ -34,12 +34,12 @@ class WavefrontRuntime:  # pylint: disable=too-many-instance-attributes
     """
     Execute an aggregate program in concurrent batches of causally independent devices.
 
-    At each step, every device whose wakeup falls within the lookahead horizon and has no
-    neighbor capable of delivering a message before its wakeup runs in the same concurrent
-    batch. When ``channel.delay == 0`` and ``window == 0``, batches are exact conservative
-    DES wavefronts matching single-event execution; when all clocks are aligned and
-    ``channel.delay > 0`` (or ``window > 0``), each batch spans the whole network like
-    ``SynchronousRuntime``.
+    At each step, every device whose wakeup falls within one clock period of the earliest
+    pending round, and that no neighbor can still send a message arriving by its wakeup,
+    runs in the same concurrent batch (see ``select_wavefront``). When ``channel.delay == 0``
+    and ``window == 0``, batches are exact conservative DES wavefronts matching single-event
+    execution; when all clocks are aligned and ``channel.delay > 0`` (or ``window > 0``),
+    each batch spans the whole network like ``SynchronousRuntime``.
 
     Args:
         program: The ``@aggregate`` function to run on each device.
