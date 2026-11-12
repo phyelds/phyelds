@@ -55,6 +55,26 @@ def test_radius_topology_measures_each_edge(device):
     assert topology.distances.tolist() == pytest.approx(expected)
 
 
+def test_radius_topology_links_the_devices_of_a_cloud_spread_over_many_cells():
+    rng = random.Random(3)
+    positions = []
+    for _ in range(20):  # close pairs, a million cells apart along each axis
+        centre = tuple(rng.uniform(0.0, 1000.0) for _ in range(3))
+        positions += [centre, (centre[0] + 0.0005, *centre[1:])]
+
+    topology = radius_topology(torch.tensor(positions, dtype=torch.float64), 0.001)
+
+    assert topology.to_neighbors() == _scan(positions, 0.001)
+
+
+def test_radius_topology_rejects_devices_spread_over_too_many_cells_to_key():
+    rng = random.Random(5)
+    positions = [[rng.uniform(0.0, 1e6) for _ in range(7)] for _ in range(1000)]
+
+    with pytest.raises(ValueError, match="from_neighbors"):
+        radius_topology(torch.tensor(positions, dtype=torch.float64), 0.001)
+
+
 def test_radius_topology_links_nobody_without_devices_or_with_a_negative_radius():
     pair = torch.tensor([[0.0, 0.0], [0.5, 0.0]])
 

@@ -5,6 +5,7 @@ the radius search that builds it on a uniform grid, on CPU or GPU.
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 import itertools
+import math
 
 import torch
 
@@ -166,6 +167,10 @@ def radius_topology(positions: torch.Tensor, radius: float) -> GraphTopology:
 
     Returns:
         The ``GraphTopology`` of the devices, with the length of each edge.
+
+    Raises:
+        ValueError: If the devices are spread over too many cells to key them with ``int64``,
+            as hundreds of thousands of them in a space a million times wider than ``radius``.
     """
     count = int(positions.shape[0])
     located = positions.to(dtype=torch.float64)
@@ -222,22 +227,33 @@ class _Grid:
 
     @classmethod
     def build(cls, positions: torch.Tensor, side: float) -> "_Grid":
-        """The grid of cells as wide as ``side`` holding ``positions``."""
-        count, dims = int(positions.shape[0]), int(positions.shape[1])
+        """
+        The grid of cells as wide as ``side`` holding ``positions``.
+
+        Raises:
+            ValueError: If the cells around the devices are too many to key with ``int64``.
+        """
         cells = torch.floor(positions / side).to(torch.int64)
-        cells = cells - cells.min(dim=0).values
-        # One empty cell on each side, so that shifted cells never wrap into another row.
-        extents = cells.max(dim=0).values + 3
-        strides = torch.ones(dims, dtype=torch.int64, device=positions.device)
-        for axis in range(dims - 2, -1, -1):
-            strides[axis] = strides[axis + 1] * extents[axis + 1]
-        keys = ((cells + 1) * strides).sum(dim=-1)
-        order = torch.argsort(
-            keys * (count + 1) + torch.arange(count, dtype=torch.int64, device=positions.device)
-        )
+        # Along each axis, only the coordinates of the cells with devices and of those next
+        # to them: a cell and the next keep consecutive ranks, so a shift by one cell is a
+        # shift by one rank, and the keys grow with the devices, not with the space.
+        ranks, sizes = [], []
+        for column in cells.T.contiguous():
+            around = torch.unique(torch.cat([column - 1, column, column + 1]))
+            ranks.append(torch.searchsorted(around, column))
+            sizes.append(int(around.numel()))
+        if math.prod(sizes) > torch.iinfo(torch.int64).max:
+            raise ValueError(
+                f"the {positions.shape[0]} devices span too many cells of side {side} to key"
+                " them: build the graph with GraphTopology.from_neighbors"
+            )
+        strides = [math.prod(sizes[axis + 1:]) for axis in range(len(sizes))]
+        stride_tensor = torch.tensor(strides, dtype=torch.int64, device=positions.device)
+        keys = (torch.stack(ranks, dim=1) * stride_tensor).sum(dim=-1)
+        order = torch.argsort(keys, stable=True)
         unique_keys, counts = torch.unique_consecutive(keys[order], return_counts=True)
         starts = torch.cumsum(counts, dim=0) - counts
-        return cls(order, unique_keys, starts, counts, strides, dims)
+        return cls(order, unique_keys, starts, counts, stride_tensor, len(sizes))
 
     def pairs_within(
         self, positions: torch.Tensor, radius: float, shift: tuple[int, ...]
