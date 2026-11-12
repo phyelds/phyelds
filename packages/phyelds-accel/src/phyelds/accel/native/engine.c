@@ -1015,7 +1015,7 @@ populate_inbox(PyObject *inbox, PyObject *neighbor_iter_or_seq, PyObject *prev_o
     PyObject *other = NULL;
     while ((other = PyIter_Next(iter)) != NULL) {
         PyObject *outbox = NULL;
-        int rc = PyDict_GetItemRef(prev_outboxes, other, &outbox);
+        int rc = DICT_GET_REF(prev_outboxes, other, &outbox);
         if (rc < 0) {
             Py_DECREF(other);
             Py_DECREF(iter);
