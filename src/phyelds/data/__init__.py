@@ -26,7 +26,8 @@ U = TypeVar("U")
 _MISSING = object()
 
 # Fields go through devices by id: MicroPython dicts do not keep the sorted order.
-_Sorted = OrderedDict if sys.implementation.name == "micropython" else dict
+_IS_MICROPYTHON = sys.implementation.name == "micropython"
+_Sorted = OrderedDict if _IS_MICROPYTHON else dict
 
 
 class NeighborhoodField(Generic[T], Iterator[T]):
@@ -38,8 +39,18 @@ class NeighborhoodField(Generic[T], Iterator[T]):
     You should never use it directly, but rather use the `neighbors` function
     """
 
-    def __init__(self, data: Dict[int, T], node_id: int, default: Any = _MISSING) -> None:
-        self.data: Dict[int, T] = _Sorted(sorted(data.items()))
+    def __init__(
+        self,
+        data: Dict[int, T],
+        node_id: int,
+        default: Any = _MISSING,
+        *,
+        _sorted: bool = False,
+    ) -> None:
+        if not _IS_MICROPYTHON and (_sorted or len(data) <= 1):
+            self.data: Dict[int, T] = data if _sorted else dict(data)
+        else:
+            self.data = _Sorted(sorted(data.items()))
         self._iter_index: Optional[int] = None
         self._iter_keys: Optional[List[int]] = None
         self.node_id: int = node_id
@@ -49,7 +60,7 @@ class NeighborhoodField(Generic[T], Iterator[T]):
 
     def __iter__(self) -> Iterator[T]:
         self._iter_index = 0
-        self._iter_keys = sorted(self.data.keys())
+        self._iter_keys = sorted(self.data.keys()) if _IS_MICROPYTHON else list(self.data.keys())
         return self
 
     def __next__(self) -> T:
@@ -79,7 +90,9 @@ class NeighborhoodField(Generic[T], Iterator[T]):
 
     def without_self(self) -> "NeighborhoodField[T]":
         """Return a new field containing only peer entries (excluding the local node)."""
-        return NeighborhoodField(self.exclude_self(), self.node_id, default=self.default)
+        return NeighborhoodField(
+            self.exclude_self(), self.node_id, default=self.default, _sorted=True
+        )
 
     def _values(self, include_self: bool) -> List[T]:
         if include_self:
@@ -409,6 +422,7 @@ class NeighborhoodField(Generic[T], Iterator[T]):
             {k: func(v) for k, v in self.data.items()},
             self.node_id,
             default=mapped_default,
+            _sorted=True,
         )
 
     # Helper method to apply binary operations
@@ -425,12 +439,14 @@ class NeighborhoodField(Generic[T], Iterator[T]):
                 {k: op(self.data[k], other.data[k]) for k in self.data if k in other.data},
                 self.node_id,
                 default=combined_default,
+                _sorted=True,
             )
         scalar_default = None if self.default is None else op(self.default, other)
         return NeighborhoodField(
             {k: op(v, other) for k, v in self.data.items()},
             self.node_id,
             default=scalar_default,
+            _sorted=True,
         )
 
     def __add__(self, other: Any) -> "NeighborhoodField[Any]":
@@ -469,6 +485,7 @@ class NeighborhoodField(Generic[T], Iterator[T]):
             {k: ~v for k, v in self.data.items()},
             self.node_id,
             default=inverted_default,
+            _sorted=True,
         )  # type: ignore
 
     def __lt__(self, other: Any) -> "NeighborhoodField[bool]":

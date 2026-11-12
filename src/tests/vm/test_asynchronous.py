@@ -159,3 +159,22 @@ def test_asynchronous_runtime_requires_a_time_when_retention_is_set():
 
     with pytest.raises(ValueError, match="time"):
         runtime.spike(0, {}, [])
+
+
+def test_asynchronous_runtime_uses_compact_paths_by_default_and_accepts_engine_factory():
+    from phyelds.vm.internal import MutableEngine  # pylint: disable=import-outside-toplevel
+
+    default_runtime = AsynchronousRuntime(neighbor_count)
+    default_runtime.spike(0, {}, [1])
+    assert all(isinstance(key, int) for key in default_runtime._outboxes[0])  # pylint: disable=protected-access
+
+    calls = []
+
+    def custom_factory():
+        calls.append(1)
+        return MutableEngine(paths="debug")
+
+    custom_runtime = AsynchronousRuntime(neighbor_count, engine_factory=custom_factory)
+    assert custom_runtime.spike(0, {}, [1]) == 0
+    assert custom_runtime.spike(1, {}, [0]) == 1
+    assert calls

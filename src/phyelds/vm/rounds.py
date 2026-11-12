@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from phyelds import engine
-from phyelds.vm import NodeContext
+from phyelds.vm import Engine, NodeContext
 from phyelds.vm.internal import MutableEngine
 
 
@@ -32,9 +32,10 @@ def run_round(  # pylint: disable=too-many-arguments
     state: Mapping[str, Any] | None = None,
     *,
     paths: Any = "debug",
+    engine_instance: Engine | None = None,
 ) -> Round:
     """
-    Run ``program`` once on ``device``, on a fresh engine set as the current one.
+    Run ``program`` once on ``device``, setting the round engine as the current one.
 
     Args:
         program: The ``@aggregate`` function to run.
@@ -42,15 +43,16 @@ def run_round(  # pylint: disable=too-many-arguments
         sensors: The sensors of the device in this round, by name.
         inbox: The messages of the neighbors, by their id.
         state: The state left by the previous round; none on the first.
-        paths: How the engine encodes alignment paths (see ``MutableEngine``).
+        paths: How the engine encodes alignment paths when creating a ``MutableEngine``.
+        engine_instance: Optional pre-built ``Engine`` to reuse across rounds.
 
     Returns:
         The result, messages, state and outputs of the round.
     """
-    node_engine = MutableEngine(paths=paths)
+    node_engine = MutableEngine(paths=paths) if engine_instance is None else engine_instance
     engine.set(node_engine)
-    context = NodeContext(device, dict(sensors))
-    node_engine.setup(context, inbox, state)
+    context = NodeContext(device, sensors)  # type: ignore[arg-type]
+    node_engine.setup(context, inbox, state)  # type: ignore[arg-type]
     result = program()
     outbox = node_engine.cooldown()  # first: it also drops the state not used
     return Round(

@@ -4,9 +4,13 @@ between different contexts. It provides methods to enter and exit contexts, send
 and manage the state of the system.
 """
 
-from typing import Dict, List, Any, Optional
+import sys
+from typing import Any, Dict, List, Optional
 
-from phyelds.vm import Engine, NodeContext, EngineState
+from phyelds.vm import Engine, EngineState, NodeContext
+
+_IS_MICROPYTHON = sys.implementation.name == "micropython"
+_MAX_SEGMENT_CACHE = 4096
 
 
 class DebugPaths:
@@ -46,6 +50,9 @@ class CompactPaths:
     boards.
     """
 
+    def __init__(self) -> None:
+        self._cache: Optional[Dict[Any, int]] = None if _IS_MICROPYTHON else {}
+
     def segment(self, parent: Any, name: Any, counter: int) -> int:
         """
         The segment of an alignment point: two polynomial hashes of the bytes of ``name``
@@ -60,6 +67,13 @@ class CompactPaths:
         Returns:
             The key of the path up to this point.
         """
+        cache = self._cache
+        if cache is not None:
+            normalized = name if isinstance(name, (str, int)) else str(name)
+            cache_key = (parent, normalized, counter)
+            cached = cache.get(cache_key)
+            if cached is not None:
+                return cached
         start = _ROOT if parent is None else parent
         high, low = start >> 15, start & 0x7FFF
         for byte in str(name).encode():
@@ -67,19 +81,25 @@ class CompactPaths:
             low = (low * 37 + byte) % _LOW
         high = (high * 31 + 256 + counter) % _HIGH  # above any byte: it closes the segment
         low = (low * 37 + 256 + counter) % _LOW
-        return high << 15 | low
+        result = high << 15 | low
+        if cache is not None:
+            if len(cache) >= _MAX_SEGMENT_CACHE:
+                cache.clear()
+            cache[cache_key] = result
+        return result
 
     def key(self, path: List[Any]) -> int:
         """The key of ``path``, a list of segments: its last one."""
         return path[-1] if path else _ROOT
 
 
-_PATHS = {"debug": DebugPaths(), "compact": CompactPaths()}
+_DEBUG_PATHS = DebugPaths()
+_COMPACT_PATHS = CompactPaths() if _IS_MICROPYTHON else None
 
 
 class MutableEngine(Engine):
     """
-    MutableEngine is the responsible for managing the state and message passing
+    MutableEngine is responsible for managing the state and message passing
     in an aggregate computing system. It provides methods to enter and exit contexts,
     send messages, and manage the state of the system.
 
@@ -95,43 +115,59 @@ class MutableEngine(Engine):
     Raises:
         ValueError: If ``paths`` is a string other than ``"debug"`` and ``"compact"``.
     """
+
     def __init__(self, paths: Any = "debug"):
         super().__init__()
         if isinstance(paths, str):
-            if paths not in _PATHS:
+            if paths == "debug":
+                paths = _DEBUG_PATHS
+            elif paths == "compact":
+                paths = _COMPACT_PATHS if _COMPACT_PATHS is not None else CompactPaths()
+            else:
                 raise ValueError(
-                    f"paths must be one of {sorted(_PATHS)} or an encoding, not {paths!r}"
+                    f"paths must be one of ['compact', 'debug'] or an encoding, not {paths!r}"
                 )
-            paths = _PATHS[paths]
         self._segment = paths.segment
         self._key = paths.key
-        self.engine_state = EngineState()
+        self.engine_state: Optional[EngineState] = None
 
     def setup(
         self, node_context: NodeContext, messages=None, state=None
     ) -> Engine:
         if messages is None:
             messages = {}
-        if state is None:
-            state = {}
+        state_copy = {} if state is None else state.copy()
         self.node_context = node_context
-        self.engine_state = EngineState(
-            stack=[],
-            state_trace=state.copy(),  # Copy the state to avoid modifying the original
-            count_stack=[0],  # Reset counter stack
-            to_send={},
-            messages=messages,
-            node_id=node_context.node_id,
-            reads=set(),
-        )
+        current = self.engine_state
+        if current is None:
+            self.engine_state = EngineState(
+                stack=[],
+                state_trace=state_copy,
+                count_stack=[0],
+                to_send={},
+                messages=messages,
+                node_id=node_context.node_id,
+                reads=set(),
+            )
+        else:
+            current.stack.clear()
+            current.state_trace = state_copy
+            current.count_stack.clear()
+            current.count_stack.append(0)
+            current.to_send = {}
+            current.messages = messages
+            current.node_id = node_context.node_id
+            current.reads.clear()
         return self
 
     def enter(self, name: str) -> None:
-        counter: int = self.engine_state.count_stack[-1]
-        self.engine_state.count_stack[-1] += 1
-        stack = self.engine_state.stack
+        state = self.engine_state
+        count_stack = state.count_stack
+        counter: int = count_stack[-1]
+        count_stack[-1] = counter + 1
+        stack = state.stack
         stack.append(self._segment(stack[-1] if stack else None, name, counter))
-        self.engine_state.count_stack.append(0)
+        count_stack.append(0)
 
     def key(self, path: List[Any]) -> Any:
         """
@@ -151,58 +187,95 @@ class MutableEngine(Engine):
             del self.engine_state.state_trace[key]
 
     def exit(self) -> None:
-        if self.engine_state.stack:
-            self.engine_state.stack.pop()
-            self.engine_state.count_stack.pop()
+        state = self.engine_state
+        if state.stack:
+            state.stack.pop()
+            state.count_stack.pop()
 
     def current_path(self) -> list:
         return self.engine_state.stack.copy()
 
-    def write_state(self, value: Any, stack: List[Any]) -> None:
-        self.engine_state.state_trace[self._key(stack)] = value
+    def write_state(self, value: Any, stack: Optional[List[Any]] = None) -> None:
+        state = self.engine_state
+        target = state.stack if stack is None else stack
+        state.state_trace[self._key(target)] = value
 
-    def read_state(self, stack: List[Any]) -> Optional[Any]:
-        key = self._key(stack)
-        self.engine_state.reads.add(key)
-        return self.engine_state.state_trace.get(key)
+    def read_state(self, stack: Optional[List[Any]] = None) -> Optional[Any]:
+        state = self.engine_state
+        target = state.stack if stack is None else stack
+        key = self._key(target)
+        state.reads.add(key)
+        return state.state_trace.get(key)
 
     def send(self, data: Any, stack: Optional[List[Any]] = None) -> None:
-        target_stack = self.engine_state.stack if stack is None else stack
-        self.engine_state.to_send[self._key(target_stack)] = data
+        state = self.engine_state
+        target_stack = state.stack if stack is None else stack
+        state.to_send[self._key(target_stack)] = data
 
     def aligned(self) -> List[int]:
-        key = self._key(self.engine_state.stack)
+        state = self.engine_state
+        key = self._key(state.stack)
         return [
-            node_id for node_id, messages in self.engine_state.messages.items() if key in messages
+            node_id for node_id, messages in state.messages.items() if key in messages
         ]
 
-    def aligned_values(self, path: List[Any]) -> Dict[int, Any]:
+    def aligned_values(self, path: Optional[List[Any]] = None) -> Dict[int, Any]:
+        state = self.engine_state
+        current_key = self._key(state.stack)
+        messages = state.messages
+        if path is None:
+            return {
+                node_id: peer_msgs[current_key]
+                for node_id, peer_msgs in messages.items()
+                if current_key in peer_msgs
+            }
         key = self._key(path)
-        messages = self.engine_state.messages
+        if key == current_key:
+            return {
+                node_id: peer_msgs[key]
+                for node_id, peer_msgs in messages.items()
+                if key in peer_msgs
+            }
         return {
-            node_id: messages[node_id][key]
-            for node_id in self.aligned()
-            if key in messages[node_id]
+            node_id: peer_msgs[key]
+            for node_id, peer_msgs in messages.items()
+            if current_key in peer_msgs and key in peer_msgs
         }
+
+    def begin_process(self, name: str) -> Any:
+        state = self.engine_state
+        saved = (state.to_send.copy(), state.state_trace.copy(), state.reads.copy())
+        counter = state.count_stack[-1]
+        state.count_stack[-1] = 0
+        self.enter(name)
+        state.count_stack[-2] = counter
+        return saved
+
+    def end_process(self, token: Any, commit: bool) -> None:
+        self.exit()
+        if not commit:
+            state = self.engine_state
+            state.to_send, state.state_trace, state.reads = token
 
     def state_trace(self) -> Dict[str, Any]:
         """
         Get the state trace of the engine.
-        :return: The state trace.
+
+        Returns:
+            A copy of the state trace.
         """
         return self.engine_state.state_trace.copy()
 
     def cooldown(self) -> Dict[str, Any]:
-        flatten_messages: Dict[str, Any] = {}
-        for key in self.engine_state.to_send:
-            value = self.engine_state.to_send[key]
-            flatten_messages[key] = value
-        # get state that were not read
-        for key in self.engine_state.state_trace.copy():
-            if key not in self.engine_state.reads:
-                del self.engine_state.state_trace[key]
-        self.engine_state.to_send = {}
-        self.engine_state.stack = []
-        self.engine_state.count_stack = []  # Reset counter stack
-        self.engine_state.messages = {}
+        state = self.engine_state
+        flatten_messages: Dict[str, Any] = state.to_send
+        reads = state.reads
+        state_trace = state.state_trace
+        dead = [key for key in state_trace if key not in reads]
+        for key in dead:
+            del state_trace[key]
+        state.to_send = {}
+        state.stack.clear()
+        state.count_stack.clear()
+        state.messages = {}
         return flatten_messages
