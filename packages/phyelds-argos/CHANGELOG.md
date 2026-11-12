@@ -1,3 +1,9 @@
+## [10.0.3](https://github.com/phyelds/phyelds/compare/10.0.2...10.0.3) (2026-11-12)
+
+### Performance improvements
+
+* **simulator:** index adaptive_range and k_nearest_neighbors ([#83](https://github.com/phyelds/phyelds/issues/83)) ([e0d9c09](https://github.com/phyelds/phyelds/commit/e0d9c09f2f7271621a06c556273280d64b2d4da3)), closes [#37](https://github.com/phyelds/phyelds/issues/37)
+
 ## [10.0.2](https://github.com/phyelds/phyelds/compare/10.0.1...10.0.2) (2026-11-12)
 
 ### Performance improvements
