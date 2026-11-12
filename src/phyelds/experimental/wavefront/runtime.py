@@ -9,7 +9,7 @@ import random
 from typing import Any
 
 from phyelds.experimental.wavefront.channel import Channel, _LinkSlot
-from phyelds.experimental.wavefront.clocks import Clock, PeriodicClock
+from phyelds.experimental.wavefront.clocks import Clock, Draws, PeriodicClock
 from phyelds.experimental.wavefront.schedule import WorldNeighbors, select_wavefront
 from phyelds.vm.synchronous import RoundRunner
 
@@ -79,7 +79,7 @@ class WavefrontRuntime:  # pylint: disable=too-many-instance-attributes
         self._links: dict[Hashable, dict[Hashable, _LinkSlot]] = {}
         self._next_time: dict[Hashable, float] = {}
         self._last_time: dict[Hashable, float] = {}
-        self._device_rngs: dict[Hashable, random.Random] = {}
+        self._device_rngs: dict[Hashable, tuple[random.Random, float]] = {}
         self._channel_rng = random.Random(f"{seed}:channel")
 
     def next_time(self, sensors: WorldSensors) -> float:
@@ -113,7 +113,7 @@ class WavefrontRuntime:  # pylint: disable=too-many-instance-attributes
         batch = select_wavefront(
             {dev: self._next_time[dev] for dev in sensors},
             neighbors,
-            lookahead=getattr(self.clock, "horizon", math.inf),
+            lookahead=self.clock.period,
             delay=max(self.channel.delay, 0.0 if self.window is None else self.window),
             until=until,
         )
@@ -141,7 +141,7 @@ class WavefrontRuntime:  # pylint: disable=too-many-instance-attributes
             self._transmit(
                 outbox=done.outboxes[dev], sender=dev, receivers=outgoing[dev], now=now
             )
-            self._next_time[dev] = now + self.clock.next_delta(dev, now, self._rng_for(dev))
+            self._next_time[dev] = now + self.clock.interval(self._draws(dev))
 
         horizon = max(batch_times.values())
         return WavefrontStep(
@@ -191,12 +191,14 @@ class WavefrontRuntime:  # pylint: disable=too-many-instance-attributes
         self._device_rngs.clear()
         self._channel_rng = random.Random(f"{self.seed}:channel")
 
-    def _rng_for(self, device: Hashable) -> random.Random:
-        rng = self._device_rngs.get(device)
-        if rng is None:
+    def _draws(self, device: Hashable) -> Draws:
+        """The randomness of the next round of ``device``, from its own seeded generator."""
+        randomness = self._device_rngs.get(device)
+        if randomness is None:
             rng = random.Random(f"{self.seed}:dev:{device!r}")
-            self._device_rngs[device] = rng
-        return rng
+            randomness = self._device_rngs[device] = (rng, rng.random())
+        rng, device_draw = randomness
+        return Draws(device=device_draw, uniform=rng.random(), exponential=rng.expovariate(1.0))
 
     def _sync_membership(self, sensors: WorldSensors) -> None:
         active = set(sensors)
@@ -211,7 +213,7 @@ class WavefrontRuntime:  # pylint: disable=too-many-instance-attributes
                 slots.pop(departed, None)
         for dev in sensors:
             if dev not in self._next_time:
-                self._next_time[dev] = self.clock.initial_time(dev, self._rng_for(dev))
+                self._next_time[dev] = self.clock.first(self._draws(dev))
 
     def _gather_inbox(
         self, device: Hashable, peers: Iterable[Hashable], now: float

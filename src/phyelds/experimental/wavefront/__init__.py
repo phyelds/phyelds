@@ -9,6 +9,7 @@ devices run together, up to every device, as in a synchronous round.
 from phyelds.experimental.wavefront.channel import Channel
 from phyelds.experimental.wavefront.clocks import (
     Clock,
+    Draws,
     ExponentialClock,
     PeriodicClock,
     WeibullClock,
@@ -19,6 +20,7 @@ from phyelds.experimental.wavefront.schedule import select_wavefront
 __all__ = [
     "Channel",
     "Clock",
+    "Draws",
     "ExponentialClock",
     "PeriodicClock",
     "WavefrontRuntime",

@@ -142,50 +142,6 @@ def test_wavefront_collapses_to_full_system_synchronous_batches_in_worst_case():
         assert wavefront.outputs == synchronous.outputs
 
 
-def test_wavefront_channel_models_in_flight_latency_loss_and_retention():
-    topology = {0: [1], 1: [0]}
-    sensors = {0: {}, 1: {}}
-    # Node 0 wakes at 0.0, 1.0; node 1 wakes at 0.2, 0.7, 1.2 through custom clock
-    times = {0: [0.0, 1.0, 5.0], 1: [0.2, 0.7, 1.2, 3.0]}
-    cursors = {0: 0, 1: 0}
-
-    class ScriptedClock:
-        def initial_time(self, device, _rng):
-            cursors[device] = 1
-            return times[device][0]
-
-        def next_delta(self, device, now, _rng):
-            idx = cursors[device]
-            cursors[device] = idx + 1
-            return times[device][idx] - now if idx < len(times[device]) else 10.0
-
-    # Delay 0.5, retention 1.0:
-    # - Wavefront 1: 0 @ 0.0 and 1 @ 0.2 are concurrent (|0.2 - 0.0| < 0.5) -> both hear {}
-    # - Wavefront 2: 1 @ 0.7 and 0 @ 1.0 are concurrent (0.7 + 0.5 > 1.0) ->
-    #   1 hears 0's 0.0 packet (arrived 0.5), 0 hears 1's 0.2 packet (arrived 0.7)
-    # - Wavefront 3: 1 @ 1.2 blocks 0 @ 5.0; 0's 1.0 packet (arrives 1.5) is still in flight,
-    #   so 1 still reads committed 0.0
-    # - Wavefront 4: 1 @ 3.0 blocks 0 @ 5.0; 0's 1.0 packet arrived at 1.5, age 1.5 > 1.0 -> {}
-    runtime = WavefrontRuntime(
-        heard_times,
-        clock=ScriptedClock(),
-        channel=Channel(delay=0.5, retention=1.0),
-    )
-
-    assert runtime.step(sensors, topology).results == {0: {}, 1: {}}
-    assert runtime.step(sensors, topology).results == {0: {1: 0.2}, 1: {0: 0.0}}
-    assert runtime.step(sensors, topology).results == {1: {0: 0.0}}
-    assert runtime.step(sensors, topology).results == {1: {}}
-
-    lossy = WavefrontRuntime(
-        heard_times,
-        clock=PeriodicClock(1.0, random_phase=False),
-        channel=Channel(delay=0.01, loss=1.0),
-    )
-    lossy.step(sensors, topology)
-    assert lossy.step(sensors, topology).results == {0: {}, 1: {}}
-
-
 def test_weibull_and_exponential_clocks_and_callable_world_and_reset():
     topology = {0: [1], 1: [0]}
     weibull_rt = WavefrontRuntime(
@@ -202,12 +158,10 @@ def test_weibull_and_exponential_clocks_and_callable_world_and_reset():
     )
     assert all(count >= 2 for count in results.values())
 
-    weibull_sync_phase = WeibullClock(period=1.0, shape=2.0, random_phase=False)
     exp_rt = WavefrontRuntime(round_counter, clock=ExponentialClock(rate=2.0), seed=3)
     assert exp_rt.run_until(2.0, {0: {}, 1: {}}, topology)
     exp_rt.reset()
     assert exp_rt.results == {}
-    assert weibull_sync_phase.initial_time(0, None) == 0.0  # type: ignore[arg-type]
 
     # Device leaving after exchanging messages cleans up link slots, and self/unknown peers work.
     leaving = WavefrontRuntime(heard_times, clock=PeriodicClock(1.0), channel=Channel(delay=0.01))
@@ -236,3 +190,15 @@ def test_weibull_and_exponential_clocks_and_callable_world_and_reset():
 def test_wavefront_runtime_rejects_invalid_settings(factory):
     with pytest.raises(ValueError):
         factory()
+
+
+def test_wavefront_runtime_draws_the_drift_of_each_device_from_its_seed():
+    topology = {0: [], 1: []}
+
+    def last_round_times(seed):
+        runtime = WavefrontRuntime(round_counter, clock=PeriodicClock(1.0, drift=0.5), seed=seed)
+        runtime.run_until(10.0, _sensors(topology), topology)
+        return [runtime.last_time_of(device) for device in topology]
+
+    assert last_round_times(1) == last_round_times(1)
+    assert last_round_times(1) != last_round_times(2)

@@ -1,42 +1,66 @@
 """
 Clocks: when each device runs its rounds, in the time of a wavefront simulation.
+
+A clock turns randomness into times. The runtime draws the randomness, and the clock computes
+with arithmetic operators only: the same clock works on the floats of one device and on arrays,
+such as tensors, holding one value per device.
 """
-from collections.abc import Hashable
 from dataclasses import dataclass
 import math
-import random
-from typing import Protocol
+from typing import Any, Protocol
+
+
+@dataclass(frozen=True)
+class Draws:
+    """
+    The randomness behind the next round of a device, drawn by the runtime: floats for one
+    device, or arrays holding one value per device for many.
+    """
+
+    device: Any
+    """A uniform draw in ``[0, 1)``, the same for the whole life of a device."""
+    uniform: Any
+    """A uniform draw in ``[0, 1)``, new at every round."""
+    exponential: Any
+    """A draw from the exponential distribution of mean 1, new at every round."""
 
 
 class Clock(Protocol):
-    """Per-device wakeup clock driving asynchronous discrete-event rounds."""
+    """
+    When a device runs its rounds.
 
-    horizon: float
-    """Nominal time span bounding how far ahead of the earliest event a batch looks."""
+    A clock computes its times from ``Draws`` with arithmetic operators only (``+``, ``-``,
+    ``*``, ``/``, ``**``), so that it works on floats and on arrays alike, and its times are
+    never negative.
+    """
 
-    def initial_time(self, device: Hashable, rng: random.Random) -> float:
-        """Return the timestamp of ``device``'s first round."""
+    @property
+    def period(self) -> float:
+        """The mean time between two rounds of a device; a wavefront looks this far ahead."""
 
-    def next_delta(self, device: Hashable, now: float, rng: random.Random) -> float:
-        """Return the positive time increment until ``device``'s next round after ``now``."""
+    def first(self, draws: Draws) -> Any:
+        """The time from when a device joins to its first round."""
+
+    def interval(self, draws: Draws) -> Any:
+        """The time from a round of a device to its next one."""
 
 
 @dataclass(frozen=True)
 class PeriodicClock:
     """
-    Periodic device clock with optional random initial phase, per-device drift and round jitter.
-
-    With the defaults (``random_phase=False, jitter=0.0, drift=0.0``), every device wakes up
-    together at ``0, period, 2 * period, ...``.
+    Rounds every ``period``, with a random start, a drift of each device and a jitter of each
+    round if asked: with the defaults, every device runs at ``0, period, 2 * period, ...``.
 
     Args:
-        period: Nominal interval between two rounds of a device (``> 0``).
-        random_phase: Whether each device starts at a uniform random offset in ``(0, period]``.
-        jitter: Relative per-round uniform jitter in ``[0.0, 1.0)``.
-        drift: Relative per-device clock skew bound in ``[0.0, 1.0)``.
+        period: The time between two rounds of a device.
+        random_phase: Whether a device runs its first round at a uniform time in
+            ``(0, period]`` after it joins, rather than right away.
+        jitter: How much each interval varies, uniformly, as a fraction of the period.
+        drift: How much the period of each device differs, uniformly, as a fraction of it.
 
     Raises:
-        ValueError: If ``period <= 0`` or ``jitter`` / ``drift`` is outside ``[0.0, 1.0)``.
+        ValueError: If ``period`` is not positive, or ``jitter`` or ``drift`` is not in
+            ``[0, 1)``.
     """
 
     period: float = 1.0
@@ -52,92 +76,87 @@ class PeriodicClock:
         if not 0.0 <= self.drift < 1.0:
             raise ValueError(f"drift must be in [0.0, 1.0), not {self.drift}")
 
-    @property
-    def horizon(self) -> float:
-        """Nominal lookahead horizon of one period."""
-        return float(self.period)
+    def first(self, draws: Draws) -> Any:
+        """No time, or a uniform time in ``(0, period]`` with a random phase."""
+        return _phase(self.period, self.random_phase, draws)
 
-    def initial_time(self, device: Hashable, rng: random.Random) -> float:
-        """Draw the initial wakeup time of ``device``."""
-        del device
-        if not self.random_phase:
-            return 0.0
-        return float(self.period) * (1.0 - rng.random())
-
-    def next_delta(self, device: Hashable, now: float, rng: random.Random) -> float:
-        """Return the next inter-round interval of ``device``."""
-        del now
-        skew = 1.0
-        if self.drift > 0.0:
-            skew_rng = random.Random(f"skew:{device!r}")
-            skew = 1.0 + skew_rng.uniform(-self.drift, self.drift)
-        noise = 1.0 + rng.uniform(-self.jitter, self.jitter) if self.jitter > 0.0 else 1.0
-        return max(1e-12, float(self.period) * skew * noise)
+    def interval(self, draws: Draws) -> Any:
+        """The period, stretched by the drift of the device and by the jitter of the round."""
+        drift = 1.0 + self.drift * (2.0 * draws.device - 1.0)
+        jitter = 1.0 + self.jitter * (2.0 * draws.uniform - 1.0)
+        return self.period * drift * jitter
 
 
+@dataclass(frozen=True)
 class WeibullClock:
     """
-    Weibull-distributed inter-round intervals with mean ``period`` (as in Alchemist).
+    Intervals from a Weibull distribution of mean ``period``, as in Alchemist.
 
     Args:
-        period: Mean interval between two rounds of a device (``> 0``).
-        shape: Weibull shape parameter ``k > 0`` (higher values mean more regular periods).
-        random_phase: Whether the first round is drawn uniformly in ``(0, period]``.
+        period: The mean time between two rounds of a device.
+        shape: The shape of the distribution: the higher, the more regular the intervals.
+        random_phase: Whether a device runs its first round at a uniform time in
+            ``(0, period]`` after it joins, rather than right away.
 
     Raises:
-        ValueError: If ``period <= 0`` or ``shape <= 0``.
+        ValueError: If ``period`` or ``shape`` is not positive.
     """
 
-    def __init__(
-        self, period: float = 1.0, shape: float = 4.0, *, random_phase: bool = True
-    ):
-        if period <= 0:
-            raise ValueError(f"period must be positive, not {period}")
-        if shape <= 0:
-            raise ValueError(f"shape must be positive, not {shape}")
-        self.period = float(period)
-        self.horizon = self.period
-        self.shape = float(shape)
-        self.random_phase = random_phase
-        self._scale = self.period / math.gamma(1.0 + 1.0 / self.shape)
+    period: float = 1.0
+    shape: float = 4.0
+    random_phase: bool = True
 
-    def initial_time(self, device: Hashable, rng: random.Random) -> float:
-        """Return the initial wakeup timestamp for ``device``."""
-        del device
-        if not self.random_phase:
-            return 0.0
-        return self.period * (1.0 - rng.random())
+    def __post_init__(self) -> None:
+        if self.period <= 0:
+            raise ValueError(f"period must be positive, not {self.period}")
+        if self.shape <= 0:
+            raise ValueError(f"shape must be positive, not {self.shape}")
 
-    def next_delta(self, device: Hashable, now: float, rng: random.Random) -> float:
-        """Sample a Weibull interval with mean ``period``."""
-        del device, now
-        u = min(max(rng.random(), 1e-15), 1.0 - 1e-15)
-        return max(1e-12, self._scale * (-math.log(1.0 - u)) ** (1.0 / self.shape))
+    def first(self, draws: Draws) -> Any:
+        """No time, or a uniform time in ``(0, period]`` with a random phase."""
+        return _phase(self.period, self.random_phase, draws)
+
+    def interval(self, draws: Draws) -> Any:
+        """A Weibull interval: the exponential draw, raised to ``1 / shape`` and scaled."""
+        scale = self.period / math.gamma(1.0 + 1.0 / self.shape)
+        return scale * draws.exponential ** (1.0 / self.shape)
 
 
+@dataclass(frozen=True)
 class ExponentialClock:
     """
-    Memoryless Poisson wakeup process with rate ``rate`` rounds per unit time.
+    Rounds as the events of a Poisson process: intervals from an exponential distribution
+    of mean ``1 / rate``, with no memory of the previous round.
 
     Args:
-        rate: Mean firing rate ``lambda > 0``.
+        rate: How many rounds a device runs per unit of time, on average.
 
     Raises:
-        ValueError: If ``rate <= 0``.
+        ValueError: If ``rate`` is not positive.
     """
 
-    def __init__(self, rate: float = 1.0):
-        if rate <= 0:
-            raise ValueError(f"rate must be positive, not {rate}")
-        self.rate = float(rate)
-        self.horizon = 1.0 / self.rate
+    rate: float = 1.0
 
-    def initial_time(self, device: Hashable, rng: random.Random) -> float:
-        """Sample the time of the first Poisson event for ``device``."""
-        return self.next_delta(device, 0.0, rng)
+    def __post_init__(self) -> None:
+        if self.rate <= 0:
+            raise ValueError(f"rate must be positive, not {self.rate}")
 
-    def next_delta(self, device: Hashable, now: float, rng: random.Random) -> float:
-        """Sample an exponential inter-arrival interval."""
-        del device, now
-        u = min(max(rng.random(), 1e-15), 1.0 - 1e-15)
-        return max(1e-12, -math.log(1.0 - u) / self.rate)
+    @property
+    def period(self) -> float:
+        """The mean time between two rounds, ``1 / rate``."""
+        return 1.0 / self.rate
+
+    def first(self, draws: Draws) -> Any:
+        """An exponential time, as for any other round: the process has no memory."""
+        return self.interval(draws)
+
+    def interval(self, draws: Draws) -> Any:
+        """The exponential draw, scaled to a mean of ``1 / rate``."""
+        return draws.exponential / self.rate
+
+
+def _phase(period: float, random_phase: bool, draws: Draws) -> Any:
+    """The time to the first round: uniform in ``(0, period]``, or zero shaped as the draws."""
+    if random_phase:
+        return period * (1.0 - draws.uniform)
+    return draws.uniform * 0.0
