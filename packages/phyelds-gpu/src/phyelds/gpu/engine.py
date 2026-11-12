@@ -12,6 +12,7 @@ from typing import Any, Protocol
 
 import torch
 
+from phyelds import engine
 from phyelds.gpu.fields import BatchField
 from phyelds.gpu.tensors import as_rows, where_rows
 from phyelds.gpu.topology import BatchEdges
@@ -123,12 +124,15 @@ class BatchContext(NodeContext):
         devices: The ids of the devices of the batch (``int64 [M]``).
         sensors: The sensors of every device, by name: a tensor with a row per device of the
             whole system, or one value for all.
-        engine: The engine running the batch, for the devices running the current code.
+        batch_engine: The engine running the batch: the devices that store are those running
+            the current code.
     """
 
-    def __init__(self, devices: torch.Tensor, sensors: Mapping[str, Any], engine: "BatchEngine"):
+    def __init__(
+        self, devices: torch.Tensor, sensors: Mapping[str, Any], batch_engine: "BatchEngine"
+    ):
         super().__init__(devices, dict(sensors))
-        self._engine = engine
+        self._engine = batch_engine
         self.stored: dict[str, Rows] = {}
         """What the devices stored, by name: a value of each device and whether it stored one."""
 
@@ -268,6 +272,19 @@ class BatchEngine(Engine):  # pylint: disable=too-many-instance-attributes
         if mask is None:
             return super().choose(condition, if_true, if_false)
         return self._split(mask, if_true, if_false, aligned=False)
+
+    def run(self, program: Callable[[], Any]) -> Any:
+        """
+        Run ``program`` once for the devices of the batch, with this engine as the current one.
+
+        Returns:
+            What the program returned, with a row per device of the batch.
+        """
+        token = engine.set(self)
+        try:
+            return program()
+        finally:
+            engine.reset(token)
 
     def finish(self) -> dict[int, Rows]:
         """
