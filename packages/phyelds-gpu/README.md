@@ -3,9 +3,11 @@
 PyTorch backend for [phyelds](https://github.com/phyelds/phyelds): the devices of an aggregate
 system as tensors, on CPU or GPU.
 
-Work in progress, not released yet. `BatchSynchronousRuntime` runs an unmodified `@aggregate`
-program on every device at once, one synchronous round at a time, with the results of
-phyelds' own `SynchronousRuntime`:
+`BatchSynchronousRuntime` runs an unmodified `@aggregate` program on every device at once, one
+synchronous round at a time, with the results of phyelds' own `SynchronousRuntime`;
+`BatchWavefrontRuntime` runs it in wavefronts of devices with clocks of their own, over a
+channel with delays and losses. See [the documentation](https://phyelds.github.io/phyelds/integration/gpu/).
+
 
 ```python
 import torch
