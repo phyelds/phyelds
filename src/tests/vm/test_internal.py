@@ -256,3 +256,18 @@ def test_mutable_engine_branch_leaves_its_alignment_point_when_the_branch_raises
         engine_.branch(True, failing, failing)
 
     assert not engine_.current_path()
+
+
+def test_mutable_engine_choose_runs_only_the_chosen_side_without_an_alignment_point():
+    engine_ = MutableEngine().setup(MockNodeContext(0))
+    skipped = []
+
+    left = engine_.choose(True, engine_.current_path, lambda: skipped.append("right"))
+    right = engine_.choose(0, lambda: skipped.append("left"), lambda: "right")
+
+    assert (left, right) == ([], "right")
+    assert not skipped
+
+
+def test_mutable_engine_runs_the_aligned_rewriting_of_aggregate_functions():
+    assert MutableEngine().vectorized is False
