@@ -76,6 +76,8 @@ def test_native_synchronous_runtime_matches_across_worker_threads():
         sensors = _sensors(topology, step)
         assert threaded.run_round(sensors, topology) == single.run_round(sensors, topology)
         assert threaded.outputs == single.outputs
+    threaded.close()
+    single.close()
 
 
 def test_native_synchronous_runtime_forgets_missing_devices_and_resets():
@@ -108,6 +110,11 @@ def test_native_asynchronous_runtime_matches_python_vm_spikes_and_retention():
     assert c_ret.spike(0, {}, [1], time=2.0) == py_ret.spike(0, {}, [1], time=2.0) == 1
     assert c_ret.spike(0, {}, [1], time=2.5) == py_ret.spike(0, {}, [1], time=2.5) == 0
     assert c_ret.outputs == py_ret.outputs
+
+    no_retention = NativeAsyncRuntime(_neighbor_count)
+    assert no_retention.spike(0, {}, [1]) == 0
+    with pytest.raises(ValueError, match="time"):
+        c_ret.spike(0, {}, [1])
 
 
 def test_native_outbox_interoperates_with_device_over_binary_wire_codec():
