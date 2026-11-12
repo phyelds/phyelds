@@ -202,3 +202,24 @@ def test_wavefront_runtime_draws_the_drift_of_each_device_from_its_seed():
 
     assert last_round_times(1) == last_round_times(1)
     assert last_round_times(1) != last_round_times(2)
+
+
+def test_wavefront_runtime_starts_a_joining_device_from_the_current_time():
+    runtime = WavefrontRuntime(round_counter, clock=PeriodicClock(1.0))
+    runtime.run_until(5.0, {0: {}}, {0: []})
+
+    runtime.step({0: {}, 1: {}}, {0: [], 1: []})
+
+    assert runtime.last_time_of(1) >= 5.0
+
+
+def test_wavefront_runtime_keeps_the_time_of_its_last_wavefront_or_run():
+    runtime = WavefrontRuntime(round_counter, clock=PeriodicClock(1.0))
+
+    runtime.step({0: {}}, {0: []})
+    runtime.step({0: {}}, {0: []})
+    after_steps = runtime.time
+    runtime.run_until(4.5, {0: {}}, {0: []})
+
+    assert after_steps == 1.0
+    assert runtime.time == 4.5

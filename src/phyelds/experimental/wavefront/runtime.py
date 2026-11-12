@@ -81,6 +81,15 @@ class WavefrontRuntime:  # pylint: disable=too-many-instance-attributes
         self._last_time: dict[Hashable, float] = {}
         self._device_rngs: dict[Hashable, tuple[random.Random, float]] = {}
         self._channel_rng = random.Random(f"{seed}:channel")
+        self._now = 0.0
+
+    @property
+    def time(self) -> float:
+        """
+        The current time: the earliest round of the last wavefront, or the ``until`` of the
+        last ``run_until`` if later. A device that joins runs its first round from it.
+        """
+        return self._now
 
     def next_time(self, sensors: WorldSensors) -> float:
         """Return the earliest pending wakeup timestamp among the devices in ``sensors``."""
@@ -121,6 +130,7 @@ class WavefrontRuntime:  # pylint: disable=too-many-instance-attributes
             return WavefrontStep(time=until or 0.0, devices=(), results={}, outputs={})
 
         batch_times = {dev: self._next_time[dev] for dev in batch}
+        self._now = max(self._now, min(batch_times.values()))
         inboxes = {
             dev: self._gather_inbox(dev, neighbors.get(dev, ()), batch_times[dev])
             for dev in batch
@@ -178,6 +188,7 @@ class WavefrontRuntime:  # pylint: disable=too-many-instance-attributes
             executed = self.step(cur_sensors, cur_neighbors, until=until)
             if not executed.devices:
                 break
+        self._now = max(self._now, until)
         return dict(self.results)
 
     def reset(self) -> None:
@@ -190,6 +201,7 @@ class WavefrontRuntime:  # pylint: disable=too-many-instance-attributes
         self._last_time.clear()
         self._device_rngs.clear()
         self._channel_rng = random.Random(f"{self.seed}:channel")
+        self._now = 0.0
 
     def _draws(self, device: Hashable) -> Draws:
         """The randomness of the next round of ``device``, from its own seeded generator."""
@@ -213,7 +225,7 @@ class WavefrontRuntime:  # pylint: disable=too-many-instance-attributes
                 slots.pop(departed, None)
         for dev in sensors:
             if dev not in self._next_time:
-                self._next_time[dev] = self.clock.first(self._draws(dev))
+                self._next_time[dev] = self._now + self.clock.first(self._draws(dev))
 
     def _gather_inbox(
         self, device: Hashable, peers: Iterable[Hashable], now: float
