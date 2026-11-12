@@ -18,9 +18,10 @@ def select_wavefront(
     Pick the devices that run their next round together, in the next wavefront.
 
     A device runs if its next round comes within ``lookahead`` of the earliest pending round
-    (and not after ``until``), and no neighbor can still send it a message before then: a
-    neighbor ``u`` blocks a device ``v`` when ``t_u + delay < t_v``. With ``delay`` zero, of
-    two neighbors due at the same time the one that comes first in ``next_times`` runs first.
+    (and not after ``until``), and no neighbor can still send it a message that arrives by
+    then: a neighbor ``u`` blocks a device ``v`` when ``t_u + delay <= t_v``, as a message
+    arriving at the time of a round is read in it. With ``delay`` zero, of two neighbors due
+    at the same time the one that comes first in ``next_times`` runs first.
 
     Args:
         next_times: The time of the next round of each device, in the order of the devices.
@@ -52,9 +53,9 @@ def select_wavefront(
         for peer in neighbors.get(dev, ()):
             if peer == dev or peer not in rank:
                 continue
-            t_peer = next_times[peer]
-            if t_peer + delay < t_dev or (
-                delay == 0.0 and t_peer == t_dev and rank[peer] < rank[dev]
+            arrival = next_times[peer] + delay
+            if arrival < t_dev or (
+                arrival == t_dev and (delay > 0.0 or rank[peer] < rank[dev])
             ):
                 blocked = True
                 break
