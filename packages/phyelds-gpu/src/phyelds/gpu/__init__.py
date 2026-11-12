@@ -11,12 +11,16 @@ from phyelds.gpu.engine import BatchEngine
 from phyelds.gpu.fields import BatchField
 from phyelds.gpu.runtime import BatchSynchronousRuntime
 from phyelds.gpu.topology import BatchEdges, GraphTopology, radius_topology
+from phyelds.gpu.wavefront import BatchWavefrontRuntime, BatchWavefrontStep, select_batch
 
 __all__ = [
     "BatchEdges",
     "BatchEngine",
     "BatchField",
     "BatchSynchronousRuntime",
+    "BatchWavefrontRuntime",
+    "BatchWavefrontStep",
     "GraphTopology",
     "radius_topology",
+    "select_batch",
 ]
