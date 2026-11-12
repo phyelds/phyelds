@@ -92,9 +92,21 @@ class WavefrontRuntime:  # pylint: disable=too-many-instance-attributes
         return self._now
 
     def next_time(self, sensors: WorldSensors) -> float:
-        """Return the earliest pending wakeup timestamp among the devices in ``sensors``."""
-        self._sync_membership(sensors)
-        return min((self._next_time[dev] for dev in sensors), default=math.inf)
+        """
+        The time of the next wavefront in the world of ``sensors``.
+
+        Args:
+            sensors: The sensors of every device of the world, by its id.
+
+        Returns:
+            The earliest next round of the devices of ``sensors`` the runtime knows; the
+                current time if it knows none of them, as the others join at the time of
+                the next wavefront; ``inf`` if ``sensors`` is empty.
+        """
+        if not sensors:
+            return math.inf
+        known = [self._next_time[dev] for dev in sensors if dev in self._next_time]
+        return min(known) if known else self._now
 
     def last_time_of(self, device: Hashable) -> float:
         """Return the timestamp at which ``device`` last executed a round."""
@@ -110,15 +122,20 @@ class WavefrontRuntime:  # pylint: disable=too-many-instance-attributes
         """
         Select and execute the next concurrent batch of causally independent devices.
 
+        ``sensors`` and ``neighbors`` describe the world at the time of the next wavefront
+        (see ``next_time``): a device missing from ``sensors`` is forgotten, with its state
+        and the messages it sent, and a new one joins at that time.
+
         Args:
-            sensors: Current sensors of every active device, by device ID.
-            neighbors: Current neighbor IDs of every active device, by device ID.
+            sensors: The sensors of every device of the world, by device ID.
+            neighbors: The neighbor IDs of every device of the world, by device ID.
             until: Optional upper timestamp cap beyond which devices are not fired.
 
         Returns:
             A ``WavefrontStep`` describing the executed concurrent batch.
         """
-        self._sync_membership(sensors)
+        self._forget_departed(sensors)
+        self._welcome_joined(sensors)
         batch = select_wavefront(
             {dev: self._next_time[dev] for dev in sensors},
             neighbors,
@@ -170,6 +187,9 @@ class WavefrontRuntime:  # pylint: disable=too-many-instance-attributes
         """
         Advance wavefront batches until every device's next wakeup exceeds ``until``.
 
+        A world that changes over time is read at the current time, to learn which devices
+        are in it, and then at the time of each wavefront, to run it.
+
         Args:
             until: Target simulation timestamp.
             sensors: Static sensor mapping or callable ``time -> sensors``.
@@ -179,11 +199,12 @@ class WavefrontRuntime:  # pylint: disable=too-many-instance-attributes
             A copy of the latest results across active devices.
         """
         while True:
-            probe_sensors = sensors(0.0) if callable(sensors) else sensors
-            earliest = self.next_time(probe_sensors)
+            now_sensors = sensors(self._now) if callable(sensors) else sensors
+            self._forget_departed(now_sensors)
+            earliest = self.next_time(now_sensors)
             if earliest > until:
                 break
-            cur_sensors = sensors(earliest) if callable(sensors) else probe_sensors
+            cur_sensors = sensors(earliest) if callable(sensors) else now_sensors
             cur_neighbors = neighbors(earliest) if callable(neighbors) else neighbors
             executed = self.step(cur_sensors, cur_neighbors, until=until)
             if not executed.devices:
@@ -212,9 +233,16 @@ class WavefrontRuntime:  # pylint: disable=too-many-instance-attributes
         rng, device_draw = randomness
         return Draws(device=device_draw, uniform=rng.random(), exponential=rng.expovariate(1.0))
 
-    def _sync_membership(self, sensors: WorldSensors) -> None:
-        active = set(sensors)
-        for departed in [dev for dev in self._next_time if dev not in active]:
+    def _welcome_joined(self, sensors: WorldSensors) -> None:
+        """Schedule the first round of the new devices, from the time of the next wavefront."""
+        joined_at = self.next_time(sensors)
+        for dev in sensors:
+            if dev not in self._next_time:
+                self._next_time[dev] = joined_at + self.clock.first(self._draws(dev))
+
+    def _forget_departed(self, sensors: WorldSensors) -> None:
+        """Forget the devices missing from ``sensors``, with the messages they sent."""
+        for departed in [dev for dev in self._next_time if dev not in sensors]:
             self._next_time.pop(departed, None)
             self._last_time.pop(departed, None)
             self._states.pop(departed, None)
@@ -223,9 +251,6 @@ class WavefrontRuntime:  # pylint: disable=too-many-instance-attributes
             self.outputs.pop(departed, None)
             for slots in self._links.values():
                 slots.pop(departed, None)
-        for dev in sensors:
-            if dev not in self._next_time:
-                self._next_time[dev] = self._now + self.clock.first(self._draws(dev))
 
     def _gather_inbox(
         self, device: Hashable, peers: Iterable[Hashable], now: float

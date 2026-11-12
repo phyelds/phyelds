@@ -223,3 +223,16 @@ def test_wavefront_runtime_keeps_the_time_of_its_last_wavefront_or_run():
 
     assert after_steps == 1.0
     assert runtime.time == 4.5
+
+
+def test_wavefront_runtime_keeps_a_device_that_joins_during_a_run():
+    topology = {0: [], 1: []}
+
+    def sensors_at(time):
+        return {0: {}, 1: {}} if time >= 2.0 else {0: {}}
+
+    runtime = WavefrontRuntime(round_counter, clock=PeriodicClock(1.0))
+
+    results = runtime.run_until(6.0, sensors_at, lambda _time: topology)
+
+    assert results == {0: 7, 1: 5}  # device 1 runs at 2, 3, 4, 5 and 6
