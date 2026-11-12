@@ -56,7 +56,7 @@ def _sensors(topology: dict[int, list[int]]) -> dict[int, dict[str, object]]:
     return {device: {"source": device == 0} for device in topology}
 
 
-def test_wavefront_with_zero_delay_matches_sequential_des_while_batching():
+def test_wavefront_runtime_matches_sequential_spikes_while_batching_without_delay():
     topology = _grid(5, 4)
     sensors = _sensors(topology)
     clock = PeriodicClock(1.0, random_phase=True)
@@ -92,7 +92,7 @@ def test_wavefront_with_zero_delay_matches_sequential_des_while_batching():
     assert wavefront.outputs == sequential.outputs
 
 
-def test_wavefront_matches_sequential_spikes_at_every_horizon():
+def test_wavefront_runtime_matches_sequential_spikes_at_every_run_until():
     topology = _grid(4, 3)
     sensors = _sensors(topology)
     clock = PeriodicClock(1.0, random_phase=True, drift=0.05, jitter=0.05)
@@ -121,7 +121,7 @@ def test_wavefront_matches_sequential_spikes_at_every_horizon():
         assert wavefront.outputs == sequential.outputs
 
 
-def test_wavefront_collapses_to_full_system_synchronous_batches_in_worst_case():
+def test_wavefront_runtime_matches_synchronous_rounds_on_aligned_clocks_with_delay():
     topology = _grid(5, 4)
     sensors = _sensors(topology)
     wavefront = WavefrontRuntime(
@@ -142,42 +142,60 @@ def test_wavefront_collapses_to_full_system_synchronous_batches_in_worst_case():
         assert wavefront.outputs == synchronous.outputs
 
 
-def test_weibull_and_exponential_clocks_and_callable_world_and_reset():
+def test_wavefront_runtime_runs_rounds_on_weibull_clocks_over_a_lossy_channel():
     topology = {0: [1], 1: [0]}
-    weibull_rt = WavefrontRuntime(
+    runtime = WavefrontRuntime(
         round_counter,
         clock=WeibullClock(period=1.0, shape=3.0),
         channel=Channel(delay=0.02, jitter=0.01, loss=0.1),
         window=0.05,
         seed=5,
     )
-    results = weibull_rt.run_until(
+
+    results = runtime.run_until(
         4.0,
         lambda t: {0: {"t": t}, 1: {"t": t}},
         lambda _t: topology,
     )
+
     assert all(count >= 2 for count in results.values())
 
-    exp_rt = WavefrontRuntime(round_counter, clock=ExponentialClock(rate=2.0), seed=3)
-    assert exp_rt.run_until(2.0, {0: {}, 1: {}}, topology)
-    exp_rt.reset()
-    assert exp_rt.results == {}
 
-    # Device leaving after exchanging messages cleans up link slots, and self/unknown peers work.
-    leaving = WavefrontRuntime(heard_times, clock=PeriodicClock(1.0), channel=Channel(delay=0.01))
-    leaving.step({0: {}, 1: {}}, {0: [0, 1, 99], 1: [0]})
-    leaving.step({0: {}, 1: {}}, {0: [1], 1: [0]})
-    assert leaving.step({0: {}}, {0: []}).results == {0: {}}
-    assert leaving.step({}, {}).devices == ()
-    assert leaving.step({0: {}}, {0: []}, until=-1.0).devices == ()
-    assert leaving.run_until(10.0, lambda t: {} if t > 0 else {0: {}}, {0: []}) == {}
+def test_wavefront_runtime_forgets_every_device_on_reset():
+    runtime = WavefrontRuntime(round_counter, clock=ExponentialClock(rate=2.0), seed=3)
+    ran = runtime.run_until(2.0, {0: {}, 1: {}}, {0: [1], 1: [0]})
 
-    # Packet still in flight when receiver has no prior committed packet from sender.
-    in_flight_first = WavefrontRuntime(
-        heard_times, clock=PeriodicClock(1.0), channel=Channel(delay=2.5)
-    )
-    in_flight_first.step({0: {}, 1: {}}, {0: [1], 1: [0]})
-    assert in_flight_first.step({0: {}, 1: {}}, {0: [1], 1: [0]}).results[1] == {}
+    runtime.reset()
+
+    assert ran
+    assert runtime.results == {}
+
+
+def test_wavefront_runtime_forgets_a_device_that_leaves_with_its_messages():
+    runtime = WavefrontRuntime(heard_times, clock=PeriodicClock(1.0), channel=Channel(delay=0.01))
+    runtime.step({0: {}, 1: {}}, {0: [0, 1, 99], 1: [0]})  # itself and unknown 99 are ignored
+    runtime.step({0: {}, 1: {}}, {0: [1], 1: [0]})
+
+    alone = runtime.step({0: {}}, {0: []})
+
+    assert alone.results == {0: {}}
+
+
+def test_wavefront_runtime_runs_nothing_without_devices_or_rounds_due_by_until():
+    runtime = WavefrontRuntime(round_counter, clock=PeriodicClock(1.0))
+    runtime.step({0: {}}, {0: []})
+
+    assert runtime.step({}, {}).devices == ()
+    assert runtime.step({0: {}}, {0: []}, until=-1.0).devices == ()
+
+
+def test_wavefront_runtime_forgets_the_devices_that_leave_the_world_during_a_run():
+    runtime = WavefrontRuntime(round_counter, clock=PeriodicClock(1.0))
+    runtime.step({0: {}}, {0: []})
+
+    results = runtime.run_until(10.0, lambda t: {} if t > 0 else {0: {}}, {0: []})
+
+    assert results == {}
 
 
 @pytest.mark.parametrize(
