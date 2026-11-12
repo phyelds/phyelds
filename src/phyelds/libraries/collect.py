@@ -6,7 +6,7 @@ source nodes along a potential gradient, with pluggable collection strategies.
 """
 
 from collections.abc import Callable
-from typing import Any, Optional, Tuple, TypeVar, Union
+from typing import Any, Optional, TypeVar, Union
 
 from phyelds.calculus import aggregate, exchange, neighbors
 from phyelds.data import NeighborhoodField
@@ -34,10 +34,11 @@ def find_parent(potential: float) -> Optional[int]:
             has a potential lower than ``potential``.
     """
     neighbors_potential: NeighborhoodField[float] = neighbors(potential)
-    min_value: Tuple[int, float] = min(neighbors_potential.data.items(), key=lambda x: x[1])
-    if min_value[1] >= potential:
+    best_id = neighbors_potential.id_of_min()
+    best_potential = neighbors_potential.min()
+    if best_potential >= potential:
         return None
-    return min_value[0]
+    return best_id
 
 
 @aggregate
@@ -74,11 +75,11 @@ def _broadcast_collect(
     """Collect values up the potential gradient using broadcast neighbor fields."""
     _, n_collections, send_collections = exchange(local)
     parents: NeighborhoodField[Optional[int]] = neighbors(find_parent(potential))
-    operations: T = local
-    for parent, value in zip(parents, n_collections):
-        if local_id() == parent:
-            operations = accumulation(operations, value)
-    return send_collections(operations)
+    my_id = local_id()
+    accumulated = local
+    for child_value in n_collections.select(parents.map(lambda parent: parent == my_id)):
+        accumulated = accumulation(accumulated, child_value)
+    return send_collections(accumulated)
 
 
 @aggregate
