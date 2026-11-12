@@ -13,9 +13,13 @@ must have a single truth value.
 """
 import ast
 import itertools
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
+from typing import Any, TypeVar
 
+from phyelds import engine
 from phyelds.calculus.internal import _bound_to_its_scope, _calls_anything, _thunk
+
+T = TypeVar("T")
 
 _PREFIX = "__phyelds_"
 # Builtins whose calls with many arguments compare them, and become choices.
@@ -277,3 +281,57 @@ def _after_declarations(body: list[ast.stmt]) -> int:
     ):
         index += 1
     return index
+
+
+# What the rewritten code calls, besides _aligned_branch: choices through the engine.
+
+
+def _vector_choose(condition: Any, if_true: Callable[[], T], if_false: Callable[[], T]) -> T:
+    """``if_true()`` if ``condition`` else ``if_false()``, through the engine."""
+    return engine.get().choose(condition, if_true, if_false)
+
+
+def _vector_and(first: Any, rest: Callable[[], T]) -> Any:
+    """``first and rest()``, through the engine."""
+    return engine.get().choose(first, rest, lambda: first)
+
+
+def _vector_or(first: Any, rest: Callable[[], T]) -> Any:
+    """``first or rest()``, through the engine."""
+    return engine.get().choose(first, lambda: first, rest)
+
+
+def _vector_not(value: Any) -> Any:
+    """``not value``, through the engine."""
+    return engine.get().choose(value, lambda: False, lambda: True)
+
+
+def _vector_max(first: Any, *others: Any) -> Any:
+    """``max(first, *others)``, through the engine: the first of the greatest."""
+    result = first
+    for other in others:
+        result = engine.get().choose(
+            other > result, lambda other=other: other, lambda result=result: result
+        )
+    return result
+
+
+def _vector_min(first: Any, *others: Any) -> Any:
+    """``min(first, *others)``, through the engine: the first of the least."""
+    result = first
+    for other in others:
+        result = engine.get().choose(
+            other < result, lambda other=other: other, lambda result=result: result
+        )
+    return result
+
+
+HELPERS: dict[str, Callable[..., Any]] = {
+    "_vector_choose": _vector_choose,
+    "_vector_and": _vector_and,
+    "_vector_or": _vector_or,
+    "_vector_not": _vector_not,
+    "_vector_max": _vector_max,
+    "_vector_min": _vector_min,
+}
+"""The functions the rewritten code calls, by the names it calls them."""

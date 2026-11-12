@@ -28,9 +28,11 @@ try:
     from phyelds.calculus.internal.transform import (  # noqa: F401 (str_transformed_code is public)
         transform_code, str_transformed_code,
     )
+    from phyelds.calculus.internal.vectorize import HELPERS as _VECTOR_HELPERS
 except ImportError:
-    # The MicroPython bundle has no ``ast``: its code is rewritten when it is built.
+    # The MicroPython bundle has no ``ast``: its code is rewritten when it is built, aligned.
     transform_code = None
+    _VECTOR_HELPERS = {}
 
 
 # Generic type variable to preserve types through functions
@@ -270,59 +272,6 @@ def _aligned_branch(condition: Any, if_true: Callable[[], T], if_false: Callable
     return engine.get().branch(condition, if_true, if_false)
 
 
-def _vector_choose(condition: Any, if_true: Callable[[], T], if_false: Callable[[], T]) -> T:
-    """``if_true()`` if ``condition`` else ``if_false()``, through the engine."""
-    return engine.get().choose(condition, if_true, if_false)
-
-
-def _vector_and(first: Any, rest: Callable[[], T]) -> Any:
-    """``first and rest()``, through the engine."""
-    return engine.get().choose(first, rest, lambda: first)
-
-
-def _vector_or(first: Any, rest: Callable[[], T]) -> Any:
-    """``first or rest()``, through the engine."""
-    return engine.get().choose(first, lambda: first, rest)
-
-
-def _vector_not(value: Any) -> Any:
-    """``not value``, through the engine."""
-    return engine.get().choose(value, lambda: False, lambda: True)
-
-
-def _vector_max(first: Any, *others: Any) -> Any:
-    """``max(first, *others)``, through the engine: the first of the greatest."""
-    result = first
-    for other in others:
-        result = engine.get().choose(
-            other > result, lambda other=other: other, lambda result=result: result
-        )
-    return result
-
-
-def _vector_min(first: Any, *others: Any) -> Any:
-    """``min(first, *others)``, through the engine: the first of the least."""
-    result = first
-    for other in others:
-        result = engine.get().choose(
-            other < result, lambda other=other: other, lambda result=result: result
-        )
-    return result
-
-
-_HELPERS = {
-    "align_left": align_left,
-    "align_right": align_right,
-    "_aligned_branch": _aligned_branch,
-    "_vector_choose": _vector_choose,
-    "_vector_and": _vector_and,
-    "_vector_or": _vector_or,
-    "_vector_not": _vector_not,
-    "_vector_max": _vector_max,
-    "_vector_min": _vector_min,
-}
-
-
 def _transformed(func: Callable, vectorized: bool = False) -> Callable:
     """
     ``func`` rewritten: with its branches aligned, or for a vectorized engine; as it is if
@@ -330,4 +279,6 @@ def _transformed(func: Callable, vectorized: bool = False) -> Callable:
     """
     if transform_code is None:
         return func
-    return transform_code(func, _HELPERS, vectorized)
+    helpers = {"align_left": align_left, "align_right": align_right,
+               "_aligned_branch": _aligned_branch, **_VECTOR_HELPERS}
+    return transform_code(func, helpers, vectorized)
