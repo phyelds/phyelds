@@ -118,4 +118,4 @@ for step in range(steps):
     results = runtime.run_round(sensors, neighbors)  # neighbors: the ids around each id
 ```
 
-Threads run Python in parallel only on a free-threaded Python (3.14t), and only while no imported module enables the GIL again. pandas does, and Mesa and the phyelds simulator import it, so their programs gain nothing from workers. Elsewhere one thread at a time runs Python, and more workers only add their cost. On 10,000 devices with about 8 neighbors each, 8 workers on 4 cores run the rounds of the benchmark programs 2–3 times as fast as one.
+Threads run Python in parallel only on a free-threaded Python (3.14t), and only while no imported module enables the GIL again. pandas does, and Mesa imports it, so its programs gain nothing from workers. Elsewhere one thread at a time runs Python, and more workers only add their cost. On 10,000 devices with about 8 neighbors each, 8 workers on 4 cores run the rounds of the benchmark programs 2–3 times as fast as one.
