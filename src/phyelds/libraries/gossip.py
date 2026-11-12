@@ -72,7 +72,9 @@ def _select_best_path(
 def _monotonic_gossip_step(value: T, callback: Callable[..., T]) -> T:
     """Run a classic monotonic gossip step using ``exchange``."""
     _, neighborhood_value, send_gossip = exchange(value)
-    new_value: T = callback(value, *neighborhood_value)
+    new_value: T = neighborhood_value._reduce_all(  # pylint: disable=protected-access
+        value, callback
+    )
     return send_gossip(new_value)
 
 
