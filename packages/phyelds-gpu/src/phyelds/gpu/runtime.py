@@ -6,7 +6,6 @@ does, with one row per device instead of one round per device.
 from collections.abc import Callable, Mapping
 from typing import Any
 
-from phyelds import engine
 from phyelds.gpu.engine import BatchEngine, Rows, States, SynchronousMessages, _written
 from phyelds.gpu.topology import GraphTopology
 
@@ -44,11 +43,7 @@ class BatchSynchronousRuntime:
                 single value if it is the same for every device.
         """
         batch = BatchEngine(self._edges, self._states, self._messages, sensors)
-        token = engine.set(batch)
-        try:
-            result = self.program()
-        finally:
-            engine.reset(token)
+        result = batch.run(self.program)
         devices = self._edges.devices
         self._messages.publish(devices, batch.finish())
         count = self.topology.num_devices
