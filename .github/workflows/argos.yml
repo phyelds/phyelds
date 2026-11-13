@@ -2,8 +2,8 @@ name: ARGoS integration
 on:
   push:
     branches: [master]
+  # Pull requests to any branch, so that each pull request of a stack is checked.
   pull_request:
-    branches: [master]
 jobs:
   argos:
     runs-on: ubuntu-24.04
