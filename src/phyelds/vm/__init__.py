@@ -102,7 +102,16 @@ class EngineState:
 class Engine(ABC):
     """
     Abstract base class for the engine. This class should be implemented by the user.
+
+    Attributes:
+        vectorized: Whether the engine runs many devices at once, each value holding one per
+            device: ``@aggregate`` then rewrites the ``if`` statements, the conditional
+            expressions, ``and``, ``or``, ``not``, ``min`` and ``max`` into ``branch`` and
+            ``choose``, which run each side for the devices choosing it. ``False`` by
+            default: one device, plain Python.
     """
+
+    vectorized: bool = False
 
     def __init__(self):
         self.node_context: NodeContext | None = None
@@ -165,6 +174,25 @@ class Engine(ABC):
             return chosen()
         finally:
             self.exit()
+
+    def choose(
+        self, condition: Any, if_true: Callable[[], Any], if_false: Callable[[], Any]
+    ) -> Any:
+        """
+        Run the side of a choice that ``condition`` picks, without an alignment point.
+
+        A batch engine, running many devices at once, runs each side for the devices
+        picking it.
+
+        Args:
+            condition: What picks the side: ``if_true`` if it is truthy.
+            if_true: The side for a truthy ``condition``.
+            if_false: The side for a falsy ``condition``.
+
+        Returns:
+            What the side returns.
+        """
+        return if_true() if condition else if_false()
 
     def current_path(self) -> list:
         """

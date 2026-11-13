@@ -5,6 +5,7 @@ This module needs ``ast`` and ``inspect``, which MicroPython does not have: the
 MicroPython bundle leaves it out and ships code that was rewritten at build time.
 """
 import ast
+import builtins
 import inspect
 import os
 import textwrap
@@ -13,6 +14,7 @@ from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 from phyelds.calculus.internal import AggregateTransformer
+from phyelds.calculus.internal.vectorize import HELPERS, REWRITABLE_BUILTINS, vectorize
 
 
 _TRANSFORMATION_CACHE = {}
@@ -161,12 +163,26 @@ class _PrivateNames(ast.NodeTransformer):
         return [node, *self._rebinding(node.name, node)]
 
 
-def _transformed_tree(func: Callable) -> ast.Module:
-    """Parse ``func`` and rewrite its branches to align them."""
+def _builtins_of(func: Callable) -> set[str]:
+    """The names in ``REWRITABLE_BUILTINS`` that ``func`` reads as the builtins."""
+    original = inspect.unwrap(func)
+    shadowed = set(original.__code__.co_freevars)
+    return {
+        name for name in REWRITABLE_BUILTINS
+        if name not in shadowed
+        and original.__globals__.get(name, getattr(builtins, name)) is getattr(builtins, name)
+    }
+
+
+def _transformed_tree(func: Callable, vectorized: bool = False) -> ast.Module:
+    """Parse ``func`` and rewrite its branches: aligned, or through a vectorized engine."""
     source = textwrap.dedent(inspect.getsource(func))
     tree = ast.parse(source)
     _drop_applied_decorators(tree.body[0])
-    tree = AggregateTransformer().visit(tree)
+    if vectorized:
+        vectorize(tree.body[0], _builtins_of(func))
+    else:
+        tree = AggregateTransformer().visit(tree)
     owner = _owner_class(inspect.unwrap(func))
     if owner is not None and owner.lstrip("_"):
         _PrivateNames(owner).generic_visit(tree.body[0])
@@ -238,9 +254,9 @@ def _inner_code(code: types.CodeType, name: str) -> types.CodeType:
     )
 
 
-def _factory_code(func: Callable, names: Sequence[str]) -> types.CodeType:
-    """The code of a factory that defines ``func`` aligned, with ``names`` in its closure."""
-    tree = _transformed_tree(func)
+def _factory_code(func: Callable, names: Sequence[str], vectorized: bool) -> types.CodeType:
+    """The code of a factory that defines ``func`` rewritten, with ``names`` in its closure."""
+    tree = _transformed_tree(func, vectorized)
     if _debugging():
         print(f"--- Transformed code for {func.__name__} ---")
         print(ast.unparse(tree))
@@ -253,7 +269,9 @@ def _factory_code(func: Callable, names: Sequence[str]) -> types.CodeType:
 
 
 # pylint: disable=broad-exception-caught
-def transform_code(func: Callable, helpers: Mapping[str, Any]) -> Callable:
+def transform_code(
+    func: Callable, helpers: Mapping[str, Any], vectorized: bool = False
+) -> Callable:
     """
     Transforms the code of the given function to include alignment contexts.
 
@@ -264,7 +282,10 @@ def transform_code(func: Callable, helpers: Mapping[str, Any]) -> Callable:
     Args:
         func: The function to transform.
         helpers: Names the rewritten code calls (``align_left``, ``align_right``,
-            ``_aligned_branch``); the closure variables of ``func`` take precedence.
+            ``_aligned_branch``), besides the ``_vector_*`` ones of the vectorized
+            rewriting; the closure variables of ``func`` take precedence.
+        vectorized: Whether to rewrite ``func`` for a vectorized engine (see
+            ``phyelds.calculus.internal.vectorize``) rather than align its branches.
 
     Returns:
         The transformed function, or ``func`` itself if its source cannot be rewritten.
@@ -272,28 +293,30 @@ def transform_code(func: Callable, helpers: Mapping[str, Any]) -> Callable:
     # The function whose source is rewritten: a decorator below @aggregate wraps it.
     original = inspect.unwrap(func)
     code = original.__code__
-    values = {**helpers, **_defaults(original)}
+    values = {**HELPERS, **helpers, **_defaults(original)}
     cells = {name: types.CellType(value) for name, value in values.items()}
     cells.update(zip(code.co_freevars, original.__closure__ or ()))
-    if code not in _TRANSFORMATION_CACHE:
+    cached = (code, vectorized)
+    if cached not in _TRANSFORMATION_CACHE:
         try:
-            _TRANSFORMATION_CACHE[code] = _factory_code(original, list(cells))
+            _TRANSFORMATION_CACHE[cached] = _factory_code(original, list(cells), vectorized)
         except Exception as e:
             print(f"WARNING: AST transformation failed ({e}). Using original function.")
             return func
-    factory_code = _TRANSFORMATION_CACHE[code]
+    factory_code = _TRANSFORMATION_CACHE[cached]
     closure = tuple(cells[name] for name in factory_code.co_freevars)
     factory = types.FunctionType(factory_code, original.__globals__, _FACTORY, None, closure)
     return factory()  # pylint: disable=not-callable  # pylint does not infer FunctionType
 
 
-def str_transformed_code(func: Callable) -> str | None:
+def str_transformed_code(func: Callable, vectorized: bool = False) -> str | None:
     """
     Utility to print the transformed AST source for a given function.
-    Useful for debugging how the AggregateTransformer rewrites ``if`` statements.
+    Useful for debugging how the AggregateTransformer rewrites ``if`` statements, or, with
+    ``vectorized``, how the rewriting for vectorized engines does.
     """
     try:
-        return ast.unparse(_transformed_tree(func))
+        return ast.unparse(_transformed_tree(func, vectorized))
     except TypeError:
         print(f"Could not retrieve source for {func}")
         return None

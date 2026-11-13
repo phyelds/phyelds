@@ -29,7 +29,7 @@ try:
         transform_code, str_transformed_code,
     )
 except ImportError:
-    # The MicroPython bundle has no ``ast``: its code is rewritten when it is built.
+    # The MicroPython bundle has no ``ast``: its code is rewritten when it is built, aligned.
     transform_code = None
 
 
@@ -57,16 +57,18 @@ def aggregate(func):
         func (Callable): The function to wrap.
     """
 
-    rewritten = None
+    # Aligned and vectorized, rewritten on the first call of each, once: the rewriting is costly.
+    rewritten = [None, None]
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        nonlocal rewritten
-        if rewritten is None:  # on the first call, once: the rewriting is costly
-            rewritten = _transformed(func)
         current_engine = engine.get()
+        vectorized = current_engine.vectorized
+        function = rewritten[vectorized]
+        if function is None:
+            function = rewritten[vectorized] = _transformed(func, vectorized)
         current_engine.enter(func.__name__)
-        result = rewritten(*args, **kwargs)
+        result = function(*args, **kwargs)
         current_engine.exit()
         return result
 
@@ -263,11 +265,15 @@ def _aligned_branch(condition: Any, if_true: Callable[[], T], if_false: Callable
     return engine.get().branch(condition, if_true, if_false)
 
 
-def _transformed(func: Callable) -> Callable:
-    """``func`` with its branches aligned, unless it was already rewritten at build time."""
+def _transformed(func: Callable, vectorized: bool = False) -> Callable:
+    """
+    ``func`` rewritten: with its branches aligned, or for a vectorized engine; as it is if
+    it was already rewritten at build time.
+    """
     if transform_code is None:
         return func
     return transform_code(
         func,
         {"align_left": align_left, "align_right": align_right, "_aligned_branch": _aligned_branch},
+        vectorized,
     )
