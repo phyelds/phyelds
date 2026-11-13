@@ -1,0 +1,38 @@
+[tool.poetry]
+name = "phyelds-gpu"
+version = "10.0.4"
+description = "PyTorch backend for phyelds: aggregate programs on batches of devices, on CPU or GPU"
+license = "Apache-2.0"
+authors = [
+  "Gianluca Aguzzi <gianluca.aguzzi@unibo.it>",
+  "Davide Domini <davide.domini@unibo.it>"
+]
+homepage = "https://github.com/phyelds/phyelds"
+repository = "https://github.com/phyelds/phyelds"
+readme = "README.md"
+
+packages = [
+    { include = "phyelds/gpu", from = "src" },
+]
+
+classifiers = [
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[tool.poetry.dependencies]
+python = ">=3.12,<3.15"
+phyelds = "^10.0.4"
+torch = ">=2.4.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^9.0.3"
+pylint = "^3.0.0"
+flake8 = "^7.0.0"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
