@@ -233,7 +233,10 @@ def _parameters(arguments: ast.arguments) -> set[str]:
 
 
 def _locals(definition: ast.FunctionDef) -> set[str]:
-    """The names the body of ``definition`` binds, outside the scopes nested in it."""
+    """
+    The names the body of ``definition`` binds, outside the scopes nested in it; not the
+    name of an ``except`` clause, which Python unbinds at the end of the clause.
+    """
     names: set[str] = set()
     for node in _walk_scope(definition.body):
         if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
@@ -242,8 +245,6 @@ def _locals(definition: ast.FunctionDef) -> set[str]:
             names.add(node.name)
         elif isinstance(node, (ast.Import, ast.ImportFrom)):
             names.update((alias.asname or alias.name).split(".")[0] for alias in node.names)
-        elif isinstance(node, ast.ExceptHandler) and node.name:
-            names.add(node.name)
     return names
 
 
