@@ -36,17 +36,19 @@ A `NeighborhoodField` maps device IDs to values (`{device_id: value}`) and alway
 | Operation | Result |
 | --- | --- |
 | `field.local()` | The device's own value |
+| `field.with_local(value)` | A new `NeighborhoodField` where the device's own value is `value` |
 | `field.for_node(id)` | The value for `id`, or `field.default` if `id` is not in the field |
 | `field.without_self()` | A new `NeighborhoodField` without the device itself |
 | `field.exclude_self()` | A plain `dict` (`id → value`) without the device itself |
 | `field.select(mask)` | List of values whose entry in the boolean field `mask` is `True` |
+| `field.where(mask)` | A new `NeighborhoodField` with the entries whose value in the boolean field `mask` is truthy |
 | `field.data` | The underlying `dict` (`id → value`) |
 
 ### Transformations and reductions
 
 | Operation | Result |
 | --- | --- |
-| `field.map(fn)` | A new field with `fn` applied to each value |
+| `field.map(fn, *values)` | A new field with `fn(value, *values)` applied to each value: pass values of the device as `values`, not in a closure, so that a batch engine runs it too |
 | `field.coerce_in(lower, upper)` | A new field with values clamped to `[lower, upper]` |
 | `field.replace_matching(replacement, predicate)` | A new field where entries satisfying `predicate` are replaced |
 | `field.min(*, include_self=True, default=None, key=None)` | Minimum value (with optional `key` and `default`) |

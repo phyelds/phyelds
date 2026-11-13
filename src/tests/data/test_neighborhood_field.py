@@ -30,6 +30,7 @@ def test_select_returns_empty_when_no_overlap():
     neighborhood2 = NeighborhoodField({2: 20}, 2)
     assert neighborhood1.select(neighborhood2) == []
 
+
 def test_any_returns_true_when_at_least_one_truthy():
     neighborhood = NeighborhoodField({1: False, 2: True, 3: False}, 1)
     assert neighborhood.any() is True
@@ -114,6 +115,33 @@ def test_without_self_returns_neighborhood_field_excluding_local_node():
     assert peers.for_node(99) == 99
 
 
+def test_with_local_replaces_the_value_of_the_device_and_keeps_the_others():
+    field = NeighborhoodField({1: 10, 2: 20, 3: 30}, 2, default=99)
+
+    updated = field.with_local(0)
+
+    assert updated.data == {1: 10, 2: 0, 3: 30}
+    assert updated.node_id == 2
+    assert updated.for_node(4) == 99
+
+
+def test_with_local_leaves_the_original_field_unchanged():
+    field = NeighborhoodField({1: 10, 2: 20, 3: 30}, 2)
+
+    field.with_local(0)
+
+    assert field.data == {1: 10, 2: 20, 3: 30}
+
+
+def test_with_local_adds_the_device_when_the_field_has_no_value_for_it():
+    peers = NeighborhoodField({1: 10, 2: 20, 3: 30}, 2).without_self()
+
+    updated = peers.with_local(0)
+
+    assert updated.data == {1: 10, 2: 0, 3: 30}
+    assert list(updated) == [10, 0, 30]
+
+
 def test_ge_operator_compares_values_and_propagates_default():
     field = NeighborhoodField({1: 2, 2: 3}, 1, default=5)
     result = field >= 3
@@ -196,3 +224,31 @@ def test_derived_fields_preserve_sorted_node_order():
     assert list((~first).data.keys()) == [1, 2, 3, 5]
 
 
+
+
+def test_map_passes_the_values_of_the_device_after_each_entry():
+    field = NeighborhoodField({1: 10, 2: 20}, 1, default=0)
+
+    shifted = field.map(lambda value, low, high: value - low + high, 5, 1)
+
+    assert shifted.data == {1: 6, 2: 16}
+    assert shifted.default == -4
+
+
+def test_where_keeps_the_entries_whose_mask_holds():
+    field = NeighborhoodField({1: 10, 2: 20, 3: 30}, 1, default=0)
+    mask = NeighborhoodField({1: False, 2: True, 3: 1}, 1)
+
+    kept = field.where(mask)
+
+    assert kept.data == {2: 20, 3: 30}
+    assert kept.node_id == 1
+    assert kept.default == 0
+
+
+def test_where_leaves_out_the_entries_missing_from_the_mask():
+    field = NeighborhoodField({1: 10, 2: 20, 3: 30}, 1)
+
+    kept = field.where(NeighborhoodField({2: True}, 2))
+
+    assert kept.data == {2: 20}

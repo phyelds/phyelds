@@ -29,7 +29,7 @@ try:
         transform_code, str_transformed_code,
     )
 except ImportError:
-    # The MicroPython bundle has no ``ast``: its code is rewritten when it is built.
+    # The MicroPython bundle has no ``ast``: its code is rewritten when it is built, aligned.
     transform_code = None
 
 
@@ -57,16 +57,18 @@ def aggregate(func):
         func (Callable): The function to wrap.
     """
 
-    rewritten = None
+    # Aligned and vectorized, rewritten on the first call of each, once: the rewriting is costly.
+    rewritten = [None, None]
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        nonlocal rewritten
-        if rewritten is None:  # on the first call, once: the rewriting is costly
-            rewritten = _transformed(func)
         current_engine = engine.get()
+        vectorized = current_engine.vectorized
+        function = rewritten[vectorized]
+        if function is None:
+            function = rewritten[vectorized] = _transformed(func, vectorized)
         current_engine.enter(func.__name__)
-        result = rewritten(*args, **kwargs)
+        result = function(*args, **kwargs)
         current_engine.exit()
         return result
 
@@ -96,12 +98,7 @@ def remember(init: T) -> Tuple[T, Callable[[T], T]]:
     current_engine = engine.get()
     current_engine.enter("remember")
     path = current_engine.current_path()
-    stored = current_engine.read_state(path)
-    if stored is None:
-        value: T = init
-        current_engine.write_state(init, path)
-    else:
-        value = stored
+    value: T = current_engine.read_state_or(init, path)
     current_engine.exit()
 
     def set_state(new_value: T) -> T:
@@ -131,9 +128,7 @@ def remember_and_evolve(
         The value after this round's evolution: ``evolve_fn(init)`` on the first round.
     """
     current_engine = engine.get()
-    stored = current_engine.read_state()
-    current: T = init if stored is None else stored
-    updated: T = evolve_fn(current)
+    updated: T = evolve_fn(current_engine.read_state_or(init))
     current_engine.write_state(updated)
     return updated
 
@@ -163,11 +158,8 @@ def neighbors(value: T) -> "NeighborhoodField[T]":
         raise TypeError("Neighborhood is not supported as a value")
 
     current_engine = engine.get()
-    node_id = current_engine.node_context.node_id
     current_engine.send(value)
-    values = current_engine.aligned_values()
-    values[node_id] = value
-    return NeighborhoodField(values, node_id)
+    return current_engine.neighbor_field(value)
 
 
 def _extract_for_node(value: Any, node_id: int) -> Any:
@@ -195,26 +187,15 @@ def exchange(
     current_engine = engine.get()
     path = current_engine.current_path()
     node_id = current_engine.node_context.node_id
-    stored = current_engine.read_state(path)
-    if stored is None:
-        local_value = _extract_for_node(init, node_id)
-        current_engine.write_state(init, path)
-        current_engine.send(init, path)
-    else:
-        local_value = _extract_for_node(stored, node_id)
-        current_engine.send(stored, path)
-
-    values = {
-        neighbor_id: _extract_for_node(neighbor_value, node_id)
-        for neighbor_id, neighbor_value in current_engine.aligned_values().items()
-    }
-    values[node_id] = local_value
+    state = current_engine.read_state_or(init, path)
+    current_engine.send(state, path)
     default_value = (
         init.default
         if isinstance(init, NeighborhoodField)
         else _extract_for_node(init, node_id)
     )
-    field = NeighborhoodField(values, node_id, default=default_value)
+    local_value = _extract_for_node(state, node_id)
+    field = current_engine.neighbor_field(local_value, path, default_value, addressed=True)
 
     def send(new_value: Any) -> Any:
         current_engine.write_state(new_value, path)
@@ -281,18 +262,18 @@ def _aligned_branch(condition: Any, if_true: Callable[[], T], if_false: Callable
     branches do not exchange values. ``@aggregate`` rewrites ``a if c else b`` into a
     call to this function.
     """
-    if condition:
-        with align_left():
-            return if_true()
-    with align_right():
-        return if_false()
+    return engine.get().branch(condition, if_true, if_false)
 
 
-def _transformed(func: Callable) -> Callable:
-    """``func`` with its branches aligned, unless it was already rewritten at build time."""
+def _transformed(func: Callable, vectorized: bool = False) -> Callable:
+    """
+    ``func`` rewritten: with its branches aligned, or for a vectorized engine; as it is if
+    it was already rewritten at build time.
+    """
     if transform_code is None:
         return func
     return transform_code(
         func,
         {"align_left": align_left, "align_right": align_right, "_aligned_branch": _aligned_branch},
+        vectorized,
     )

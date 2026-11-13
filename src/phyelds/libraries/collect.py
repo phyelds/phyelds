@@ -6,7 +6,8 @@ source nodes along a potential gradient, with pluggable collection strategies.
 """
 
 from collections.abc import Callable
-from typing import Any, Optional, Tuple, TypeVar, Union
+import operator
+from typing import Any, Optional, TypeVar, Union
 
 from phyelds.calculus import aggregate, exchange, neighbors
 from phyelds.data import NeighborhoodField
@@ -34,10 +35,11 @@ def find_parent(potential: float) -> Optional[int]:
             has a potential lower than ``potential``.
     """
     neighbors_potential: NeighborhoodField[float] = neighbors(potential)
-    min_value: Tuple[int, float] = min(neighbors_potential.data.items(), key=lambda x: x[1])
-    if min_value[1] >= potential:
+    best_id = neighbors_potential.id_of_min()
+    best_potential = neighbors_potential.min()
+    if best_potential >= potential:
         return None
-    return min_value[0]
+    return best_id
 
 
 @aggregate
@@ -74,11 +76,8 @@ def _broadcast_collect(
     """Collect values up the potential gradient using broadcast neighbor fields."""
     _, n_collections, send_collections = exchange(local)
     parents: NeighborhoodField[Optional[int]] = neighbors(find_parent(potential))
-    operations: T = local
-    for parent, value in zip(parents, n_collections):
-        if local_id() == parent:
-            operations = accumulation(operations, value)
-    return send_collections(operations)
+    children = parents.map(operator.eq, local_id())
+    return send_collections(n_collections.where(children).fold(local, accumulation))
 
 
 @aggregate
@@ -231,7 +230,7 @@ def count_nodes(
     Returns:
         The count of nodes in the sub-tree rooted at the current device.
     """
-    return collect_with(potential, 1, lambda x, y: x + y, strategy=strategy)
+    return collect_with(potential, 1, operator.add, strategy=strategy)
 
 
 @aggregate
@@ -252,7 +251,7 @@ def sum_values(
     Returns:
         The sum of values in the sub-tree rooted at the current device.
     """
-    return collect_with(potential, local, lambda x, y: x + y, strategy=strategy)
+    return collect_with(potential, local, operator.add, strategy=strategy)
 
 
 @aggregate
@@ -296,7 +295,7 @@ def collect_or(
     Returns:
         True if any node in the sub-tree satisfies ``local``.
     """
-    return collect_with(potential, local, lambda x, y: x or y, strategy=strategy)
+    return collect_with(potential, local, operator.or_, strategy=strategy)
 
 
 @aggregate

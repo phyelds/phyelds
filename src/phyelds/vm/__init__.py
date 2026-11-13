@@ -3,7 +3,12 @@ Engine interface: how to implement an aggregate computing engine.
 """
 from abc import ABC
 from dataclasses import dataclass
-from typing import List, Dict, Any
+from typing import Any, Callable, Dict, List
+
+from phyelds.data import NeighborhoodField
+
+# The default of a neighbor field when none is given: the value of the device itself.
+_LOCAL = object()
 
 
 class NodeContext(ABC):
@@ -97,7 +102,16 @@ class EngineState:
 class Engine(ABC):
     """
     Abstract base class for the engine. This class should be implemented by the user.
+
+    Attributes:
+        vectorized: Whether the engine runs many devices at once, each value holding one per
+            device: ``@aggregate`` then rewrites the ``if`` statements, the conditional
+            expressions, ``and``, ``or``, ``not``, ``min`` and ``max`` into ``branch`` and
+            ``choose``, which run each side for the devices choosing it. ``False`` by
+            default: one device, plain Python.
     """
+
+    vectorized: bool = False
 
     def __init__(self):
         self.node_context: NodeContext | None = None
@@ -119,6 +133,7 @@ class Engine(ABC):
         Returns:
             The engine itself.
         """
+        raise NotImplementedError
 
     def enter(self, name: str) -> None:
         """
@@ -127,11 +142,57 @@ class Engine(ABC):
         Args:
             name: The name of the alignment point.
         """
+        raise NotImplementedError
 
     def exit(self) -> None:
         """
         Leave the current alignment point, going back to the enclosing one.
         """
+        raise NotImplementedError
+
+    def branch(
+        self, condition: Any, if_true: Callable[[], Any], if_false: Callable[[], Any]
+    ) -> Any:
+        """
+        Run the branch of a conditional that ``condition`` chooses, in its own alignment point.
+
+        ``if_true`` runs in ``"left"`` and ``if_false`` in ``"right"``, as ``align_left`` and
+        ``align_right`` do, so devices on different branches do not exchange values. A batch
+        engine, running many devices at once, runs each branch for the devices choosing it.
+
+        Args:
+            condition: What chooses the branch: ``if_true`` if it is truthy.
+            if_true: The branch for a truthy ``condition``.
+            if_false: The branch for a falsy ``condition``.
+
+        Returns:
+            What the branch returns.
+        """
+        chosen, side = (if_true, "left") if condition else (if_false, "right")
+        self.enter(side)
+        try:
+            return chosen()
+        finally:
+            self.exit()
+
+    def choose(
+        self, condition: Any, if_true: Callable[[], Any], if_false: Callable[[], Any]
+    ) -> Any:
+        """
+        Run the side of a choice that ``condition`` picks, without an alignment point.
+
+        A batch engine, running many devices at once, runs each side for the devices
+        picking it.
+
+        Args:
+            condition: What picks the side: ``if_true`` if it is truthy.
+            if_true: The side for a truthy ``condition``.
+            if_false: The side for a falsy ``condition``.
+
+        Returns:
+            What the side returns.
+        """
+        return if_true() if condition else if_false()
 
     def current_path(self) -> list:
         """
@@ -141,6 +202,7 @@ class Engine(ABC):
             A copy of the segments of the alignment points entered so far, outermost
             first, as the engine encodes them: pass it back to the other methods.
         """
+        raise NotImplementedError
 
     def write_state(self, value: any, stack: list | None = None) -> None:
         """
@@ -150,6 +212,7 @@ class Engine(ABC):
             value: The value to store.
             stack: The alignment path the value belongs to; the current one by default.
         """
+        raise NotImplementedError
 
     def read_state(self, stack: list | None = None) -> any:
         """
@@ -161,6 +224,26 @@ class Engine(ABC):
         Returns:
             The stored value, or ``None`` if there is none.
         """
+        raise NotImplementedError
+
+    def read_state_or(self, init: Any, stack: list | None = None) -> Any:
+        """
+        Read a value of the device's state, storing ``init`` first if there is none.
+
+        A batch engine, running many devices at once, reads or stores each one's value.
+
+        Args:
+            init: The value to store, and return, if the state has none at ``stack``.
+            stack: The alignment path the value belongs to; the current one by default.
+
+        Returns:
+            The stored value, or ``init``.
+        """
+        stored = self.read_state(stack)
+        if stored is None:
+            self.write_state(init, stack)
+            return init
+        return stored
 
     def state_trace(self) -> dict[str, any]:
         """
@@ -169,6 +252,7 @@ class Engine(ABC):
         Returns:
             A copy of the stored values, keyed by alignment path.
         """
+        raise NotImplementedError
 
     def forget(self, _self_path):
         """
@@ -177,6 +261,7 @@ class Engine(ABC):
         Args:
             _self_path (list): The alignment path of the value to remove.
         """
+        raise NotImplementedError
 
     def send(self, data: any, stack: list | None = None) -> None:
         """
@@ -186,6 +271,7 @@ class Engine(ABC):
             data: The value to send.
             stack: The alignment path to send it at; the current one by default.
         """
+        raise NotImplementedError
 
     def aligned(self) -> list[int]:
         """
@@ -194,6 +280,7 @@ class Engine(ABC):
         Returns:
             The IDs of the neighbors that sent a value at the current alignment path.
         """
+        raise NotImplementedError
 
     def aligned_values(self, path: list | None = None) -> dict[int, any]:
         """
@@ -205,6 +292,45 @@ class Engine(ABC):
         Returns:
             A dictionary mapping each neighbor ID to the value it sent at ``path``.
         """
+        raise NotImplementedError
+
+    def neighbor_field(
+        self,
+        local: Any,
+        path: list | None = None,
+        default: Any = _LOCAL,
+        *,
+        addressed: bool = False,
+    ) -> NeighborhoodField:
+        """
+        Return the field of the values the aligned neighbors sent at ``path``, and ``local``.
+
+        A batch engine, running many devices at once, returns one field for all of them.
+
+        Args:
+            local: The value of the device itself.
+            path: The alignment path of the values; the current one by default.
+            default: The value of the field for the devices it does not hold; ``local`` by
+                default.
+            addressed: Whether a neighbor may have sent a field, addressing each device its
+                own value, as ``exchange`` does: the device then takes the value addressed
+                to it.
+
+        Returns:
+            A ``NeighborhoodField`` mapping the device to ``local`` and each aligned
+                neighbor to what it sent.
+        """
+        node_id = self.node_context.node_id
+        values = self.aligned_values(path)
+        if addressed:
+            values = {
+                sender: value.for_node(node_id) if isinstance(value, NeighborhoodField) else value
+                for sender, value in values.items()
+            }
+        values[node_id] = local
+        if default is _LOCAL:
+            return NeighborhoodField(values, node_id)
+        return NeighborhoodField(values, node_id, default=default)
 
     def begin_process(self, name: str) -> Any:
         """
@@ -216,6 +342,7 @@ class Engine(ABC):
         Returns:
             An opaque checkpoint token for ``end_process``.
         """
+        raise NotImplementedError
 
     def end_process(self, token: Any, commit: bool) -> None:
         """
@@ -225,6 +352,7 @@ class Engine(ABC):
             token: The checkpoint token returned by ``begin_process``.
             commit: True to keep state and outgoing messages, False to restore ``token``.
         """
+        raise NotImplementedError
 
     def cooldown(self) -> dict[str, Any]:
         """
@@ -233,3 +361,4 @@ class Engine(ABC):
         Returns:
             The values to send to the neighbors, keyed by alignment path.
         """
+        raise NotImplementedError

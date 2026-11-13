@@ -1,3 +1,9 @@
+## [10.1.0](https://github.com/phyelds/phyelds/compare/10.0.4...10.1.0) (2026-11-12)
+
+### Features
+
+* **data:** add with_local and use the public field api in libraries ([#86](https://github.com/phyelds/phyelds/issues/86)) ([1a9f228](https://github.com/phyelds/phyelds/commit/1a9f22844d06c3c42e50ae4d3daa48f11343104f)), closes [#37](https://github.com/phyelds/phyelds/issues/37) [#37](https://github.com/phyelds/phyelds/issues/37) [#37](https://github.com/phyelds/phyelds/issues/37) [#37](https://github.com/phyelds/phyelds/issues/37) [#37](https://github.com/phyelds/phyelds/issues/37)
+
 ## [10.0.4](https://github.com/phyelds/phyelds/compare/10.0.3...10.0.4) (2026-11-12)
 
 ### Performance improvements

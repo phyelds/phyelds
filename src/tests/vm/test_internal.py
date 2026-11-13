@@ -2,6 +2,7 @@ import pytest
 
 from phyelds import engine
 from phyelds.calculus import aggregate, neighbors, remember
+from phyelds.data import NeighborhoodField
 from phyelds.vm.internal import MutableEngine
 from tests.calculus.mock import MockNodeContext, MockSimulator
 
@@ -183,3 +184,90 @@ def test_mutable_engine_process_transaction_commits_or_rolls_back():
 
     assert engine_.cooldown() == {_compact_key([("process:2", 0)]): "kept_msg"}
     assert engine_.state_trace() == {_compact_key([("process:2", 0)]): "kept"}
+
+
+def test_mutable_engine_read_state_or_returns_the_value_stored():
+    engine_ = MutableEngine().setup(MockNodeContext(0))
+    engine_.write_state(7, engine_.current_path())
+
+    assert engine_.read_state_or(1) == 7
+
+
+def test_mutable_engine_read_state_or_keeps_the_initial_value_for_the_next_round():
+    engine_ = MutableEngine().setup(MockNodeContext(0))
+    engine_.enter("point")
+    first = engine_.read_state_or(1)
+    engine_.exit()
+    engine_.cooldown()
+
+    engine_.setup(MockNodeContext(0), {}, engine_.state_trace())
+    engine_.enter("point")
+    second = engine_.read_state_or(99)
+
+    assert (first, second) == (1, 1)
+
+
+def test_mutable_engine_neighbor_field_holds_the_aligned_values_and_the_local_one():
+    key = KEYS["debug"]
+    messages = {1: {key([("a", 0)]): 10}, 2: {key([("b", 0)]): 20}}
+    engine_ = MutableEngine().setup(MockNodeContext(0), messages)
+    engine_.enter("a")
+
+    field = engine_.neighbor_field(5)
+
+    assert field.data == {0: 5, 1: 10}
+    assert field.default == 5
+
+
+def test_mutable_engine_neighbor_field_takes_the_values_addressed_to_the_device():
+    key = KEYS["debug"]
+    messages = {
+        1: {key([("a", 0)]): NeighborhoodField({0: 3, 2: 4}, 1)},
+        2: {key([("a", 0)]): 8},
+    }
+    engine_ = MutableEngine().setup(MockNodeContext(0), messages)
+    engine_.enter("a")
+
+    field = engine_.neighbor_field(5, default=None, addressed=True)
+
+    assert field.data == {0: 5, 1: 3, 2: 8}
+    assert field.default is None
+
+
+def test_mutable_engine_branch_runs_only_the_chosen_side_under_its_alignment_point():
+    engine_ = MutableEngine().setup(MockNodeContext(0))
+    skipped = []
+
+    left = engine_.branch(True, engine_.current_path, lambda: skipped.append("right"))
+    right = engine_.branch(0, lambda: skipped.append("left"), engine_.current_path)
+
+    assert (left, right) == (["left@0"], ["right@1"])
+    assert not skipped
+    assert not engine_.current_path()
+
+
+def test_mutable_engine_branch_leaves_its_alignment_point_when_the_branch_raises():
+    engine_ = MutableEngine().setup(MockNodeContext(0))
+
+    def failing():
+        raise RuntimeError("inside the branch")
+
+    with pytest.raises(RuntimeError):
+        engine_.branch(True, failing, failing)
+
+    assert not engine_.current_path()
+
+
+def test_mutable_engine_choose_runs_only_the_chosen_side_without_an_alignment_point():
+    engine_ = MutableEngine().setup(MockNodeContext(0))
+    skipped = []
+
+    left = engine_.choose(True, engine_.current_path, lambda: skipped.append("right"))
+    right = engine_.choose(0, lambda: skipped.append("left"), lambda: "right")
+
+    assert (left, right) == ([], "right")
+    assert not skipped
+
+
+def test_mutable_engine_runs_the_aligned_rewriting_of_aggregate_functions():
+    assert MutableEngine().vectorized is False
