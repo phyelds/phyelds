@@ -7,8 +7,8 @@ settled and may change in any release; a study that settles moves to `libraries`
 `packages/phyelds-simulator/`, and so are the VMAS extension in
 `packages/phyelds-vmas/`, the Mesa extension in `packages/phyelds-mesa/`, the
 Webots extension in `packages/phyelds-webots/`, the ARGoS extension in
-`packages/phyelds-argos/` and the PyTorch backend in `packages/phyelds-gpu/` (in progress,
-not released yet); all of them share the `phyelds` namespace. The core
+`packages/phyelds-argos/` and the PyTorch backend in `packages/phyelds-gpu/`; all of them
+share the `phyelds` namespace. The core
 has no external runtime dependencies: the simulator is a development dependency, used by the
 tests, the examples and the playground. The documentation site (MkDocs Material) is in `docs/`,
 with runnable, tested examples in `docs/examples/`.

@@ -47,6 +47,7 @@ pip install phyelds-vmas                    # VMAS integration
 pip install phyelds-mesa                    # Mesa integration
 pip install phyelds-argos                   # ARGoS integration
 pip install phyelds-webots                  # Webots integration
+pip install phyelds-gpu                     # many devices at once, on CPU or GPU (PyTorch)
 ```
 
 Requires Python 3.12+.
@@ -95,6 +96,8 @@ builds the gradient beneath it step by step from `remember` and `neighbors`.
   [Webots](https://cyberbotics.com) simulation, talking over their simulated radios.
 * **ARGoS** (`phyelds-argos`): phyelds programs embedded in native controllers for
   any ARGoS robot, using range-and-bearing radios and compass geometry without GPS.
+* **GPU** (`phyelds-gpu`): the same programs on many devices at once, as PyTorch
+  tensors on a CPU or a GPU, in synchronous rounds or in wavefronts.
 * **MicroPython**: the same programs run on microcontrollers such as the ESP32
   (`python -m phyelds.micropython`), and talk with devices running CPython.
 * **Experimental** (`phyelds.experimental`): studies in progress, whose API will
