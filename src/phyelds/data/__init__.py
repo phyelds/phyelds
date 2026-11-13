@@ -30,7 +30,8 @@ _IS_MICROPYTHON = sys.implementation.name == "micropython"
 _Sorted = OrderedDict if _IS_MICROPYTHON else dict
 
 
-class NeighborhoodField(Generic[T], Iterator[T]):
+# A field is a collection with its own algebra: its many public methods are its API.
+class NeighborhoodField(Generic[T], Iterator[T]):  # pylint: disable=too-many-public-methods
     """
     NeighborhoodField class used to manage the interactions between nodes
     (namely `nbr` of neighborhood calculus).
@@ -112,6 +113,24 @@ class NeighborhoodField(Generic[T], Iterator[T]):
             The value of the current node, or ``None`` if the field has none.
         """
         return self.data.get(self.node_id, None)
+
+    def with_local(self, value: T) -> "NeighborhoodField[T]":
+        """
+        Return a copy of the field where the current node has ``value``.
+
+        The values of the neighbors and the default stay the same, and the field itself is
+        not changed. If the field has no value for the current node, the copy adds it.
+
+        Args:
+            value: The new value of the current node.
+
+        Returns:
+            A new ``NeighborhoodField`` mapping the current node to ``value``.
+        """
+        updated = self.data.copy()
+        replacing = self.node_id in updated  # a replaced value keeps the IDs in order
+        updated[self.node_id] = value
+        return NeighborhoodField(updated, self.node_id, default=self.default, _sorted=replacing)
 
     def for_node(self, target_id: int) -> Optional[T]:
         """

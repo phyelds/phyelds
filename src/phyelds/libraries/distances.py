@@ -1,12 +1,12 @@
 """
 This module contains functions to calculate distances between nodes in the neighborhood.
-These functions may be used by other library to compute system-wise properties
+These functions may be used by other libraries to compute system-wise properties.
 """
 
 from collections.abc import Sequence
 import math
 
-from phyelds.calculus import neighbors, aggregate
+from phyelds.calculus import aggregate, neighbors
 from phyelds.data import NeighborhoodField
 from phyelds.libraries.device import local_id, local_position, sense
 
@@ -48,6 +48,4 @@ def hops_distance() -> NeighborhoodField[int]:
     Returns:
         A field that is ``1`` for every neighbor and ``0`` for the current device.
     """
-    distances: NeighborhoodField[int] = neighbors(1)
-    distances.data[local_id()] = 0
-    return distances
+    return neighbors(1).with_local(0)
