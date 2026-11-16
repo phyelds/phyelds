@@ -1,3 +1,9 @@
+## [10.3.0](https://github.com/phyelds/phyelds/compare/10.2.0...10.3.0) (2026-11-16)
+
+### Features
+
+* **gpu:** support anisotropic exchange in batch runtimes ([#99](https://github.com/phyelds/phyelds/issues/99)) ([50f5f2c](https://github.com/phyelds/phyelds/commit/50f5f2cf4b59eeb87363dc761edf23440dd9dbfd)), closes [#98](https://github.com/phyelds/phyelds/issues/98) [#98](https://github.com/phyelds/phyelds/issues/98) [#98](https://github.com/phyelds/phyelds/issues/98) [#98](https://github.com/phyelds/phyelds/issues/98) [#98](https://github.com/phyelds/phyelds/issues/98) [#98](https://github.com/phyelds/phyelds/issues/98) [#98](https://github.com/phyelds/phyelds/issues/98) [#98](https://github.com/phyelds/phyelds/issues/98)
+
 ## [10.2.0](https://github.com/phyelds/phyelds/compare/10.1.0...10.2.0) (2026-11-13)
 
 ### Features
