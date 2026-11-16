@@ -162,13 +162,6 @@ def neighbors(value: T) -> "NeighborhoodField[T]":
     return current_engine.neighbor_field(value)
 
 
-def _extract_for_node(value: Any, node_id: int) -> Any:
-    """Extract the value addressed to ``node_id`` from a scalar or field."""
-    if isinstance(value, NeighborhoodField):
-        return value.for_node(node_id)
-    return value
-
-
 @aggregate
 def exchange(
     init: Union[T, "NeighborhoodField[T]"],
@@ -186,16 +179,12 @@ def exchange(
     """
     current_engine = engine.get()
     path = current_engine.current_path()
-    node_id = current_engine.node_context.node_id
     state = current_engine.read_state_or(init, path)
     current_engine.send(state, path)
-    default_value = (
-        init.default
-        if isinstance(init, NeighborhoodField)
-        else _extract_for_node(init, node_id)
+    local_value = current_engine.own_value(state)
+    field = current_engine.neighbor_field(
+        local_value, path, current_engine.default_value(init), addressed=True
     )
-    local_value = _extract_for_node(state, node_id)
-    field = current_engine.neighbor_field(local_value, path, default_value, addressed=True)
 
     def send(new_value: Any) -> Any:
         current_engine.write_state(new_value, path)

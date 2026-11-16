@@ -14,7 +14,7 @@ from phyelds.libraries.device import local_id, sense, store
 from phyelds.libraries.gossip import gossip_max
 from phyelds.libraries.spreading import distance_to
 from phyelds.vm.synchronous import SynchronousRuntime
-from phyelds.gpu import BatchSynchronousRuntime, radius_topology
+from phyelds.gpu import BatchSynchronousRuntime, GraphTopology, radius_topology
 
 DEVICES = ["cpu", "cuda"] if torch.cuda.is_available() else ["cpu"]
 COUNT, ROUNDS = 60, 8
@@ -79,7 +79,33 @@ def state_in_branches():
     return total
 
 
-PROGRAMS = [libraries, branches, early_returns, expressions, state_in_branches]
+@aggregate
+def addressed_exchange():
+    ids = neighbors(local_id())
+    _, received, send = exchange(0)
+    send(received + ids)  # each neighbor gets its own entry, or the id of the sender
+    return received.sum()
+
+
+@aggregate
+def addressed_in_branches():
+    value = sense("value")
+    ids = neighbors(local_id())
+    _, received, send = exchange(0)
+    count, set_count = remember(0)
+    turn = (set_count(count + 1) + value) % 3
+    if turn == 0:
+        send(received + ids if value > 1 else value)  # a field on some devices, a value on others
+    elif turn == 1:
+        send(value)
+    # On the last turn the device sends again what it keeps: a field or a value.
+    return received.sum()
+
+
+PROGRAMS = [
+    libraries, branches, early_returns, expressions, state_in_branches, addressed_exchange,
+    addressed_in_branches,
+]
 
 
 def _world(device: str):
@@ -121,6 +147,25 @@ def test_batch_runtime_computes_in_each_round_what_each_device_computes_alone(pr
         expected = alone.run_round(sensors, topology.to_neighbors())
 
         actual = _per_device(together.run_round(batch_sensors), COUNT)
+
+        assert actual == expected
+
+
+def test_batch_runtime_addresses_the_default_of_a_field_to_a_neighbor_its_sender_does_not_hear():
+    rng = random.Random(3)
+    count = 12
+    heard = {
+        device: [other for other in range(count) if other != device and rng.random() < 0.3]
+        for device in range(count)
+    }
+    topology = GraphTopology.from_neighbors(heard)
+    alone = SynchronousRuntime(addressed_exchange)
+    together = BatchSynchronousRuntime(addressed_exchange, topology)
+
+    for _ in range(ROUNDS):
+        expected = alone.run_round({device: {} for device in range(count)}, heard)
+
+        actual = _per_device(together.run_round({}), count)
 
         assert actual == expected
 

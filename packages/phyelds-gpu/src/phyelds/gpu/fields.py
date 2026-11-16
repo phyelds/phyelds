@@ -418,6 +418,20 @@ class BatchField:  # pylint: disable=too-many-public-methods  # the API of a fie
         return torch.where(ids != unset, ids.to(torch.float64), math.nan)
 
 
+def as_field(edges: BatchEdges, value: Any) -> BatchField:
+    """``value`` as a field: a value of each device is a field with no entries, its default."""
+    if isinstance(value, BatchField):
+        return value
+    rows = as_rows(value, edges.num_devices, edges.devices.device)
+    absent = torch.zeros_like(edges.receivers, dtype=torch.bool)
+    return BatchField(edges, rows, rows[edges.receivers], absent, default=rows)
+
+
+def default_rows(value: BatchField) -> torch.Tensor:
+    """The default of ``value`` for each device, NaN if it has none."""
+    return as_rows(value.default, value.edges.num_devices, value.edges.devices.device)
+
+
 def _identity(reduction: str, dtype: torch.dtype) -> float | int:
     """The value that ``reduction`` leaves unchanged: what a device without entries gets."""
     if reduction == "sum":

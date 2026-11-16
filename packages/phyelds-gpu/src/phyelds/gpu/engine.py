@@ -8,12 +8,13 @@ its ``branch`` and ``choose``, which run each side for the devices taking it.
 """
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import Any
 
 import torch
 
 from phyelds import engine
-from phyelds.gpu.fields import BatchField
+from phyelds.gpu.fields import BatchField, as_field, default_rows
+from phyelds.gpu.memory import Inbox, Outbox, Rows, States
 from phyelds.gpu.tensors import as_rows, where_rows
 from phyelds.gpu.topology import BatchEdges
 from phyelds.vm import Engine, NodeContext
@@ -21,99 +22,6 @@ from phyelds.vm.internal import CompactPaths
 
 _IDLE = object()  # what a side of a branch that no device takes returns
 _LOCAL = object()  # the default of a neighbor field when none is given: the local value
-
-# A value of each device of a batch, and which devices hold one.
-Rows = tuple[torch.Tensor, torch.Tensor]
-
-
-class States:
-    """
-    The state of every device: for each alignment key, a value of each device and whether
-    it holds one.
-
-    Args:
-        count: How many devices there are.
-        device: The torch device of the tensors.
-    """
-
-    def __init__(self, count: int, device: torch.device | str):
-        self.count = count
-        self.device = torch.device(device)
-        self._slots: dict[int, Rows] = {}
-
-    def read(self, key: int, devices: torch.Tensor) -> Rows | None:
-        """The values of ``devices`` at ``key`` and which of them hold one; none if no one does."""
-        slot = self._slots.get(key)
-        if slot is None:
-            return None
-        values, held = slot
-        return values[devices], held[devices]
-
-    def write(self, key: int, devices: torch.Tensor, values: torch.Tensor, mask: torch.Tensor):
-        """Store ``values`` at ``key`` for the ``devices`` of ``mask``."""
-        self._slots[key] = _written(self._slots.get(key), self.count, devices, values, mask)
-
-    def forget(self, key: int, devices: torch.Tensor, mask: torch.Tensor) -> None:
-        """Drop the values at ``key`` of the ``devices`` of ``mask``."""
-        slot = self._slots.get(key)
-        if slot is not None:
-            slot[1][devices[mask]] = False
-
-    def keep_read(self, devices: torch.Tensor, reads: Mapping[int, torch.Tensor]) -> None:
-        """Drop the values of ``devices`` they did not read, as a device drops its unused state."""
-        for key, (_, held) in self._slots.items():
-            read = reads.get(key)
-            held[devices if read is None else devices[~read]] = False
-
-    def clear(self) -> None:
-        """Forget the state of every device."""
-        self._slots.clear()
-
-
-class Inbox(Protocol):  # pylint: disable=too-few-public-methods
-    """Where a batch of devices reads what its neighbors sent."""
-
-    def read(self, key: int, edges: BatchEdges) -> Rows | None:
-        """What each edge into ``edges`` carries at ``key``, and which of them carry it."""
-
-
-class SynchronousMessages:
-    """
-    The messages of synchronous rounds: in a round every device reads what its neighbors
-    sent in the previous one.
-
-    Args:
-        count: How many devices there are.
-        device: The torch device of the tensors.
-    """
-
-    def __init__(self, count: int, device: torch.device | str):
-        self.count = count
-        self.device = torch.device(device)
-        self._sent: dict[int, Rows] = {}
-
-    def read(self, key: int, edges: BatchEdges) -> Rows | None:
-        """What the sender of each edge sent at ``key`` in the previous round, if it did."""
-        slot = self._sent.get(key)
-        if slot is None:
-            return None
-        values, sent = slot
-        return values[edges.senders], sent[edges.senders]
-
-    def publish(self, devices: torch.Tensor, outbox: Mapping[int, Rows]) -> None:
-        """Replace the messages of ``devices`` with ``outbox``, for the next round."""
-        for key, (_, sent) in self._sent.items():
-            if key not in outbox:
-                sent[devices] = False
-        for key, (values, mask) in outbox.items():
-            slot = self._sent.get(key)
-            if slot is not None:
-                slot[1][devices] = False
-            self._sent[key] = _written(slot, self.count, devices, values, mask)
-
-    def clear(self) -> None:
-        """Forget every message."""
-        self._sent.clear()
 
 
 class BatchContext(NodeContext):
@@ -159,7 +67,7 @@ class _Round:
     """What the devices of a batch leave behind in a round: the values they read and sent."""
 
     reads: dict[int, torch.Tensor] = field(default_factory=dict)
-    outbox: dict[int, Rows] = field(default_factory=dict)
+    outbox: Outbox = field(default_factory=Outbox)
 
 
 class BatchEngine(Engine):  # pylint: disable=too-many-instance-attributes
@@ -208,47 +116,60 @@ class BatchEngine(Engine):  # pylint: disable=too-many-instance-attributes
     def current_path(self) -> list:
         return self._stack.copy()
 
-    def read_state(self, stack: list | None = None) -> torch.Tensor:
+    def read_state(self, stack: list | None = None) -> Any:
         key = self._key(stack)
         self._mark_read(key)
-        slot = self.states.read(key, self.edges.devices)
+        slot = self.states.read(key, self.edges)
         nothing = self._rows(None)
-        return nothing if slot is None else where_rows(slot[1], slot[0], nothing)
+        return nothing if slot is None else merge(slot[1], slot[0], nothing)
 
-    def read_state_or(self, init: Any, stack: list | None = None) -> torch.Tensor:
+    def read_state_or(self, init: Any, stack: list | None = None) -> Any:
         key = self._key(stack)
         self._mark_read(key)
-        value = self._rows(init)
-        slot = self.states.read(key, self.edges.devices)
+        value = self._value(init)
+        slot = self.states.read(key, self.edges)
         if slot is not None:
-            value = where_rows(slot[1], slot[0], value)
-        self.states.write(key, self.edges.devices, value, self.running)
+            value = merge(slot[1], slot[0], value)
+        self.states.write(key, self.edges, value, self.running)
         return value
 
     def write_state(self, value: Any, stack: list | None = None) -> None:
-        self.states.write(self._key(stack), self.edges.devices, self._rows(value), self.running)
+        self.states.write(self._key(stack), self.edges, self._value(value), self.running)
 
     def forget(self, _self_path: list) -> None:
         self.states.forget(self._key(_self_path), self.edges.devices, self.running)
 
+    def own_value(self, value: Any) -> Any:
+        if not isinstance(value, BatchField):
+            return value
+        return where_rows(value.local_present, value.local_values, default_rows(value))
+
+    def default_value(self, value: Any) -> Any:
+        return value.default if isinstance(value, BatchField) else value
+
     def send(self, data: Any, stack: list | None = None) -> None:
-        if isinstance(data, BatchField):
-            raise TypeError("a batch engine sends a value of each device, not a field")
         key = self._key(stack)
-        values = self._rows(data)
-        previous = self._round.outbox.get(key)
-        if previous is None:
-            self._round.outbox[key] = (values, self.running.clone())
+        outbox = self._round.outbox
+        if isinstance(data, BatchField):
+            shared, addressed = default_rows(data), (data.values, data.present)
         else:
-            self._round.outbox[key] = (
-                where_rows(self.running, values, previous[0]), previous[1] | self.running
+            shared, addressed = self._rows(data), None
+        previous = outbox.shared.get(key)
+        if previous is None:
+            outbox.shared[key] = (shared, self.running.clone())
+        else:
+            outbox.shared[key] = (
+                where_rows(self.running, shared, previous[0]), previous[1] | self.running
             )
+        if addressed is not None or key in outbox.addressed:
+            outbox.addressed[key] = self._addressed(outbox.addressed.get(key), addressed)
 
     def neighbor_field(
         self, local: Any, path: list | None = None, default: Any = _LOCAL, *,
         addressed: bool = False,
     ) -> BatchField:
-        del addressed  # a batch engine sends no fields: no value is addressed to a device
+        # The messages already hold, on each edge, the value its sender addressed to it.
+        del addressed
         local_rows = self._rows(local)
         received = self.inbox.read(self._key(path), self.edges)
         if received is None:
@@ -286,12 +207,12 @@ class BatchEngine(Engine):  # pylint: disable=too-many-instance-attributes
         finally:
             engine.reset(token)
 
-    def finish(self) -> dict[int, Rows]:
+    def finish(self) -> Outbox:
         """
         End the round of the batch: drop the state its devices did not read.
 
         Returns:
-            What the devices sent, by alignment key: a value of each and whether it sent one.
+            What the devices sent, by alignment key.
         """
         self.states.keep_read(self.edges.devices, self._round.reads)
         return self._round.outbox
@@ -301,6 +222,25 @@ class BatchEngine(Engine):  # pylint: disable=too-many-instance-attributes
 
     def _rows(self, value: Any) -> torch.Tensor:
         return as_rows(value, self.edges.num_devices, self.edges.devices.device)
+
+    def _value(self, value: Any) -> Any:
+        """``value`` as the engine keeps it: a field as it is, anything else as rows."""
+        return value if isinstance(value, BatchField) else self._rows(value)
+
+    def _addressed(self, previous: Rows | None, addressed: Rows | None) -> Rows:
+        """
+        The values addressed on the edges into the running devices replaced with
+        ``addressed``, or dropped if it is none; those into the other devices kept.
+        """
+        on_edges = self.running[self.edges.receivers]
+        if addressed is None:
+            return previous[0], previous[1] & ~on_edges
+        values, present = addressed
+        if previous is None:
+            return values, present & on_edges
+        return (
+            where_rows(on_edges, values, previous[0]), torch.where(on_edges, present, previous[1])
+        )
 
     def _mark_read(self, key: int) -> None:
         read = self._round.reads.get(key)
@@ -369,16 +309,19 @@ def merge(mask: torch.Tensor, chosen: Any, other: Any) -> Any:
     The values of ``chosen`` for the devices of ``mask``, those of ``other`` for the rest.
 
     Tuples merge item by item, fields entry by entry, and numbers and tensors row by row,
-    with ``None`` as NaN; any other values become a ``Diverged``, which fails when used.
+    with ``None`` as NaN; a field and a number merge as fields, the number a field with no
+    entries whose default is the number. Any other values become a ``Diverged``, which fails
+    when used.
     """
     if chosen is other:
         return chosen
     if isinstance(chosen, tuple) and isinstance(other, tuple) and len(chosen) == len(other):
         return tuple(merge(mask, *pair) for pair in zip(chosen, other))
-    if isinstance(chosen, BatchField) and isinstance(other, BatchField):
-        return BatchField.merged(mask, chosen, other)
-    if not (_has_rows(chosen) and _has_rows(other)):
+    if not all(isinstance(value, BatchField) or _has_rows(value) for value in (chosen, other)):
         return Diverged()
+    if isinstance(chosen, BatchField) or isinstance(other, BatchField):
+        edges = (chosen if isinstance(chosen, BatchField) else other).edges
+        return BatchField.merged(mask, as_field(edges, chosen), as_field(edges, other))
     rows, device = mask.numel(), mask.device
     return where_rows(mask, as_rows(chosen, rows, device), as_rows(other, rows, device))
 
@@ -386,20 +329,3 @@ def merge(mask: torch.Tensor, chosen: Any, other: Any) -> Any:
 def _has_rows(value: Any) -> bool:
     """Whether ``value`` can be a row of each device: a number, ``None`` or a tensor."""
     return value is None or isinstance(value, (bool, int, float, torch.Tensor))
-
-
-def _written(
-    slot: Rows | None, count: int, devices: torch.Tensor, values: torch.Tensor, mask: torch.Tensor
-) -> Rows:
-    """``slot`` of ``count`` devices, with ``values`` written for the ``devices`` of ``mask``."""
-    if slot is None:
-        stored = torch.zeros((count, *values.shape[1:]), dtype=values.dtype, device=values.device)
-        held = torch.zeros(count, dtype=torch.bool, device=values.device)
-    else:
-        stored, held = slot
-        if stored.dtype != values.dtype:
-            common_type = torch.promote_types(stored.dtype, values.dtype)
-            stored, values = stored.to(common_type), values.to(common_type)
-    stored[devices[mask]] = values[mask].to(stored.dtype)
-    held[devices[mask]] = True
-    return stored, held

@@ -138,6 +138,22 @@ class GraphTopology:
         edges = starts[receivers] + rank - firsts[receivers]
         return BatchEdges(devices, edges, self.senders[edges], receivers)
 
+    def reverse_edges(self) -> torch.Tensor:
+        """
+        The edge back of each edge: the one from its receiver to its sender.
+
+        Returns:
+            The index of the edge back of each edge (``int64 [E]``), or ``-1`` if the sender
+                does not hear the receiver.
+        """
+        count = self.senders.numel()
+        # Grouped by receiver and sorted by sender: the keys of the edges are sorted.
+        keys = self.receivers * self.num_devices + self.senders
+        wanted = self.senders * self.num_devices + self.receivers
+        found = torch.searchsorted(keys, wanted)
+        back = torch.clamp(found, max=max(count - 1, 0))
+        return torch.where((found < count) & (keys[back] == wanted), back, -1)
+
     def to_neighbors(self) -> dict[int, list[int]]:
         """
         The neighbors of each device, as plain Python values.
