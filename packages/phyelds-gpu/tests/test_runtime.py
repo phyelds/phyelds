@@ -87,7 +87,25 @@ def addressed_exchange():
     return received.sum()
 
 
-PROGRAMS = [libraries, branches, early_returns, expressions, state_in_branches, addressed_exchange]
+@aggregate
+def addressed_in_branches():
+    value = sense("value")
+    ids = neighbors(local_id())
+    _, received, send = exchange(0)
+    count, set_count = remember(0)
+    turn = (set_count(count + 1) + value) % 3
+    if turn == 0:
+        send(received + ids if value > 1 else value)  # a field on some devices, a value on others
+    elif turn == 1:
+        send(value)
+    # On the last turn the device sends again what it keeps: a field or a value.
+    return received.sum()
+
+
+PROGRAMS = [
+    libraries, branches, early_returns, expressions, state_in_branches, addressed_exchange,
+    addressed_in_branches,
+]
 
 
 def _world(device: str):
