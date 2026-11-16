@@ -190,17 +190,15 @@ class SynchronousMessages:
             if slot is not None:
                 slot[1][devices] = False
             self._sent[key] = _written(slot, self.count, devices, values, mask)
-        # What a device addresses on an edge into it travels on the edge back.
-        back = self._back[edges.edges]
-        has_back = back >= 0
+        index, has_back = edges_back(self._back, edges)
         for key in set(self._addressed) | set(outbox.addressed):
             addressed = outbox.addressed.get(key)
             if addressed is None:
-                self._addressed[key][1][back[has_back]] = False
+                self._addressed[key][1][index] = False
                 continue
             values, present = addressed
             self._addressed[key] = _put(
-                self._addressed.get(key), self.num_edges, back[has_back],
+                self._addressed.get(key), self.num_edges, index,
                 values[has_back], present[has_back],
             )
 
@@ -466,6 +464,24 @@ class BatchEngine(Engine):  # pylint: disable=too-many-instance-attributes
         if outcomes[0] is _IDLE or outcomes[1] is _IDLE:
             return outcomes[1] if outcomes[0] is _IDLE else outcomes[0]
         return merge(left, outcomes[0], outcomes[1])
+
+
+def edges_back(back: torch.Tensor, edges: BatchEdges) -> tuple[torch.Tensor, torch.Tensor]:
+    """
+    Where the values a batch addresses on the edges into it travel: on the edge back of each,
+    from the receiver to the sender.
+
+    Args:
+        back: The edge back of each edge of the topology, or ``-1`` (see
+            ``GraphTopology.reverse_edges``).
+        edges: The edges into the batch.
+
+    Returns:
+        The edges back, among those of the topology, and which edges into the batch have one.
+    """
+    targets = back[edges.edges]
+    has_back = targets >= 0
+    return targets[has_back], has_back
 
 
 class Diverged:

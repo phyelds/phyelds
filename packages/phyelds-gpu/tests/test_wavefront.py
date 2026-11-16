@@ -8,7 +8,7 @@ import random
 import pytest
 import torch
 
-from phyelds.calculus import aggregate, neighbors, remember
+from phyelds.calculus import aggregate, exchange, neighbors, remember
 from phyelds.experimental.wavefront import (
     Channel,
     PeriodicClock,
@@ -32,6 +32,15 @@ from phyelds.vm.asynchronous import AsynchronousRuntime
 
 COUNT = 40
 PAIR = {0: [1], 1: [0]}
+ONE_WAY = {0: [1, 2], 1: [0], 2: [1, 3], 3: [2], 4: [3]}  # 4 hears 3, 3 does not hear 4
+CHANNELS = [
+    Channel(delay=0.5),
+    Channel(delay=1.5),
+    Channel(delay=0.1, retention=0.5),
+    Channel(delay=0.1, retention=1.5),
+    Channel(delay=0.1, loss=1.0),
+]
+CHANNEL_IDS = ["delay", "in flight", "expired", "retained", "lost"]
 
 
 @aggregate
@@ -44,6 +53,14 @@ def libraries():
 @aggregate
 def heard_times():
     return neighbors(local_time()).sum(include_self=False)
+
+
+@aggregate
+def addressed():
+    ids = neighbors(local_id())
+    _, received, send = exchange(0)
+    send(received + ids)  # each neighbor gets its own entry, or the id of the sender
+    return received.sum()
 
 
 @aggregate
@@ -113,17 +130,18 @@ def test_batch_wavefront_runs_every_device_together_on_aligned_clocks_with_a_del
         ]
 
 
-def test_batch_wavefront_without_delay_matches_the_rounds_run_one_at_a_time():
+@pytest.mark.parametrize("program", [libraries, addressed], ids=lambda program: program.__name__)
+def test_batch_wavefront_without_delay_matches_the_rounds_run_one_at_a_time(program):
     topology, sensors = _graph()
     clock = PeriodicClock(1.0, random_phase=True, jitter=0.1, drift=0.1)
-    wavefront = BatchWavefrontRuntime(libraries, topology, clock=clock, seed=3)
+    wavefront = BatchWavefrontRuntime(program, topology, clock=clock, seed=3)
     schedule, sizes = [], []
     while wavefront.next_time() <= 6.0:
         step = wavefront.step(sensors, until=6.0)
         sizes.append(step.devices.numel())
         schedule += [(wavefront.last_times[device].item(), device) for device in step.devices.tolist()]
 
-    one_at_a_time = AsynchronousRuntime(libraries)
+    one_at_a_time = AsynchronousRuntime(program)
     neighbors_of = topology.to_neighbors()
     expected = {}
     for when, device in sorted(schedule):
@@ -135,17 +153,7 @@ def test_batch_wavefront_without_delay_matches_the_rounds_run_one_at_a_time():
     assert {device: _latest(wavefront.results, device) for device in expected} == expected
 
 
-@pytest.mark.parametrize(
-    "channel",
-    [
-        Channel(delay=0.5),
-        Channel(delay=1.5),
-        Channel(delay=0.1, retention=0.5),
-        Channel(delay=0.1, retention=1.5),
-        Channel(delay=0.1, loss=1.0),
-    ],
-    ids=["delay", "in flight", "expired", "retained", "lost"],
-)
+@pytest.mark.parametrize("channel", CHANNELS, ids=CHANNEL_IDS)
 def test_batch_wavefront_delivers_messages_as_the_wavefront_runtime_does(channel):
     on_cpu = WavefrontRuntime(heard_times, clock=PeriodicClock(1.0), channel=channel)
     batch = BatchWavefrontRuntime(
@@ -157,6 +165,21 @@ def test_batch_wavefront_delivers_messages_as_the_wavefront_runtime_does(channel
         step = batch.step({})
 
         assert {device: _plain(step.results, device) for device in PAIR} == expected
+
+
+@pytest.mark.parametrize("channel", CHANNELS, ids=CHANNEL_IDS)
+def test_batch_wavefront_delivers_fields_as_the_wavefront_runtime_does(channel):
+    on_cpu = WavefrontRuntime(addressed, clock=PeriodicClock(1.0), channel=channel)
+    batch = BatchWavefrontRuntime(
+        addressed, GraphTopology.from_neighbors(ONE_WAY), clock=PeriodicClock(1.0),
+        channel=channel,
+    )
+
+    for _ in range(5):
+        expected = on_cpu.step({device: {} for device in ONE_WAY}, ONE_WAY).results
+        step = batch.step({})
+
+        assert {device: _plain(step.results, device) for device in ONE_WAY} == expected
 
 
 def test_batch_wavefront_runs_weibull_clocks_over_a_lossy_channel():

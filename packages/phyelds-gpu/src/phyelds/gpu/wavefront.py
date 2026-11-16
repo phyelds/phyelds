@@ -14,8 +14,8 @@ from typing import Any
 import torch
 
 from phyelds.experimental.wavefront import Channel, Clock, Draws, PeriodicClock
-from phyelds.gpu.engine import BatchEngine, Rows, States, _put, _written
-from phyelds.gpu.tensors import as_rows
+from phyelds.gpu.engine import BatchEngine, Outbox, Rows, States, _put, _written, edges_back
+from phyelds.gpu.tensors import as_rows, where_rows
 from phyelds.gpu.topology import BatchEdges, GraphTopology
 
 
@@ -73,6 +73,7 @@ class Mailbox:
         count = int(topology.senders.numel())
         self.topology = topology
         self.channel = channel
+        self._back = topology.reverse_edges()
         self._arrived_at = torch.full((count,), -math.inf, dtype=torch.float64,
                                       device=topology.device)
         self._pending_at = torch.full((count,), math.inf, dtype=torch.float64,
@@ -97,41 +98,28 @@ class Mailbox:
         return values, carried & self.channel.heard(now - arrival)
 
     def transmit(
-        self, devices: torch.Tensor, times: torch.Tensor, outbox: Mapping[int, Rows],
+        self, edges: BatchEdges, times: torch.Tensor, outbox: Outbox,
         uniform: Callable[[int], torch.Tensor],
     ) -> None:
         """
-        Send the outbox of ``devices``, which ran at ``times``, on every edge out of them.
+        Send the outbox of a batch of devices, which ran at ``times``, on every edge out of
+        them.
 
         Args:
-            devices: The ids of the senders (``int64 [M]``).
+            edges: The devices of the batch, the senders, and the edges into them.
             times: When each of them ran (``float64 [M]``).
-            outbox: What they sent, by alignment key: a value of each and whether it sent it.
+            outbox: What they sent, by alignment key.
             uniform: Uniform draws in ``[0, 1)``, ``uniform(n)`` of them, for the channel.
         """
         senders = self.topology.senders
         row = torch.full((self.topology.num_devices,), -1, dtype=torch.int64,
                          device=senders.device)
-        row[devices] = torch.arange(devices.numel(), device=senders.device)
+        row[edges.devices] = torch.arange(edges.num_devices, device=senders.device)
         sending = torch.nonzero(row[senders] >= 0).squeeze(-1)
         sending = sending[~self.channel.lost(uniform(sending.numel()))]
         rows = row[senders[sending]]
-        arrival = self.channel.arrival(times[rows], uniform(sending.numel()))
-        # The message in flight has arrived by the time the next one does: it is the last
-        # arrived now; one that would arrive later is overtaken, and lost.
-        arrived = sending[self._pending_at[sending] <= arrival]
-        for key in set(self._arrived) | set(self._pending):
-            pending = self._slot(self._pending, key, arrived)
-            self._arrived[key] = _put(self._arrived.get(key), self._edges, arrived, *pending)
-        self._arrived_at[arrived] = self._pending_at[arrived]
-        self._pending_at[sending] = arrival
-        for key in set(self._pending) | set(outbox):
-            values, sent = outbox.get(key, (None, None))
-            if values is None:
-                self._pending[key][1][sending] = False
-                continue
-            self._pending[key] = _put(self._pending.get(key), self._edges, sending,
-                                      values[rows], sent[rows])
+        self._land(sending, self.channel.arrival(times[rows], uniform(sending.numel())))
+        self._queue(sending, rows, outbox.shared, self._addressed(edges, outbox.addressed))
 
     def clear(self) -> None:
         """Forget every message."""
@@ -143,6 +131,47 @@ class Mailbox:
     @property
     def _edges(self) -> int:
         return int(self.topology.senders.numel())
+
+    def _land(self, sending: torch.Tensor, arrival: torch.Tensor) -> None:
+        """
+        Make way on the ``sending`` edges for messages arriving at ``arrival``: the message in
+        flight has arrived by then, and is the last arrived; one that would arrive later is
+        overtaken, and lost.
+        """
+        arrived = sending[self._pending_at[sending] <= arrival]
+        for key in set(self._arrived) | set(self._pending):
+            pending = self._slot(self._pending, key, arrived)
+            self._arrived[key] = _put(self._arrived.get(key), self._edges, arrived, *pending)
+        self._arrived_at[arrived] = self._pending_at[arrived]
+        self._pending_at[sending] = arrival
+
+    def _queue(
+        self, sending: torch.Tensor, rows: torch.Tensor, shared: Mapping[int, Rows],
+        addressed: Mapping[int, Rows],
+    ) -> None:
+        """
+        Put in flight on the ``sending`` edges what their senders, at ``rows`` of the batch,
+        sent: the value addressed along an edge, if any, or the one for every neighbor.
+        """
+        for key in set(self._pending) | set(shared):
+            values, sent = shared.get(key, (None, None))
+            if values is None:
+                self._pending[key][1][sending] = False
+                continue
+            carried = values[rows]
+            if key in addressed:
+                along, held = addressed[key]
+                carried = where_rows(held[sending], along[sending], carried)
+            self._pending[key] = _put(self._pending.get(key), self._edges, sending,
+                                      carried, sent[rows])
+
+    def _addressed(self, edges: BatchEdges, addressed: Mapping[int, Rows]) -> dict[int, Rows]:
+        """What a batch addressed, by key, on each edge of the topology, and where it did."""
+        index, has_back = edges_back(self._back, edges)
+        return {
+            key: _put(None, self._edges, index, values[has_back], present[has_back])
+            for key, (values, present) in addressed.items()
+        }
 
     @staticmethod
     def _slot(slots: Mapping[int, Rows], key: int, index: torch.Tensor) -> Rows | None:
@@ -282,12 +311,13 @@ class BatchWavefrontRuntime:  # pylint: disable=too-many-instance-attributes
             return BatchWavefrontStep(run.now, devices, None)
         times = run.next_times[devices]
         run.now = max(run.now, float(times.min()))
+        edges = self.topology.batch(devices)
         batch = BatchEngine(
-            self.topology.batch(devices), self._states, _Reading(self._mailbox, times),
+            edges, self._states, _Reading(self._mailbox, times),
             {"time": run.next_times, **sensors},
         )
         result = batch.run(self.program)
-        self._mailbox.transmit(devices, times, batch.finish().shared, self._uniform)
+        self._mailbox.transmit(edges, times, batch.finish(), self._uniform)
         self._keep(devices, result, batch.node_context.stored)
         run.last_times[devices] = times
         run.next_times[devices] = times + self.clock.interval(self._draws(devices))
