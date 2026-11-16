@@ -27,8 +27,8 @@ class BatchSynchronousRuntime:
         self.outputs: dict[str, Rows] = {}
         """What the devices stored, by name: a value of each device and whether it stored one."""
         self._edges = topology.batch()
-        self._states = States(topology.num_devices, topology.device)
-        self._messages = SynchronousMessages(topology.num_devices, topology.device)
+        self._states = States(topology)
+        self._messages = SynchronousMessages(topology)
 
     def run_round(self, sensors: Mapping[str, Any]) -> Any:
         """
@@ -45,7 +45,7 @@ class BatchSynchronousRuntime:
         batch = BatchEngine(self._edges, self._states, self._messages, sensors)
         result = batch.run(self.program)
         devices = self._edges.devices
-        self._messages.publish(devices, batch.finish())
+        self._messages.publish(self._edges, batch.finish())
         count = self.topology.num_devices
         for name, (values, stored) in batch.node_context.stored.items():
             self.outputs[name] = _written(None, count, devices, values, stored)

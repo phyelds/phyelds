@@ -14,7 +14,7 @@ from typing import Any
 import torch
 
 from phyelds.experimental.wavefront import Channel, Clock, Draws, PeriodicClock
-from phyelds.gpu.engine import BatchEngine, Rows, States, _written
+from phyelds.gpu.engine import BatchEngine, Rows, States, _put, _written
 from phyelds.gpu.tensors import as_rows
 from phyelds.gpu.topology import BatchEdges, GraphTopology
 
@@ -225,7 +225,7 @@ class BatchWavefrontRuntime:  # pylint: disable=too-many-instance-attributes
         self.channel = Channel() if channel is None else channel
         self.window = window
         self.seed = seed
-        self._states = States(topology.num_devices, topology.device)
+        self._states = States(topology)
         self._mailbox = Mailbox(topology, self.channel)
         self._generator = torch.Generator(device=topology.device)
         self._run = self._start()
@@ -287,7 +287,7 @@ class BatchWavefrontRuntime:  # pylint: disable=too-many-instance-attributes
             {"time": run.next_times, **sensors},
         )
         result = batch.run(self.program)
-        self._mailbox.transmit(devices, times, batch.finish(), self._uniform)
+        self._mailbox.transmit(devices, times, batch.finish().shared, self._uniform)
         self._keep(devices, result, batch.node_context.stored)
         run.last_times[devices] = times
         run.next_times[devices] = times + self.clock.interval(self._draws(devices))
@@ -364,18 +364,3 @@ def _pick(chosen: torch.Tensor, first: Rows | None, second: Rows | None) -> Rows
 def _common(first: torch.Tensor, second: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
     dtype = torch.promote_types(first.dtype, second.dtype)
     return first.to(dtype), second.to(dtype)
-
-
-def _put(slot: Rows | None, count: int, index: torch.Tensor, values: torch.Tensor,
-         carried: torch.Tensor) -> Rows:
-    """``slot`` of ``count`` edges with ``values`` and ``carried`` at ``index``."""
-    if slot is None:
-        slot = (torch.zeros((count, *values.shape[1:]), dtype=values.dtype, device=values.device),
-                torch.zeros(count, dtype=torch.bool, device=values.device))
-    stored, held = slot
-    if stored.dtype != values.dtype:
-        dtype = torch.promote_types(stored.dtype, values.dtype)
-        stored, values = stored.to(dtype), values.to(dtype)
-    stored[index] = values.to(stored.dtype)
-    held[index] = carried
-    return stored, held

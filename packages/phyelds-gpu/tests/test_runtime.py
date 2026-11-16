@@ -79,7 +79,15 @@ def state_in_branches():
     return total
 
 
-PROGRAMS = [libraries, branches, early_returns, expressions, state_in_branches]
+@aggregate
+def addressed_exchange():
+    ids = neighbors(local_id())
+    _, received, send = exchange(0)
+    send(received + ids)  # each neighbor gets its own entry, or the id of the sender
+    return received.sum()
+
+
+PROGRAMS = [libraries, branches, early_returns, expressions, state_in_branches, addressed_exchange]
 
 
 def _world(device: str):
