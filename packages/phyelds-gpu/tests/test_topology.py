@@ -113,6 +113,20 @@ def test_graph_topology_batch_of_no_devices_has_no_edges():
     assert batch.edges.numel() == 0
 
 
+@pytest.mark.parametrize("device", DEVICES)
+def test_graph_topology_reverse_edges_finds_the_edge_back_of_each_edge(device):
+    topology = GraphTopology.from_neighbors({0: [1, 2], 1: [0], 2: []}, device=device)
+
+    reverse = topology.reverse_edges()
+
+    # 1 -> 0 comes back as 0 -> 1, 2 -> 0 has no edge back (2 does not hear 0).
+    assert reverse.tolist() == [2, -1, 0]
+
+
+def test_graph_topology_reverse_edges_of_a_graph_without_edges_is_empty():
+    assert GraphTopology.empty(3).reverse_edges().tolist() == []
+
+
 def test_graph_topology_from_neighbors_ignores_self_loops_and_measures_with_positions():
     positions = torch.tensor([[0.0, 0.0], [3.0, 4.0]])
 
