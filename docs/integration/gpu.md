@@ -24,7 +24,8 @@ neighbors sent, choosing a branch. A `MutableEngine` runs them for one device;
   a row per device, or one value for all of them.
 - **Neighborhoods**: `neighbors` and `exchange` give a `BatchField`: a value of each
   device, and one on each edge into it. It has the operations of `NeighborhoodField`, run
-  for all the devices together.
+  for all the devices together. Sent through `exchange`, a field addresses each neighbor
+  the value on the edge from it, or the default of the field if it has none there.
 - **Branches**: `@aggregate` rewrites the `if` statements, the conditional expressions,
   `and`, `or`, `not`, `min` and `max` for a batch engine. Each side runs for the devices
   taking it, with the alignment it has on a device of its own, and the values merge after
@@ -97,9 +98,13 @@ Most programs run unchanged. A batch engine adds a few rules, all checked at run
   `None`, equals nothing.
 - **A variable left as different functions** by the branches of an `if` cannot be used
   after it: using it raises `TypeError`.
+- **The fields a device sends** through `exchange` come from `neighbors` and `exchange`,
+  through the operations of fields: `send(received + ids)`, or
+  `send(ids.map(operator.eq, parent))` to tell only the parent. A `NeighborhoodField` built
+  from a dictionary has no rows: the collection strategies that build one,
+  `point_to_point` and `multi_path`, do not run on a batch.
 
-Not supported yet: sending a field to address each neighbor its own value (anisotropic
-`exchange`), metric distances (`neighbors_distances`, which compares positions with
+Not supported yet: metric distances (`neighbors_distances`, which compares positions with
 `math.dist`), and devices joining or leaving.
 
 ---
