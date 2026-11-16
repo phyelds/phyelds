@@ -14,7 +14,8 @@ from typing import Any
 import torch
 
 from phyelds.experimental.wavefront import Channel, Clock, Draws, PeriodicClock
-from phyelds.gpu.engine import BatchEngine, Outbox, Rows, States, _put, _written, edges_back
+from phyelds.gpu.engine import BatchEngine
+from phyelds.gpu.memory import Outbox, Rows, States, edges_back, put_rows, write_rows
 from phyelds.gpu.tensors import as_rows, where_rows
 from phyelds.gpu.topology import BatchEdges, GraphTopology
 
@@ -141,7 +142,7 @@ class Mailbox:
         arrived = sending[self._pending_at[sending] <= arrival]
         for key in set(self._arrived) | set(self._pending):
             pending = self._slot(self._pending, key, arrived)
-            self._arrived[key] = _put(self._arrived.get(key), self._edges, arrived, *pending)
+            self._arrived[key] = put_rows(self._arrived.get(key), self._edges, arrived, *pending)
         self._arrived_at[arrived] = self._pending_at[arrived]
         self._pending_at[sending] = arrival
 
@@ -162,14 +163,15 @@ class Mailbox:
             if key in addressed:
                 along, held = addressed[key]
                 carried = where_rows(held[sending], along[sending], carried)
-            self._pending[key] = _put(self._pending.get(key), self._edges, sending,
-                                      carried, sent[rows])
+            self._pending[key] = put_rows(
+                self._pending.get(key), self._edges, sending, carried, sent[rows]
+            )
 
     def _addressed(self, edges: BatchEdges, addressed: Mapping[int, Rows]) -> dict[int, Rows]:
         """What a batch addressed, by key, on each edge of the topology, and where it did."""
         index, has_back = edges_back(self._back, edges)
         return {
-            key: _put(None, self._edges, index, values[has_back], present[has_back])
+            key: put_rows(None, self._edges, index, values[has_back], present[has_back])
             for key, (values, present) in addressed.items()
         }
 
@@ -367,7 +369,7 @@ class BatchWavefrontRuntime:  # pylint: disable=too-many-instance-attributes
         for _, held in run.outputs.values():
             held[devices] = False
         for name, (values, mask) in stored.items():
-            run.outputs[name] = _written(run.outputs.get(name), count, devices, values, mask)
+            run.outputs[name] = write_rows(run.outputs.get(name), count, devices, values, mask)
 
 
 def _kept(previous: Any, result: Any, count: int, devices: torch.Tensor) -> Any:
@@ -378,7 +380,7 @@ def _kept(previous: Any, result: Any, count: int, devices: torch.Tensor) -> Any:
     rows = devices.numel()
     every = torch.ones(rows, dtype=torch.bool, device=devices.device)
     old = previous if isinstance(previous, tuple) and len(previous) == 2 else None
-    return _written(old, count, devices, as_rows(result, rows, devices.device), every)
+    return write_rows(old, count, devices, as_rows(result, rows, devices.device), every)
 
 
 def _pick(chosen: torch.Tensor, first: Rows | None, second: Rows | None) -> Rows:
