@@ -294,6 +294,38 @@ class Engine(ABC):
         """
         raise NotImplementedError
 
+    def own_value(self, value: Any) -> Any:
+        """
+        Return what ``value`` holds for the device itself.
+
+        A field, as ``exchange`` sends, addresses each device its own value: the device
+        takes its entry, or the default of the field if it has none. A batch engine, running
+        many devices at once, takes the entry of each one.
+
+        Args:
+            value: A field, or a value the same for every device.
+
+        Returns:
+            The entry of the device in a field, or its default; any other value as it is.
+        """
+        if isinstance(value, NeighborhoodField):
+            return value.for_node(self.node_context.node_id)
+        return value
+
+    def default_value(self, value: Any) -> Any:
+        """
+        Return what ``value`` addresses to the devices it has no entry for.
+
+        Args:
+            value: A field, or a value the same for every device.
+
+        Returns:
+            The default of a field; any other value as it is.
+        """
+        if isinstance(value, NeighborhoodField):
+            return value.default
+        return value
+
     def neighbor_field(
         self,
         local: Any,
