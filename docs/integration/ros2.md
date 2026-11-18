@@ -60,8 +60,9 @@ robot, whose name, without slashes, is the id of the robot: **namespaces must be
 |---|---|
 | `--id ID` | The id of the robot, if not its namespace |
 | `--source ID` | The robot that senses `source`; none if omitted |
-| `--neighbourhood reachable\|range` | Who is a neighbour (default `reachable`): see [neighbourhoods](#neighbourhoods) |
-| `--range R` | With `range`, how far a robot reaches, in metres |
+| `--neighbourhood reachable\|range\|tf` | Who is a neighbour (default `reachable`): see [neighbourhoods](#neighbourhoods) |
+| `--range R` | With `range`, how far a robot reaches, in metres; with `tf`, optional |
+| `--frame F`, `--fixed-frame M` | With `tf`, the frame of the robot (default `ID/base_link`) and the one all are located in (default `map`) |
 | `--measure` | With `reachable`, measure the neighbours from their positions |
 | `--sense [odom] [turtlesim] [scan]` | The topics to sense, see [any robot](#any-robot) (default `odom`; none if empty) |
 | `--act [differential] [holonomic] [label]` | The outputs to act on (default `differential label`; none if empty) |
@@ -143,6 +144,19 @@ Every node hears the shared topic, and a strategy decides which senders are neig
 - **`WithinRange(radius)`** (`--neighbourhood range --range R`): the senders within `radius`
   metres, from the positions in their messages. It brings the range of a radio to a
   simulator, where the network has none.
+- **`Transforms(frame, locate, radius=None)`** (`--neighbourhood tf`): each message carries
+  the frame of its sender, such as `robot2/base_link`, and both frames are located in a frame
+  all the robots share, such as `map`: from a localisation, a motion capture system or a
+  simulator, through tf2. `tf_locator(node, "map")` locates frames with tf2; it needs the
+  `rclpy` node, so `AggregateRosNode` also takes, as `neighbourhood`, a function of the node
+  that builds the strategy:
+
+    ```python
+    AggregateRosNode(
+        program,
+        neighbourhood=lambda node: Transforms("robot1/base_link", tf_locator(node, "map"), radius=2.0),
+    )
+    ```
 
 A sender whose position is not known yet is a neighbour of `Reachable` without a distance,
 and is not a neighbour of `WithinRange`. Positions must be in a frame all the robots share:

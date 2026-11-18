@@ -86,3 +86,12 @@ def test_topics_sense_obstacles_from_a_laser_scan():
     sensor_topics, _ = topics_of(parser().parse_args([PROGRAM, "--sense", "odom", "scan"]))
 
     assert [topic.message_type for topic in sensor_topics] == ["nav_msgs/msg/Odometry", "sensor_msgs/msg/LaserScan"]
+
+
+def test_neighbourhood_from_transforms_is_built_once_the_node_is():
+    options = parser().parse_args([PROGRAM, "--neighbourhood", "tf", "--frame", "r1/base_link", "--range", "2"])
+
+    strategy = neighbourhood_of(options)
+
+    assert callable(strategy) and not isinstance(strategy, (Reachable, WithinRange))
+    assert (options.frame, options.fixed_frame) == ("r1/base_link", "map")

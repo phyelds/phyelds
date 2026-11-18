@@ -5,7 +5,7 @@ A strategy adds to each message what the others need to judge its sender (``head
 judges each message heard (``admit``), from the position of the node that hears it.
 """
 import math
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -112,6 +112,57 @@ class WithinRange:
         return neighbour
 
 
+class Transforms:
+    """
+    Neighbours measured from transforms, such as those of tf2: each message carries the frame
+    of its sender, and both frames are located in a frame all the nodes share.
+
+    It suits robots whose positions come from a localisation, a motion capture system or a
+    simulator, published as transforms; ``phyelds.ros2.host.tf_locator`` locates frames with
+    tf2. Every sender whose frame is located is a neighbour, within ``radius`` if given.
+
+    Args:
+        frame: The frame of this robot, such as ``robot1/base_link``.
+        locate: Where a frame is, in the shared frame; ``None`` if it is not known.
+        radius: How far a robot reaches, in metres; ``None`` for no limit.
+    """
+
+    measures = True
+    """It measures its neighbours, from the transforms."""
+
+    def __init__(
+        self,
+        frame: str,
+        locate: Callable[[str], Sequence[float] | None],
+        *,
+        radius: float | None = None,
+    ):
+        self.frame = frame
+        self.locate = locate
+        self.radius = radius
+
+    def header(self, position: Sequence[float] | None) -> dict[str, Any]:  # pylint: disable=unused-argument
+        """The frame of the sender."""
+        return {"frame": self.frame}
+
+    def admit(  # pylint: disable=unused-argument
+        self, header: Mapping[str, Any], position: Sequence[float] | None
+    ) -> Neighbour | None:
+        """
+        The sender, with its distance and the vector to it, if both frames are located and it
+        is within the radius.
+        """
+        frame = header.get("frame")
+        there = None if frame is None else self.locate(frame)
+        here = self.locate(self.frame)
+        if there is None or here is None:
+            return None
+        neighbour = _between(here, there)
+        if self.radius is not None and neighbour.distance > self.radius:
+            return None
+        return neighbour
+
+
 def _position_header(position: Sequence[float] | None) -> dict[str, Any]:
     """A header with ``position``, ``None`` while it is unknown."""
     return {"position": None if position is None else list(position)}
@@ -121,5 +172,10 @@ def _measured(header: Mapping[str, Any], position: Sequence[float] | None) -> Ne
     """The sender of ``header`` measured from ``position``; ``None`` if a position is unknown."""
     if header.get("position") is None or position is None:
         return None
-    vector = tuple(there - here for there, here in zip(header["position"], position))
+    return _between(position, header["position"])
+
+
+def _between(here: Sequence[float], there: Sequence[float]) -> Neighbour:
+    """A neighbour at ``there``, measured from ``here``."""
+    vector = tuple(float(far - near) for far, near in zip(there, here))
     return Neighbour(distance=math.hypot(*vector), vector=vector)
