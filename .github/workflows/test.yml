@@ -190,6 +190,42 @@ jobs:
       working-directory: packages/phyelds-gpu
       run: poetry build
 
+  ros2:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.13", "3.14"]
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v7
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install Poetry
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 -
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - name: Configure Poetry to not create virtualenvs (CI-friendly)
+      run: poetry config virtualenvs.create false
+
+    - name: Install core
+      run: poetry install
+
+    - name: Lint ROS 2 extension
+      run: PYTHONPATH="packages/phyelds-ros2/src" poetry run pylint packages/phyelds-ros2/src packages/phyelds-ros2/tests
+
+    - name: Test ROS 2 extension
+      run: PYTHONPATH="packages/phyelds-ros2/src" poetry run pytest packages/phyelds-ros2/tests
+
+    - name: Build ROS 2 extension
+      working-directory: packages/phyelds-ros2
+      run: poetry build
+
   webots:
     runs-on: ubuntu-latest
     # Webots and xvfb come with the image; its Python is too old for phyelds, so the
