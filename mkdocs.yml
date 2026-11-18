@@ -114,6 +114,7 @@ nav:
       - Mesa: integration/mesa.md
       - Webots: integration/webots.md
       - ARGoS: integration/argos.md
+      - ROS 2: integration/ros2.md
       - GPU (PyTorch): integration/gpu.md
       - MicroPython & ESP32: integration/micropython.md
       - Benchmarks: integration/benchmarks.md
