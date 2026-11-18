@@ -108,7 +108,7 @@ def robot():
         reading("battery", "battery_state", "sensor_msgs/msg/BatteryState", field="percentage"),
         command("grip", "gripper", "std_msgs/msg/Bool"),
         SensorTopic("scan", "sensor_msgs/msg/LaserScan",
-                    lambda scan: {"nearest": min(scan.ranges)}),
+                    lambda scan, sensors: {"nearest": min(scan.ranges)}),
     ]
 ```
 
@@ -117,7 +117,10 @@ python -m phyelds.ros2 program:main --topics my_robot:robot --ros-args -r __ns:=
 ```
 
 Types are named as ROS names them, `package/msg/Type`. The conversions see only the fields
-of the messages, so they are tested without ROS. An `ActuatorTopic` of your own takes
+of the messages, so they are tested without ROS. A `SensorTopic` of your own takes
+`read(message, sensors)`: it returns the sensors a message gives, from the message and the
+latest sensors, such as the `heading` to turn a reading into the frame of the world. An
+`ActuatorTopic` of your own takes
 `write(message, value, sensors)`: it fills a new message from the value of the output and
 the latest sensors, and returns whether to publish it.
 

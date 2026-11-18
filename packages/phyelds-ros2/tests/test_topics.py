@@ -28,14 +28,14 @@ def test_odometry_senses_the_position_and_heading_of_the_robot():
     message = SimpleNamespace(pose=SimpleNamespace(pose=SimpleNamespace(position=_vector(1.0, 2.0, 0.5),
                                                                         orientation=orientation)))
 
-    sensed = odometry().read(message)
+    sensed = odometry().read(message, {})
 
     assert sensed["position"] == (1.0, 2.0, 0.5)
     assert sensed["heading"] == pytest.approx((0.0, 1.0, 0.0))
 
 
 def test_turtle_pose_senses_the_position_and_heading_of_the_turtle():
-    sensed = turtle_pose().read(SimpleNamespace(x=1.0, y=2.0, theta=0.0))
+    sensed = turtle_pose().read(SimpleNamespace(x=1.0, y=2.0, theta=0.0), {})
 
     assert sensed == {"position": (1.0, 2.0, 0.0), "heading": (1.0, 0.0, 0.0)}
 
@@ -43,7 +43,7 @@ def test_turtle_pose_senses_the_position_and_heading_of_the_turtle():
 def test_reading_senses_one_field_of_a_message_under_a_name():
     battery = reading("battery", "battery_state", "sensor_msgs/msg/BatteryState", field="percentage")
 
-    assert battery.read(SimpleNamespace(percentage=0.8)) == {"battery": 0.8}
+    assert battery.read(SimpleNamespace(percentage=0.8), {}) == {"battery": 0.8}
 
 
 def test_differential_drive_turns_and_drives_towards_the_velocity():

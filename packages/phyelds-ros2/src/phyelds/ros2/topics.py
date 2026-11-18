@@ -22,12 +22,13 @@ class SensorTopic:
     Attributes:
         topic: The topic, relative to the namespace of the robot unless absolute.
         message_type: Its type, as ``"package/msg/Type"``.
-        read: From a message, the sensors it gives, by name; they hold until the next one.
+        read: From a message and the latest sensors, the sensors the message gives, by name;
+            they hold until the next one.
     """
 
     topic: str
     message_type: str
-    read: Callable[[Any], Mapping[str, Any]]
+    read: Callable[[Any, Mapping[str, Any]], Mapping[str, Any]]
 
 
 @dataclass(frozen=True)
@@ -59,7 +60,7 @@ def odometry(topic: str = "odom") -> SensorTopic:
     Returns:
         The sensor topic.
     """
-    def read(message: Any) -> dict[str, Any]:
+    def read(message: Any, _sensors: Mapping[str, Any]) -> dict[str, Any]:
         position, orientation = message.pose.pose.position, message.pose.pose.orientation
         angle = yaw_of(orientation.x, orientation.y, orientation.z, orientation.w)
         return {"position": (position.x, position.y, position.z), "heading": heading_of(angle)}
@@ -77,7 +78,7 @@ def turtle_pose(topic: str = "pose") -> SensorTopic:
     Returns:
         The sensor topic.
     """
-    def read(message: Any) -> dict[str, Any]:
+    def read(message: Any, _sensors: Mapping[str, Any]) -> dict[str, Any]:
         return {"position": (message.x, message.y, 0.0), "heading": heading_of(message.theta)}
 
     return SensorTopic(topic, "turtlesim/msg/Pose", read)
@@ -96,7 +97,10 @@ def reading(name: str, topic: str, message_type: str, *, field: str = "data") ->
     Returns:
         The sensor topic.
     """
-    return SensorTopic(topic, message_type, lambda message: {name: getattr(message, field)})
+    def read(message: Any, _sensors: Mapping[str, Any]) -> dict[str, Any]:
+        return {name: getattr(message, field)}
+
+    return SensorTopic(topic, message_type, read)
 
 
 def differential_drive(

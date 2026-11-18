@@ -94,7 +94,7 @@ class AggregateRosNode:  # pylint: disable=too-few-public-methods
         for sensor in [odometry()] if sensor_topics is None else sensor_topics:
             self.node.create_subscription(
                 _message_type(sensor.message_type), sensor.topic,
-                lambda message, read=sensor.read: self.aggregate.sense(read(message)), 10,
+                lambda message, read=sensor.read: self._sense(read, message), 10,
             )
         actuators = [differential_drive(), text()] if actuator_topics is None else actuator_topics
         self._actuators = []
@@ -118,6 +118,12 @@ class AggregateRosNode:  # pylint: disable=too-few-public-methods
             command = message_type()
             if actuator.write(command, value, self.aggregate.readings):
                 publisher.publish(command)
+
+    def _sense(
+        self, read: Callable[[Any, Mapping[str, Any]], Mapping[str, Any]], message: Any
+    ) -> None:
+        """Take the sensors a message of a sensor topic gives."""
+        self.aggregate.sense(read(message, self.aggregate.readings))
 
     def _hear(self, message: Any) -> None:
         """Take a message of the shared topic."""
