@@ -66,7 +66,12 @@ def test_turtles_launch_spawns_every_turtle_but_the_first_and_runs_a_node_for_ea
     launch = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(launch)
 
-    commands = [" ".join(map(str, action.cmd)) for action in launch.generate_launch_description().entities
-                if hasattr(action, "cmd") and "phyelds.ros2" in " ".join(map(str, action.cmd))]
+    commands = [
+        " ".join(getattr(part, "text", "") for parts in action.cmd for part in parts)
+        for action in launch.generate_launch_description().entities if hasattr(action, "cmd")
+    ]
+    nodes = [command for command in commands if "phyelds.ros2" in command]
+    spawned = [command for command in commands if "/spawn" in command]
 
-    assert len(commands) == len(launch.TURTLES)
+    assert len(nodes) == len(launch.TURTLES)
+    assert len(spawned) == len(launch.TURTLES) - 1
