@@ -19,6 +19,7 @@ from phyelds.ros2.topics import (
     SensorTopic,
     differential_drive,
     holonomic_drive,
+    laser_obstacle,
     odometry,
     text,
     turtle_pose,
@@ -27,7 +28,7 @@ from phyelds.ros2.topics import (
 TOPIC = "/phyelds/messages"
 """The topic all the nodes share, by default."""
 
-SENSES = {"odom": odometry, "turtlesim": turtle_pose}
+SENSES = {"odom": odometry, "turtlesim": turtle_pose, "scan": laser_obstacle}
 """The sensor topics the command line names, with ``--sense``."""
 
 ACTS = ("differential", "holonomic", "label")
@@ -175,7 +176,7 @@ def parser() -> argparse.ArgumentParser:
     options.add_argument("--measure", action="store_true",
                          help="with reachable, measure the neighbours from their positions")
     options.add_argument("--sense", nargs="*", choices=tuple(SENSES), default=["odom"],
-                         help="the topics to sense: odom, the pose of turtlesim, or none")
+                         help="the topics to sense: odom, a turtlesim pose, a laser scan; or none")
     options.add_argument("--act", nargs="*", choices=ACTS, default=["differential", "label"],
                          help="the outputs to act on: velocity, for a robot that turns or one that"
                               " moves in any direction, and label; or none")

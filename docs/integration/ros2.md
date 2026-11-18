@@ -63,7 +63,7 @@ robot, whose name, without slashes, is the id of the robot: **namespaces must be
 | `--neighbourhood reachable\|range` | Who is a neighbour (default `reachable`): see [neighbourhoods](#neighbourhoods) |
 | `--range R` | With `range`, how far a robot reaches, in metres |
 | `--measure` | With `reachable`, measure the neighbours from their positions |
-| `--sense [odom] [turtlesim]` | The topics to sense, see [any robot](#any-robot) (default `odom`; none if empty) |
+| `--sense [odom] [turtlesim] [scan]` | The topics to sense, see [any robot](#any-robot) (default `odom`; none if empty) |
 | `--act [differential] [holonomic] [label]` | The outputs to act on (default `differential label`; none if empty) |
 | `--topics module:function` | A function that returns more topics, of your own |
 | `--period T` | The time between two rounds, in seconds (default 0.1) |
@@ -88,6 +88,7 @@ namespace of the robot, and `-r` remaps them. These are ready, in `phyelds.ros2.
 |---|---|---|---|
 | `odometry("odom")` | `--sense odom` | `nav_msgs/Odometry` | The `position` and `heading` of the robot |
 | `turtle_pose("pose")` | `--sense turtlesim` | `turtlesim/Pose` | The `position` and `heading` of a turtle |
+| `laser_obstacle("scan")` | `--sense scan` | `sensor_msgs/LaserScan` | The `obstacle`: away from the nearest thing the scan sees, in the frame of the world, 1 at `range_min` and 0 at `range_max`; it needs the `heading` |
 | `differential_drive("cmd_vel")` | `--act differential` | `geometry_msgs/Twist` | The `velocity`, for a robot that turns to move: it turns towards it, and drives forward as it faces it |
 | `holonomic_drive("cmd_vel")` | `--act holonomic` | `geometry_msgs/Twist` | The `velocity`, for a robot that moves in any direction: `linear.x` and `linear.y`, in its frame |
 | `text("label")` | `--act label` | `std_msgs/String` | The `label` output, as text |
@@ -163,6 +164,7 @@ whether it measures its neighbours.
 | `time` | The time of the node, in seconds: the simulation time with `use_sim_time` | `local_time()` |
 | `position` | The position, from a sensor topic; `None` until sensed | `local_position()` |
 | `heading` | Where the robot faces, a horizontal unit vector, from a sensor topic | `heading.sense()` |
+| `obstacle` | Away from the nearest thing a laser scan sees, in the frame of the world, with `laser_obstacle` | `obstacle.sense()` |
 | any other | What the sensor topics give | `sense(name)` |
 | `neighbors_distances` | Map from neighbour id to distance, when the neighbourhood measures them | `neighbors_distances()` |
 | `neighbors_vectors` | Map from neighbour id to its vector, in the frame of the positions | `neighbors_vectors()` |

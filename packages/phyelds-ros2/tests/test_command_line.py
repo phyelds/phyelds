@@ -80,3 +80,9 @@ def test_topics_of_a_function_must_be_topics():
 
     with pytest.raises(TypeError, match="odom"):
         topics_of(options)
+
+
+def test_topics_sense_obstacles_from_a_laser_scan():
+    sensor_topics, _ = topics_of(parser().parse_args([PROGRAM, "--sense", "odom", "scan"]))
+
+    assert [topic.message_type for topic in sensor_topics] == ["nav_msgs/msg/Odometry", "sensor_msgs/msg/LaserScan"]

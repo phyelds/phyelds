@@ -7,6 +7,7 @@ from phyelds.ros2.topics import (
     command,
     differential_drive,
     holonomic_drive,
+    laser_obstacle,
     odometry,
     reading,
     text,
@@ -88,3 +89,39 @@ def test_command_sets_one_field_of_a_message_from_an_output():
 
     assert gripper.write(message, True, {}) and message.data is True
     assert (gripper.output, gripper.topic, gripper.message_type) == ("grip", "gripper", "std_msgs/msg/Bool")
+
+
+def _scan(ranges, *, angle_min=-math.pi / 2, angle_increment=math.pi / 2, range_min=0.1, range_max=2.1):
+    return SimpleNamespace(ranges=ranges, angle_min=angle_min, angle_increment=angle_increment,
+                           range_min=range_min, range_max=range_max)
+
+
+def test_laser_obstacle_pushes_away_from_the_nearest_thing_as_much_as_it_is_close():
+    # Rays to the right, ahead and to the left: something ahead at 0.6 m, half of the range.
+    scan = _scan([2.0, 0.6, float("inf")])
+
+    sensed = laser_obstacle().read(scan, {"heading": (1.0, 0.0, 0.0)})
+
+    assert sensed["obstacle"] == pytest.approx((-0.75, 0.0, 0.0))
+
+
+def test_laser_obstacle_turns_the_push_into_the_frame_of_the_world():
+    scan = _scan([float("inf"), 0.1, float("inf")])
+
+    sensed = laser_obstacle().read(scan, {"heading": (0.0, 1.0, 0.0)})
+
+    assert sensed["obstacle"] == pytest.approx((0.0, -1.0, 0.0))
+
+
+def test_laser_obstacle_is_zero_when_nothing_is_in_range():
+    scan = _scan([float("inf"), float("nan"), 0.05, 3.0])
+
+    assert laser_obstacle().read(scan, {"heading": (1.0, 0.0, 0.0)}) == {"obstacle": (0.0, 0.0, 0.0)}
+
+
+def test_laser_obstacle_is_none_before_the_heading_is_known():
+    assert laser_obstacle().read(_scan([0.6, 0.6, 0.6]), {}) == {"obstacle": None}
+
+
+def test_laser_obstacle_reads_a_laser_scan_on_scan_by_default():
+    assert (laser_obstacle().topic, laser_obstacle().message_type) == ("scan", "sensor_msgs/msg/LaserScan")
