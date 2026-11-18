@@ -78,6 +78,41 @@ rounds follow the clock of a simulator.
 
 ---
 
+## Robots in Gazebo
+
+[Gazebo](https://gazebosim.org) simulates the robots, their wheels and their lidars, and
+`ros_gz_bridge` brings their topics to ROS 2. Five differential-drive robots measure how far
+`robot1` is, gather around it, and keep off a wall their lidars see:
+
+```python
+--8<-- "gazebo/swarm.py:program"
+```
+
+`swarm.world()` writes the SDF of the world, from where each robot starts. Gazebo publishes
+the odometry of each robot in the frame of the world, so `WithinRange` measures the robots
+from it. Each robot has its topics in its own namespace, `/robot2/odom`, `/robot2/cmd_vel` and
+`/robot2/scan`, and its node senses the odometry and the scan:
+
+```python
+--8<-- "gazebo/swarm.launch.py:nodes"
+```
+
+The program, the world and the launch file are in
+[`docs/examples/gazebo`](https://github.com/phyelds/phyelds/tree/master/docs/examples/gazebo).
+Gazebo Harmonic comes with `ros-jazzy-ros-gz`:
+
+```bash
+sudo apt install ros-jazzy-ros-gz
+source /opt/ros/jazzy/setup.bash
+cd docs/examples/gazebo
+ros2 launch swarm.launch.py              # gui:=false runs Gazebo without its window
+```
+
+The nodes follow the clock of the simulation, with `use_sim_time`. The tests run a smaller
+world in Gazebo, headless: a robot heads to the source, and another senses the wall.
+
+---
+
 ## Any robot
 
 Robots differ in their topics, so the node takes them as a list. A `SensorTopic` turns each
