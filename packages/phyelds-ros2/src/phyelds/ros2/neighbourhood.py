@@ -26,7 +26,15 @@ class Neighbour:
 
 
 class Neighbourhood(Protocol):
-    """A strategy that decides the neighbours of a node."""
+    """
+    A strategy that decides the neighbours of a node.
+
+    Attributes:
+        measures: Whether it measures its neighbours: a node then always senses
+            ``neighbors_distances`` and ``neighbors_vectors``, empty before any is measured.
+    """
+
+    measures: bool
 
     def header(self, position: Sequence[float] | None) -> dict[str, Any]:
         """What to add to the message of a node at ``position``, ``None`` if unknown."""
@@ -54,6 +62,11 @@ class Reachable:
     def __init__(self, *, measure: bool = False):
         self.measure = measure
 
+    @property
+    def measures(self) -> bool:
+        """Whether it measures its neighbours: with ``measure``."""
+        return self.measure
+
     def header(self, position: Sequence[float] | None) -> dict[str, Any]:
         """The position of the sender if measuring, ``None`` while it is unknown; else nothing."""
         return _position_header(position) if self.measure else {}
@@ -74,6 +87,9 @@ class WithinRange:
     Args:
         radius: How far a node reaches, in metres.
     """
+
+    measures = True
+    """It measures its neighbours, from their positions."""
 
     def __init__(self, radius: float):
         self.radius = radius

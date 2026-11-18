@@ -146,8 +146,9 @@ that of turtlesim, of the world of a simulator, or `map`. The `odom` of a real r
 where the robot starts, so it needs a shared localisation first.
 
 A strategy of your own implements `Neighbourhood`: `header(position)` returns what to add to
-the messages of a node, and `admit(header, position)` returns a `Neighbour`, with its
-`distance` and `vector` if known, or `None` for a sender that is not a neighbour.
+the messages of a node, `admit(header, position)` returns a `Neighbour`, with its `distance`
+and `vector` if known, or `None` for a sender that is not a neighbour, and `measures` says
+whether it measures its neighbours.
 
 ---
 
@@ -163,8 +164,9 @@ the messages of a node, and `admit(header, position)` returns a `Neighbour`, wit
 | `neighbors_distances` | Map from neighbour id to distance, when the neighbourhood measures them | `neighbors_distances()` |
 | `neighbors_vectors` | Map from neighbour id to its vector, in the frame of the positions | `neighbors_vectors()` |
 
-Without measured neighbours, the node gives neither `neighbors_distances` nor
-`neighbors_vectors`, and `neighbors_distances()` shares positions instead.
+When the neighbourhood measures, the node always gives `neighbors_distances` and
+`neighbors_vectors`, empty before any neighbour is measured. When it does not, the node gives
+neither, and `neighbors_distances()` shares positions instead.
 
 | Actuator | Meaning |
 |---|---|

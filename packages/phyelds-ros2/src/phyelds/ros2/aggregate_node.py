@@ -104,8 +104,9 @@ class AggregateNode:  # pylint: disable=too-many-instance-attributes
         """
         The sensors of this round.
 
-        ``neighbors_distances`` and ``neighbors_vectors`` hold only the measured neighbours, and
-        are left out when none is, so that the program shares positions instead.
+        ``neighbors_distances`` and ``neighbors_vectors`` hold the measured neighbours, empty
+        before any is, when the neighbourhood measures; they are left out when it does not, so
+        that the program shares positions instead.
         """
         for sender in list(self._measured):
             self._measured[sender][1] += 1
@@ -119,10 +120,8 @@ class AggregateNode:  # pylint: disable=too-many-instance-attributes
             sender: n.distance for sender, n in neighbours.items() if n.distance is not None
         }
         vectors = {sender: n.vector for sender, n in neighbours.items() if n.vector is not None}
-        if distances:
-            sensors["neighbors_distances"] = distances
-        if vectors:
-            sensors["neighbors_vectors"] = vectors
+        if self.neighbourhood.measures:
+            sensors["neighbors_distances"], sensors["neighbors_vectors"] = distances, vectors
         if self.sensors is not None:
             sensors.update(self.sensors())
         return sensors

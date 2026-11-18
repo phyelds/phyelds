@@ -78,3 +78,11 @@ def test_node_senses_the_latest_readings_of_its_topics():
     node.run_round(0.0)
 
     assert node.result == ((1.0, 0.0, 0.0), 0.8)
+
+
+def test_node_measures_no_neighbour_before_its_position_is_sensed():
+    node = AggregateNode("a", metres_to_source, neighbourhood=WithinRange(1.0), sensors=lambda: {"source": False})
+
+    node.run_round(0.0)
+
+    assert node.result == float("inf")
