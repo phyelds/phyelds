@@ -13,6 +13,19 @@ poetry run python benchmarks/run.py --hosts webots --nodes 100 --rounds 500 >> r
 Each line of the output is one measurement, made in a process of its own. A measurement
 that fails gives a line with an `error` instead of the metrics.
 
+## The PyTorch backend on graphs that change
+
+`gpu_topology.py` measures what a graph rebuilt every round costs `phyelds-gpu`: one
+`radius_topology` against one synchronous round of `gradient` on it, for uniform positions
+with about `--degree` neighbors within a radius of 1, on CUDA when there is one.
+
+```bash
+PYTHONPATH="packages/phyelds-gpu/src:benchmarks" poetry run python benchmarks/gpu_topology.py --nodes 10000 100000 1000000
+```
+
+Each line gives the median of `--repeats` runs, `radius_topology_s` and `round_s`, and
+their ratio `build_over_round`.
+
 ## What varies
 
 - **Hosts**: `simulator`, `mesa` (`phyelds-mesa`), `vmas` (`phyelds-vmas` on the
