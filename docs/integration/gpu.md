@@ -76,6 +76,15 @@ What is kept along an edge, a field kept as state or a value addressed to one ne
 stays only if the new graph keeps the edge: a neighbor that has just arrived reads the
 default of the field. The graph must link the same devices.
 
+### Resetting some devices
+
+`reset(devices)` forgets the state, the messages and the outputs of some devices, as if
+they joined now, and leaves the others as they are: a host that runs many environments in
+one batch resets one of them, its rows, without touching the rest. The others stop
+hearing what those devices sent, as when devices leave `SynchronousRuntime` and come back.
+`reset()` with no devices forgets every one. A device to keep out of the system for a
+while is one without edges in the graph of the round.
+
 ---
 
 ## Wavefronts
