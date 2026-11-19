@@ -151,6 +151,58 @@ def test_batch_runtime_computes_in_each_round_what_each_device_computes_alone(pr
         assert actual == expected
 
 
+def _moving_graphs(device: str):
+    """The graph of each round, as devices wander from the positions of ``_world``."""
+    rng = random.Random(5)
+    positions = [(rng.uniform(0.0, 6.0), rng.uniform(0.0, 6.0)) for _ in range(COUNT)]
+    for _ in range(ROUNDS):
+        positions = [(x + rng.gauss(0.0, 0.5), y + rng.gauss(0.0, 0.5)) for x, y in positions]
+        yield radius_topology(torch.tensor(positions, dtype=torch.float64, device=device), 1.4)
+
+
+@pytest.mark.parametrize("device", DEVICES)
+@pytest.mark.parametrize("program", PROGRAMS, ids=lambda program: program.__name__)
+def test_batch_runtime_computes_what_each_device_computes_alone_on_a_graph_that_moves(
+    program, device
+):
+    first, sensors, batch_sensors = _world(device)
+    alone = SynchronousRuntime(program)
+    together = BatchSynchronousRuntime(program, first)
+
+    for topology in _moving_graphs(device):
+        expected = alone.run_round(sensors, topology.to_neighbors())
+
+        actual = _per_device(together.run_round(batch_sensors, topology=topology), COUNT)
+
+        assert actual == expected
+
+
+@pytest.mark.parametrize("program", PROGRAMS, ids=lambda program: program.__name__)
+def test_batch_runtime_computes_what_each_device_computes_alone_when_every_edge_goes_and_comes(
+    program
+):
+    world, sensors, batch_sensors = _world("cpu")
+    others = next(_moving_graphs("cpu"))
+    nobody = GraphTopology.empty(COUNT)
+    alone = SynchronousRuntime(program)
+    together = BatchSynchronousRuntime(program, world)
+
+    for topology in [world, nobody, world, others, nobody, nobody, others]:
+        expected = alone.run_round(sensors, topology.to_neighbors())
+
+        actual = _per_device(together.run_round(batch_sensors, topology=topology), COUNT)
+
+        assert actual == expected
+
+
+def test_batch_runtime_refuses_a_graph_of_another_number_of_devices():
+    world, _, batch_sensors = _world("cpu")
+    together = BatchSynchronousRuntime(branches, world)
+
+    with pytest.raises(ValueError, match="devices"):
+        together.run_round(batch_sensors, topology=GraphTopology.empty(COUNT + 1))
+
+
 def test_batch_runtime_addresses_the_default_of_a_field_to_a_neighbor_its_sender_does_not_hear():
     rng = random.Random(3)
     count = 12

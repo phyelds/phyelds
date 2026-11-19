@@ -58,6 +58,10 @@ class _FieldSlot:  # pylint: disable=too-many-instance-attributes
         self.values = _assigned(self.values, index, value.values[on_edges])
         self.present[index] = value.present[on_edges]
 
+    def move(self, index: torch.Tensor, kept: torch.Tensor) -> None:
+        """Keep on each new edge the value of the old edge at ``index``, where ``kept`` holds."""
+        self.values, self.present = move_rows((self.values, self.present), index, kept)
+
 
 class States:
     """
@@ -110,6 +114,22 @@ class States:
         for key, slot in self._slots.items():
             read = reads.get(key)
             _held(slot)[devices if read is None else devices[~read]] = False
+
+    def move_to(self, topology: GraphTopology, index: torch.Tensor, kept: torch.Tensor) -> None:
+        """
+        Follow the devices onto ``topology``: a field kept as state keeps its value on the
+        edges ``topology`` shares with the previous graph, and holds none on the new ones.
+
+        Args:
+            topology: The new graph of the same devices.
+            index: The previous edge of each edge of ``topology`` (see
+                ``GraphTopology.edges_from``).
+            kept: Whether the previous graph has it.
+        """
+        self.num_edges = int(topology.senders.numel())
+        for slot in self._slots.values():
+            if isinstance(slot, _FieldSlot):
+                slot.move(index, kept)
 
     def clear(self) -> None:
         """Forget the state of every device."""
@@ -187,6 +207,22 @@ class SynchronousMessages:
                 values[has_back], present[has_back],
             )
 
+    def move_to(self, topology: GraphTopology, index: torch.Tensor, kept: torch.Tensor) -> None:
+        """
+        Follow the devices onto ``topology``: what each device sent to all its neighbors
+        stays; a value addressed along an edge stays if ``topology`` keeps the edge.
+
+        Args:
+            topology: The new graph of the same devices.
+            index: The previous edge of each edge of ``topology`` (see
+                ``GraphTopology.edges_from``).
+            kept: Whether the previous graph has it.
+        """
+        self.num_edges = int(topology.senders.numel())
+        self._back = topology.reverse_edges()
+        for key, slot in self._addressed.items():
+            self._addressed[key] = move_rows(slot, index, kept)
+
     def clear(self) -> None:
         """Forget every message."""
         self._sent.clear()
@@ -233,6 +269,14 @@ def put_rows(
     stored = _assigned(stored, index, values)
     held[index] = carried
     return stored, held
+
+
+def move_rows(slot: Rows, index: torch.Tensor, kept: torch.Tensor) -> Rows:
+    """The rows of ``slot`` at ``index``, held only where ``kept`` holds."""
+    values, held = slot
+    if values.shape[0] == 0:
+        return _empty_rows(int(index.numel()), values)
+    return values[index], held[index] & kept
 
 
 def write_rows(
