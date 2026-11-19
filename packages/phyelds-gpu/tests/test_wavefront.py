@@ -182,6 +182,101 @@ def test_batch_wavefront_delivers_fields_as_the_wavefront_runtime_does(channel):
         assert {device: _plain(step.results, device) for device in ONE_WAY} == expected
 
 
+NOBODY = {0: [], 1: []}
+TOWARD_ONE = {0: [], 1: [0]}  # 1 hears 0, 0 hears nobody
+PAIRS_OVER_TIME = [PAIR, PAIR, PAIR, NOBODY, PAIR, TOWARD_ONE, NOBODY, NOBODY, PAIR, PAIR]
+ONE_WAY_OVER_TIME = [
+    ONE_WAY, {0: [1], 1: [0], 2: [], 3: [4], 4: []}, ONE_WAY,
+    {device: [] for device in ONE_WAY}, ONE_WAY, {0: [1, 2, 3, 4], 1: [0], 2: [], 3: [], 4: [0]},
+]
+
+
+# Messages that take more than two rounds: the one that arrived waits on a link whose edge is
+# gone, and is the one heard when the edge comes back, while the next is still in flight.
+SLOW = [Channel(delay=2.5), Channel(delay=2.5, retention=0.4), Channel(delay=2.5, retention=1.0)]
+SLOW_IDS = ["slow", "slow expired", "slow retained"]
+
+
+@pytest.mark.parametrize("channel", CHANNELS + SLOW, ids=CHANNEL_IDS + SLOW_IDS)
+@pytest.mark.parametrize(
+    "program, graphs",
+    [(heard_times, PAIRS_OVER_TIME), (addressed, ONE_WAY_OVER_TIME)],
+    ids=["broadcast", "addressed"],
+)
+def test_batch_wavefront_delivers_as_the_wavefront_runtime_on_a_graph_that_changes(
+    program, graphs, channel
+):
+    on_cpu = WavefrontRuntime(program, clock=PeriodicClock(1.0), channel=channel)
+    batch = BatchWavefrontRuntime(
+        program, GraphTopology.from_neighbors(graphs[0]), clock=PeriodicClock(1.0),
+        channel=channel,
+    )
+
+    for heard in graphs:
+        expected = on_cpu.step({device: {} for device in heard}, heard).results
+        step = batch.step({}, topology=GraphTopology.from_neighbors(heard))
+
+        assert {device: _plain(step.results, device) for device in heard} == expected
+
+
+def _wandering(seed: int, steps: int, device: str = "cpu"):
+    """The graph of each step, as devices wander from random positions."""
+    rng = random.Random(seed)
+    positions = [(rng.uniform(0.0, 5.0), rng.uniform(0.0, 5.0)) for _ in range(COUNT)]
+    graphs = []
+    for _ in range(steps):
+        positions = [(x + rng.gauss(0.0, 0.4), y + rng.gauss(0.0, 0.4)) for x, y in positions]
+        graphs.append(
+            radius_topology(torch.tensor(positions, dtype=torch.float64, device=device), 1.5)
+        )
+    return graphs
+
+
+@pytest.mark.parametrize(
+    "channel", [Channel(delay=0.01), Channel(delay=1.5), *SLOW], ids=["near", "far", *SLOW_IDS]
+)
+def test_batch_wavefront_runs_as_the_wavefront_runtime_on_devices_that_move(channel):
+    graphs = _wandering(7, 10)
+    sensors = {"source": torch.arange(COUNT) == 0}
+    on_cpu = WavefrontRuntime(libraries, clock=PeriodicClock(1.0), channel=channel)
+    batch = BatchWavefrontRuntime(libraries, graphs[0], clock=PeriodicClock(1.0), channel=channel)
+
+    for topology in graphs:
+        expected = on_cpu.step(
+            {device: {"source": device == 0} for device in range(COUNT)}, topology.to_neighbors()
+        ).results
+        step = batch.step(sensors, topology=topology)
+
+        assert {device: _plain(step.results, device) for device in range(COUNT)} == expected
+
+
+def test_batch_wavefront_runs_until_a_time_on_the_graph_of_each_wavefront():
+    graphs = _wandering(9, 7)
+    sensors = {"source": torch.arange(COUNT) == 0}
+    clock, channel = PeriodicClock(1.0), Channel(delay=0.3)
+    on_cpu = WavefrontRuntime(libraries, clock=clock, channel=channel)
+    batch = BatchWavefrontRuntime(libraries, graphs[0], clock=clock, channel=channel)
+
+    def graph_at(time: float):
+        return graphs[min(int(time), len(graphs) - 1)]
+
+    expected = on_cpu.run_until(
+        6.0, {device: {"source": device == 0} for device in range(COUNT)},
+        lambda time: graph_at(time).to_neighbors(),
+    )
+    actual = batch.run_until(6.0, sensors, topology=graph_at)
+
+    assert {device: _latest(actual, device) for device in range(COUNT)} == expected
+
+
+def test_batch_wavefront_refuses_a_graph_of_another_number_of_devices():
+    topology, sensors = _graph()
+    batch = BatchWavefrontRuntime(rounds, topology)
+
+    with pytest.raises(ValueError, match="devices"):
+        batch.step(sensors, topology=GraphTopology.empty(COUNT + 1))
+
+
 def test_batch_wavefront_runs_weibull_clocks_over_a_lossy_channel():
     topology, sensors = _graph()
     wavefront = BatchWavefrontRuntime(

@@ -59,11 +59,15 @@ def select_batch(
     return torch.nonzero((next_times <= cap) & ~blocked).squeeze(-1)
 
 
-class Mailbox:
+class Mailbox:  # pylint: disable=too-many-instance-attributes
     """
-    What each edge carries over a channel: the last message that arrived and the next one in
-    flight, with their arrival times, as the links of ``WavefrontRuntime`` keep them. A
-    message is the whole outbox of a round of the sender, by alignment key.
+    What each link carries over a channel: the last message that arrived and the next one in
+    flight, with their arrival times, as the links of ``WavefrontRuntime`` keep them. A message
+    is the whole outbox of a round of the sender, by alignment key.
+
+    A link goes from a sender to a receiver and outlives the edge between them, for devices
+    that move: a message on it is read only while the receiver hears the sender, and is heard
+    again if the edge comes back, within the retention of the channel.
 
     Args:
         topology: The edges.
@@ -71,13 +75,16 @@ class Mailbox:
     """
 
     def __init__(self, topology: GraphTopology, channel: Channel):
-        count = int(topology.senders.numel())
         self.topology = topology
         self.channel = channel
+        self._keys = _link_keys(topology)
+        """The key ``receiver * N + sender`` of each link, in increasing order."""
+        self._link = torch.arange(self._keys.numel(), dtype=torch.int64, device=topology.device)
+        """The link of each edge of the topology."""
         self._back = topology.reverse_edges()
-        self._arrived_at = torch.full((count,), -math.inf, dtype=torch.float64,
+        self._arrived_at = torch.full((self._links,), -math.inf, dtype=torch.float64,
                                       device=topology.device)
-        self._pending_at = torch.full((count,), math.inf, dtype=torch.float64,
+        self._pending_at = torch.full((self._links,), math.inf, dtype=torch.float64,
                                       device=topology.device)
         self._arrived: dict[int, Rows] = {}
         self._pending: dict[int, Rows] = {}
@@ -91,7 +98,7 @@ class Mailbox:
         """
         if key not in self._arrived and key not in self._pending:
             return None
-        index, now = edges.edges, times[edges.receivers]
+        index, now = self._link[edges.edges], times[edges.receivers]
         arrived = self._pending_at[index] <= now
         values, carried = _pick(arrived, self._slot(self._pending, key, index),
                                 self._slot(self._arrived, key, index))
@@ -119,8 +126,35 @@ class Mailbox:
         sending = torch.nonzero(row[senders] >= 0).squeeze(-1)
         sending = sending[~self.channel.lost(uniform(sending.numel()))]
         rows = row[senders[sending]]
-        self._land(sending, self.channel.arrival(times[rows], uniform(sending.numel())))
-        self._queue(sending, rows, outbox.shared, self._addressed(edges, outbox.addressed))
+        links = self._link[sending]
+        self._land(links, self.channel.arrival(times[rows], uniform(sending.numel())))
+        self._queue(
+            sending, links, rows,
+            shared=outbox.shared, addressed=self._addressed(edges, outbox.addressed),
+        )
+
+    def follow(self, topology: GraphTopology, now: float) -> None:
+        """
+        Carry the links onto ``topology``, a graph of the same devices: each of its edges gets
+        a link, and the links that may still deliver a message stay.
+
+        Args:
+            topology: The new graph.
+            now: The time of the next round of any device: no device reads before it.
+        """
+        old = torch.nonzero(self._may_deliver(now)).squeeze(-1)
+        keys = torch.unique(torch.cat([self._keys[old], _link_keys(topology)]))
+        where = torch.searchsorted(keys, self._keys[old])
+        count = int(keys.numel())
+        self._arrived_at = _moved(self._arrived_at, old, where, count, -math.inf)
+        self._pending_at = _moved(self._pending_at, old, where, count, math.inf)
+        for slots in (self._arrived, self._pending):
+            for key, (values, held) in slots.items():
+                slots[key] = put_rows(None, count, where, values[old], held[old])
+        self._keys = keys
+        self._link = torch.searchsorted(keys, _link_keys(topology))
+        self._back = topology.reverse_edges()
+        self.topology = topology
 
     def clear(self) -> None:
         """Forget every message."""
@@ -130,48 +164,61 @@ class Mailbox:
         self._pending.clear()
 
     @property
-    def _edges(self) -> int:
-        return int(self.topology.senders.numel())
+    def _links(self) -> int:
+        return int(self._keys.numel())
 
-    def _land(self, sending: torch.Tensor, arrival: torch.Tensor) -> None:
+    def _may_deliver(self, now: float) -> torch.Tensor:
         """
-        Make way on the ``sending`` edges for messages arriving at ``arrival``: the message in
-        flight has arrived by then, and is the last arrived; one that would arrive later is
-        overtaken, and lost.
+        Which links hold a message that a round at ``now`` or later may still hear: the last
+        one sent on the link, not yet older than the retention of the channel. The one that
+        arrived before it is older, so it expires first.
         """
-        arrived = sending[self._pending_at[sending] <= arrival]
+        sent = self._pending_at < math.inf
+        if self.channel.retention is None:
+            return sent
+        return sent & (now - self._pending_at <= self.channel.retention)
+
+    def _land(self, links: torch.Tensor, arrival: torch.Tensor) -> None:
+        """
+        Make way on ``links`` for messages arriving at ``arrival``: the message in flight has
+        arrived by then, and is the last arrived; one that would arrive later is overtaken,
+        and lost.
+        """
+        arrived = links[self._pending_at[links] <= arrival]
         for key in set(self._arrived) | set(self._pending):
             pending = self._slot(self._pending, key, arrived)
-            self._arrived[key] = put_rows(self._arrived.get(key), self._edges, arrived, *pending)
+            self._arrived[key] = put_rows(self._arrived.get(key), self._links, arrived, *pending)
         self._arrived_at[arrived] = self._pending_at[arrived]
-        self._pending_at[sending] = arrival
+        self._pending_at[links] = arrival
 
-    def _queue(
-        self, sending: torch.Tensor, rows: torch.Tensor, shared: Mapping[int, Rows],
-        addressed: Mapping[int, Rows],
+    def _queue(  # pylint: disable=too-many-arguments
+        self, sending: torch.Tensor, links: torch.Tensor, rows: torch.Tensor, *,
+        shared: Mapping[int, Rows], addressed: Mapping[int, Rows],
     ) -> None:
         """
-        Put in flight on the ``sending`` edges what their senders, at ``rows`` of the batch,
-        sent: the value addressed along an edge, if any, or the one for every neighbor.
+        Put in flight on the ``links`` of the ``sending`` edges what their senders, at ``rows``
+        of the batch, sent: the value addressed along an edge, if any, or the one for every
+        neighbor.
         """
         for key in set(self._pending) | set(shared):
             values, sent = shared.get(key, (None, None))
             if values is None:
-                self._pending[key][1][sending] = False
+                self._pending[key][1][links] = False
                 continue
             carried = values[rows]
             if key in addressed:
                 along, held = addressed[key]
                 carried = where_rows(held[sending], along[sending], carried)
             self._pending[key] = put_rows(
-                self._pending.get(key), self._edges, sending, carried, sent[rows]
+                self._pending.get(key), self._links, links, carried, sent[rows]
             )
 
     def _addressed(self, edges: BatchEdges, addressed: Mapping[int, Rows]) -> dict[int, Rows]:
         """What a batch addressed, by key, on each edge of the topology, and where it did."""
         index, has_back = edges_back(self._back, edges)
+        count = int(self.topology.senders.numel())
         return {
-            key: put_rows(None, self._edges, index, values[has_back], present[has_back])
+            key: put_rows(None, count, index, values[has_back], present[has_back])
             for key, (values, present) in addressed.items()
         }
 
@@ -179,6 +226,20 @@ class Mailbox:
     def _slot(slots: Mapping[int, Rows], key: int, index: torch.Tensor) -> Rows | None:
         slot = slots.get(key)
         return None if slot is None else (slot[0][index], slot[1][index])
+
+
+def _link_keys(topology: GraphTopology) -> torch.Tensor:
+    """The key ``receiver * N + sender`` of each edge: in increasing order, as the edges are."""
+    return topology.receivers * topology.num_devices + topology.senders
+
+
+def _moved(
+    times: torch.Tensor, old: torch.Tensor, where: torch.Tensor, count: int, empty: float
+) -> torch.Tensor:
+    """``count`` times, ``empty`` but at ``where``, which take those of ``times`` at ``old``."""
+    moved = torch.full((count,), empty, dtype=times.dtype, device=times.device)
+    moved[where] = times[old]
+    return moved
 
 
 @dataclass(frozen=True)
@@ -292,18 +353,30 @@ class BatchWavefrontRuntime:  # pylint: disable=too-many-instance-attributes
         next_times = self._run.next_times
         return float(next_times.min()) if next_times.numel() else math.inf
 
-    def step(self, sensors: Mapping[str, Any], *, until: float | None = None) -> BatchWavefrontStep:
+    def step(
+        self, sensors: Mapping[str, Any], *, topology: GraphTopology | None = None,
+        until: float | None = None,
+    ) -> BatchWavefrontStep:
         """
         Run the next wavefront.
 
         Args:
             sensors: The sensors of the devices, by name: a tensor with a row per device, or
                 one value for all; ``"time"`` is the time of each round, unless given.
+            topology: Who hears whom from this wavefront on, for devices that move; the
+                current graph by default. The wavefront is picked, read and sent on it; a
+                message already in flight on an edge that goes waits on its link, heard again
+                if the edge comes back, as in ``WavefrontRuntime``.
             until: The time after which no round runs; none by default.
 
         Returns:
             What the wavefront ran; no devices if no round is due by ``until``.
+
+        Raises:
+            ValueError: If ``topology`` links another number of devices.
         """
+        if topology is not None and topology is not self.topology:
+            self._follow(topology)
         delay = max(self.channel.delay, 0.0 if self.window is None else self.window)
         run = self._run
         devices = select_batch(
@@ -325,18 +398,35 @@ class BatchWavefrontRuntime:  # pylint: disable=too-many-instance-attributes
         run.next_times[devices] = times + self.clock.interval(self._draws(devices))
         return BatchWavefrontStep(float(times.max()), devices, result)
 
-    def run_until(self, until: float, sensors: Mapping[str, Any]) -> Any:
+    def run_until(
+        self, until: float, sensors: Mapping[str, Any], *,
+        topology: GraphTopology | Callable[[float], GraphTopology] | None = None,
+    ) -> Any:
         """
         Run wavefronts until no round is due by ``until``.
+
+        Args:
+            until: The time after which no round runs.
+            sensors: The sensors of the devices, as for ``step``.
+            topology: Who hears whom: one graph from now on, or the graph at a time, read at
+                the time of each wavefront; the current graph by default.
 
         Returns:
             The latest result of each device, as ``results``.
         """
         while self.next_time() <= until:
-            if self.step(sensors, until=until).devices.numel() == 0:
+            graph = topology(self.next_time()) if callable(topology) else topology
+            if self.step(sensors, topology=graph, until=until).devices.numel() == 0:
                 break
         self._run.now = max(self._run.now, until)
         return self.results
+
+    def _follow(self, topology: GraphTopology) -> None:
+        """Make ``topology`` the graph of the next wavefronts, with the state and the links."""
+        index, kept = topology.edges_from(self.topology)
+        self._states.move_to(topology, index, kept)
+        self._mailbox.follow(topology, self.next_time())
+        self.topology = topology
 
     def _start(self) -> _Run:
         """A run from time zero: the seed drawn again, each device waiting for its first round."""
