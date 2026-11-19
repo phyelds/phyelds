@@ -115,6 +115,16 @@ class States:
             read = reads.get(key)
             _held(slot)[devices if read is None else devices[~read]] = False
 
+    def forget_devices(self, devices: torch.Tensor) -> None:
+        """
+        Forget the state of ``devices``, as if they joined now; the others keep theirs.
+
+        Args:
+            devices: The ids of the devices to forget (``int64 [M]``).
+        """
+        for slot in self._slots.values():
+            _held(slot)[devices] = False
+
     def move_to(self, topology: GraphTopology, index: torch.Tensor, kept: torch.Tensor) -> None:
         """
         Follow the devices onto ``topology``: a field kept as state keeps its value on the
@@ -206,6 +216,19 @@ class SynchronousMessages:
                 self._addressed.get(key), self.num_edges, index,
                 values[has_back], present[has_back],
             )
+
+    def forget_devices(self, devices: torch.Tensor) -> None:
+        """
+        Forget what ``devices`` sent; what the others sent them stays.
+
+        A value addressed along an edge is read only with what its sender sent to all its
+        neighbors, so forgetting the latter is enough, until the next ``publish``.
+
+        Args:
+            devices: The ids of the devices whose messages to forget (``int64 [M]``).
+        """
+        for _, sent in self._sent.values():
+            sent[devices] = False
 
     def move_to(self, topology: GraphTopology, index: torch.Tensor, kept: torch.Tensor) -> None:
         """
