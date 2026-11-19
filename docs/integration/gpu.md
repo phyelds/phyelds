@@ -103,6 +103,13 @@ with a delay, or a `window`, more devices run together, up to every device on al
 clocks. The whole example is
 [`docs/examples/gpu.py`](https://github.com/phyelds/phyelds/blob/master/docs/examples/gpu.py).
 
+`step` and `run_until` also take the graph, for devices that move: `run_until` takes one
+graph, or a function giving the graph at a time, read at the time of each wavefront, as
+`WavefrontRuntime` reads its neighbors. A wavefront is picked, read and sent on the graph
+of its time. A message already in flight on an edge that goes away waits on its link: it is
+heard if the edge comes back, within the `retention` of the channel. A link is dropped
+once its last message is older than the retention; without one, links stay.
+
 ---
 
 ## What a program can do on a batch
