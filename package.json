@@ -1,7 +1,7 @@
 {
     "devDependencies": {
-        "puppeteer-core": "^25.16.0",
-        "semantic-release-preconfigured-conventional-commits": "^1.1.158"
+        "puppeteer-core": "^25.17.0",
+        "semantic-release-preconfigured-conventional-commits": "^1.1.159"
     },
     "engines": {
         "node": "22.14",
