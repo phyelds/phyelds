@@ -61,6 +61,21 @@ a time: in a round, each device reads what its neighbors sent in the previous on
 Each result has a row per device: `distances[i]` is the distance of device `i`, and
 `counts[0]` the number of devices that reach the source, counted at the source.
 
+### Devices that move
+
+`run_round` takes the graph of the round, for devices that move: from that round on, each
+device hears the neighbors of the new graph.
+
+```python
+--8<-- "gpu.py:moving"
+```
+
+What a device sends to all its neighbors reaches those of the new graph at once, as in
+`SynchronousRuntime`, which reads what every current neighbor sent in the previous round.
+What is kept along an edge, a field kept as state or a value addressed to one neighbor,
+stays only if the new graph keeps the edge: a neighbor that has just arrived reads the
+default of the field. The graph must link the same devices.
+
 ---
 
 ## Wavefronts

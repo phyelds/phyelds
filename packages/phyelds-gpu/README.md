@@ -4,7 +4,8 @@ PyTorch backend for [phyelds](https://github.com/phyelds/phyelds): the devices o
 system as tensors, on CPU or GPU.
 
 `BatchSynchronousRuntime` runs an unmodified `@aggregate` program on every device at once, one
-synchronous round at a time, with the results of phyelds' own `SynchronousRuntime`;
+synchronous round at a time, with the results of phyelds' own `SynchronousRuntime`, also on a
+graph that changes from a round to the next for devices that move;
 `BatchWavefrontRuntime` runs it in wavefronts of devices with clocks of their own, over a
 channel with delays and losses. See [the documentation](https://phyelds.github.io/phyelds/integration/gpu/).
 

@@ -1,6 +1,7 @@
 """
 The PyTorch backend of phyelds: a gradient, and a count of the devices that reach the source,
-on 2,000 devices at once, in synchronous rounds and in wavefronts over a radio channel.
+on 2,000 devices at once, in synchronous rounds, on devices that move, and in wavefronts over a
+radio channel.
 
 Run it from the root of the repository, with PyTorch installed:
 
@@ -43,6 +44,21 @@ def synchronous(topology, sensors, rounds: int):
         distances, counts = runtime.run_round(sensors)  # a row per device
     return distances, counts
 # --8<-- [end:synchronous]
+
+
+# --8<-- [start:moving]
+def wandering(positions, sensors, moving: int, still: int):
+    """The distances after ``moving`` rounds of wandering devices, then ``still`` at rest."""
+    topology = radius_topology(positions, 1.0)
+    runtime = BatchSynchronousRuntime(gradient, topology)
+    for _ in range(moving):
+        positions = positions + 0.1 * torch.randn_like(positions)
+        topology = radius_topology(positions, 1.0)
+        runtime.run_round(sensors, topology=topology)  # the neighbors of this round
+    for _ in range(still):
+        distances, _ = runtime.run_round(sensors)  # the last graph, from now on
+    return distances, topology
+# --8<-- [end:moving]
 
 
 # --8<-- [start:wavefronts]

@@ -52,3 +52,17 @@ def test_gpu_example_spreads_the_gradient_in_wavefronts_too():
 
     assert bool(held.all())
     assert distances.tolist() == _hops(topology)
+
+
+def test_gpu_example_settles_on_the_graph_where_the_devices_stop():
+    torch.manual_seed(0)
+    _, sensors = gpu.world(500)
+    positions = torch.rand(500, 2, dtype=torch.float64) * (500 / 2.5) ** 0.5
+
+    distances, topology = gpu.wandering(positions, sensors, moving=20, still=80)
+
+    # Devices cut off from the source raise their distance round by round, without bound.
+    reached = [device for device, hops in enumerate(_hops(topology)) if hops < math.inf]
+    assert [distances[device].item() for device in reached] == [
+        _hops(topology)[device] for device in reached
+    ]
