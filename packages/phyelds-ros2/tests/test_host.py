@@ -6,7 +6,8 @@ from phyelds.calculus import aggregate
 from phyelds.libraries.device import label, sense, store, velocity
 from phyelds.libraries.distances import neighbors_distances
 from phyelds.libraries.spreading import distance_to
-from phyelds.ros2 import AggregateRosNode, WithinRange
+from phyelds.ros2 import AggregateRosNode, Transforms, WithinRange
+from phyelds.ros2.host import tf_locator
 from phyelds.ros2.topics import command, reading
 
 rclpy = pytest.importorskip("rclpy")
@@ -115,3 +116,37 @@ def test_nodes_sense_and_act_on_topics_of_ones_own(executor):
     _spin(executor, [host])
 
     assert alarms and alarms[-1].data is True
+
+
+def test_nodes_measure_their_neighbours_from_tf2_transforms(executor):
+    # pylint: disable=import-outside-toplevel
+    from geometry_msgs.msg import TransformStamped
+    from tf2_ros import StaticTransformBroadcaster
+
+    topic = f"/phyelds/test_{uuid.uuid4().hex}"
+    xs = [0.0, 1.0, 2.5]
+    hosts = [
+        AggregateRosNode(
+            metres_to_source, namespace=f"/r{index}", period=0.02, topic=topic, sensor_topics=[],
+            neighbourhood=lambda node: Transforms(f"{node.get_namespace().strip('/')}/base_link",
+                                                  tf_locator(node, "map"), radius=1.6),
+            sensors=lambda index=index: {"source": index == 0},
+        )
+        for index in range(len(xs))
+    ]
+    frames = rclpy.create_node("frames")
+    broadcaster = StaticTransformBroadcaster(frames)
+    transforms = []
+    for index, x in enumerate(xs):
+        transform = TransformStamped()
+        transform.header.frame_id, transform.child_frame_id = "map", f"r{index}/base_link"
+        transform.transform.translation.x = x
+        transform.transform.rotation.w = 1.0
+        transforms.append(transform)
+    broadcaster.sendTransform(transforms)
+    for node in [frames, *(host.node for host in hosts)]:
+        executor.add_node(node)
+
+    _spin(executor, hosts)
+
+    assert [host.aggregate.result for host in hosts] == pytest.approx([0.0, 1.0, 2.5])
