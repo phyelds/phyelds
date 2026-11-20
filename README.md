@@ -47,6 +47,7 @@ pip install phyelds-vmas                    # VMAS integration
 pip install phyelds-mesa                    # Mesa integration
 pip install phyelds-argos                   # ARGoS integration
 pip install phyelds-webots                  # Webots integration
+pip install phyelds-ros2                    # ROS 2 integration (Jazzy or later)
 pip install phyelds-gpu                     # many devices at once, on CPU or GPU (PyTorch)
 ```
 
@@ -94,6 +95,8 @@ builds the gradient beneath it step by step from `remember` and `neighbors`.
   [Mesa](https://mesa.readthedocs.io) model.
 * **Webots** (`phyelds-webots`): phyelds programs on the robots of a
   [Webots](https://cyberbotics.com) simulation, talking over their simulated radios.
+* **ROS 2** (`phyelds-ros2`): phyelds programs on ROS 2 robots, one node per robot,
+  talking over a shared topic with pluggable neighbourhoods.
 * **ARGoS** (`phyelds-argos`): phyelds programs embedded in native controllers for
   any ARGoS robot, using range-and-bearing radios and compass geometry without GPS.
 * **GPU** (`phyelds-gpu`): the same programs on many devices at once, as PyTorch

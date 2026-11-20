@@ -66,7 +66,7 @@ The runtimes below and `Device` run their rounds with it.
 - **Reuse the phyelds simulator** with a custom `Environment`, when the host can be stepped from Python: the simulator's runner already implements the protocol (`phyelds.simulator.runner.aggregate_program_runner`), and you only map the host's state to nodes. This is how [VMAS](vmas.md) is integrated.
 - **Run rounds from another simulator**, when it owns the agents and the time: [Mesa](mesa.md) models do it with `phyelds-mesa`, which runs a round on every agent at each step of the model, or spikes individual agents. For a host of your own, `phyelds.vm.synchronous.SynchronousRuntime` and `phyelds.vm.asynchronous.AsynchronousRuntime` run these rounds on devices known by their ids: give them the sensors and the neighbors of each device, as in the [parallel rounds](#parallel-rounds) below.
 - **Drive rounds yourself**, as in the example above, when the host owns the loop (a real device, ROS node, or an external simulator calling back into Python).
-- **Run each device on its own**, when every device has its own process and sends its messages as bytes over a radio: `phyelds.vm.device.Device` runs its rounds, and the host only moves the bytes. This is how [MicroPython and the ESP32](micropython.md) and [Webots](webots.md) robots run phyelds.
+- **Run each device on its own**, when every device has its own process and sends its messages as bytes over a radio: `phyelds.vm.device.Device` runs its rounds, and the host only moves the bytes. This is how [MicroPython and the ESP32](micropython.md), [Webots](webots.md) and [ROS 2](ros2.md) robots run phyelds.
 
 - **Embed Python in a native simulator**, when it calls C++ controllers in one process: [ARGoS](argos.md) runs a `Device` per robot and transports its messages over the simulated radio.
 
@@ -77,7 +77,7 @@ The runtimes below and `Device` run their rounds with it.
 A host builds the inbox of a device in one of two ways:
 
 - **Ideal**: the host computes the neighbors, from positions or a graph, and hands the device the last outbox of each one. No message is ever lost or late. The simulator, VMAS and Mesa work this way.
-- **Delivered**: the inbox is what the transport actually delivered. The neighbors are the devices heard from, and a lost message is simply missing. Webots, ARGoS and the ESP32 work this way, through a `Device`.
+- **Delivered**: the inbox is what the transport actually delivered. The neighbors are the devices heard from, and a lost message is simply missing. Webots, ARGoS, ROS 2 and the ESP32 work this way, through a `Device`.
 
 A host that simulates a network, such as a network simulator or a V2X model, must use the delivered model. An inbox built from positions around the network would hide the losses and delays the network is there to show.
 
@@ -94,6 +94,7 @@ Each host makes its own choices about time, scheduling and membership. A new hos
 | [Mesa](mesa.md) | `model.time` | Synchronous: each `run_round` runs every agent once, and each agent reads what its neighbors sent in the previous round | Ideal: `within`, `cell_neighbors` or any function | One round | An agent joins when it is among the agents of a round; one missing from a round is forgotten, with its state and messages |
 | [Webots](webots.md) | The simulation time | One per robot every `--steps-per-round` steps, each robot in its own process. Synchronous, as Webots delivers a message in the next step | Delivered: the robots its `Emitter` reaches | One round | The robots of the world; one that stops sending is forgotten at the next round |
 | [ARGoS](argos.md) | The simulation clock | One per robot per tick, one robot at a time. Synchronous, as the radio delivers on the next tick | Delivered: the range-and-bearing or simple radios | One round | The robots of the experiment; a reset clears the state and the messages |
+| [ROS 2](ros2.md) | The clock of each node: the simulation time with `use_sim_time` | Each node on its own timer, every `--period`. Asynchronous: the rounds of neighbors are not aligned | Delivered: the nodes heard on the shared topic, filtered by a neighbourhood strategy | `--lifetime` rounds (2 by default) | A node joins with its first message, and is forgotten after `lifetime` silent rounds |
 | [GPU](gpu.md) | The clock of each device, or rounds | `BatchSynchronousRuntime`: synchronous, every device at once. `BatchWavefrontRuntime`: wavefronts of devices that do not depend on each other | Ideal: `radius_topology` or a mapping of neighbors | Synchronous: one round. Wavefronts: the channel's `retention` | The devices of the graph, fixed |
 | [MicroPython](micropython.md) | The clock of each device | Each device on its own, with a round every `ROUND_MS`. Asynchronous: the rounds of neighbors are not aligned | Delivered: the ESP-NOW broadcasts received | `lifetime` rounds (4 in the example) | A device joins with its first message, and is forgotten after `lifetime` silent rounds |
 

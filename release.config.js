@@ -18,6 +18,7 @@ var prepareCmd = [
     prepare("phyelds-argos"),
     prepare("phyelds-vmas"),
     prepare("phyelds-gpu"),
+    prepare("phyelds-ros2"),
 ].join(" && ");
 var publishOptions = "--build";
 
@@ -37,7 +38,8 @@ var publishCmd = [
     `(cd packages/phyelds-webots && poetry publish ${publishOptions} --username ${pypiUsername} --password ${pypiPassword})`,
     `(cd packages/phyelds-argos && poetry publish ${publishOptions} --username ${pypiUsername} --password ${pypiPassword})`,
     `(cd packages/phyelds-vmas && poetry publish ${publishOptions} --username ${pypiUsername} --password ${pypiPassword})`,
-    `cd packages/phyelds-gpu && poetry publish ${publishOptions} --username ${pypiUsername} --password ${pypiPassword}`,
+    `(cd packages/phyelds-gpu && poetry publish ${publishOptions} --username ${pypiUsername} --password ${pypiPassword})`,
+    `cd packages/phyelds-ros2 && poetry publish ${publishOptions} --username ${pypiUsername} --password ${pypiPassword}`,
 ].join(" && ");
 
 var config = require('semantic-release-preconfigured-conventional-commits');
@@ -61,6 +63,9 @@ config.plugins.push(
     ["@semantic-release/changelog", {
         "changelogFile": "packages/phyelds-gpu/CHANGELOG.md",
     }],
+    ["@semantic-release/changelog", {
+        "changelogFile": "packages/phyelds-ros2/CHANGELOG.md",
+    }],
     ["@semantic-release/exec", {
         "prepareCmd" : prepareCmd,
         "publishCmd": publishCmd,
@@ -78,6 +83,7 @@ if (!dryRun) {
                 { "path": "packages/phyelds-argos/dist/*" },
                 { "path": "packages/phyelds-vmas/dist/*" },
                 { "path": "packages/phyelds-gpu/dist/*" },
+                { "path": "packages/phyelds-ros2/dist/*" },
             ]
         }],
         ["@semantic-release/git", {
@@ -95,7 +101,9 @@ if (!dryRun) {
                 "packages/phyelds-vmas/CHANGELOG.md",
                 "packages/phyelds-vmas/pyproject.toml",
                 "packages/phyelds-gpu/CHANGELOG.md",
-                "packages/phyelds-gpu/pyproject.toml"
+                "packages/phyelds-gpu/pyproject.toml",
+                "packages/phyelds-ros2/CHANGELOG.md",
+                "packages/phyelds-ros2/pyproject.toml"
             ],
             "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
         }]
