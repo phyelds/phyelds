@@ -18,6 +18,7 @@ Optional packages:
 | `pip install phyelds-vmas` | the [VMAS](integration/vmas.md) multi-robot simulator |
 | `pip install phyelds-mesa` | [Mesa](integration/mesa.md) agent-based models |
 | `pip install phyelds-webots` | the [Webots](integration/webots.md) robot simulator |
+| `pip install phyelds-ros2` | [ROS 2](integration/ros2.md) robots, real or simulated |
 
 ## The pieces
 

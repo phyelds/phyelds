@@ -1,0 +1,37 @@
+[tool.poetry]
+name = "phyelds-ros2"
+version = "10.2.0"
+description = "ROS 2 integration for phyelds: aggregate programs on ROS 2 robots, one node per robot"
+license = "Apache-2.0"
+authors = [
+  "Davide Domini <davide.domini@unibo.it>",
+  "Gianluca Aguzzi <gianluca.aguzzi@unibo.it>"
+]
+homepage = "https://github.com/phyelds/phyelds"
+repository = "https://github.com/phyelds/phyelds"
+readme = "README.md"
+
+packages = [
+    { include = "phyelds/ros2", from = "src" },
+]
+
+classifiers = [
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[tool.poetry.dependencies]
+python = ">=3.12,<3.15"
+phyelds = "^10.2.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^9.0.3"
+pylint = "^3.0.0"
+flake8 = "^7.0.0"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

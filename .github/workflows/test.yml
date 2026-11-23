@@ -190,6 +190,65 @@ jobs:
       working-directory: packages/phyelds-gpu
       run: poetry build
 
+  ros2:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.13", "3.14"]
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v7
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install Poetry
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 -
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - name: Configure Poetry to not create virtualenvs (CI-friendly)
+      run: poetry config virtualenvs.create false
+
+    - name: Install core
+      run: poetry install
+
+    - name: Lint ROS 2 extension
+      run: PYTHONPATH="packages/phyelds-ros2/src" poetry run pylint packages/phyelds-ros2/src packages/phyelds-ros2/tests docs/examples/ros2
+
+    - name: Test ROS 2 extension
+      run: PYTHONPATH="packages/phyelds-ros2/src" poetry run pytest packages/phyelds-ros2/tests
+
+    - name: Build ROS 2 extension
+      working-directory: packages/phyelds-ros2
+      run: poetry build
+
+  ros2-jazzy:
+    runs-on: ubuntu-latest
+    container: ros:jazzy
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Install turtlesim and venv
+      run: apt-get update && apt-get install -y --no-install-recommends python3-venv ros-jazzy-turtlesim
+
+    - name: Install core
+      shell: bash
+      run: |
+        source /opt/ros/jazzy/setup.bash
+        python3 -m venv --system-site-packages .venv
+        .venv/bin/pip install -e . pytest
+
+    - name: Test ROS 2 extension with rclpy
+      shell: bash
+      run: |
+        source /opt/ros/jazzy/setup.bash
+        PYTHONPATH="packages/phyelds-ros2/src:$PYTHONPATH" .venv/bin/python -m pytest packages/phyelds-ros2/tests -rs
+
   webots:
     runs-on: ubuntu-latest
     # Webots and xvfb come with the image; its Python is too old for phyelds, so the
