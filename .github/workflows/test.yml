@@ -217,7 +217,7 @@ jobs:
       run: poetry install
 
     - name: Lint ROS 2 extension
-      run: PYTHONPATH="packages/phyelds-ros2/src" poetry run pylint packages/phyelds-ros2/src packages/phyelds-ros2/tests docs/examples/ros2
+      run: PYTHONPATH="packages/phyelds-ros2/src" poetry run pylint packages/phyelds-ros2/src packages/phyelds-ros2/tests docs/examples/ros2 docs/examples/gazebo
 
     - name: Test ROS 2 extension
       run: PYTHONPATH="packages/phyelds-ros2/src" poetry run pytest packages/phyelds-ros2/tests
@@ -248,6 +248,29 @@ jobs:
       run: |
         source /opt/ros/jazzy/setup.bash
         PYTHONPATH="packages/phyelds-ros2/src:$PYTHONPATH" .venv/bin/python -m pytest packages/phyelds-ros2/tests -rs
+
+  ros2-gazebo:
+    runs-on: ubuntu-latest
+    container: ros:jazzy
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Install Gazebo, its bridge and venv
+      run: apt-get update && apt-get install -y --no-install-recommends python3-venv ros-jazzy-ros-gz
+
+    - name: Install core
+      shell: bash
+      run: |
+        source /opt/ros/jazzy/setup.bash
+        python3 -m venv --system-site-packages .venv
+        .venv/bin/pip install -e . pytest
+
+    - name: Test ROS 2 extension in Gazebo
+      shell: bash
+      run: |
+        source /opt/ros/jazzy/setup.bash
+        PYTHONPATH="packages/phyelds-ros2/src:$PYTHONPATH" .venv/bin/python -m pytest packages/phyelds-ros2/tests/test_gazebo.py -rs
 
   webots:
     runs-on: ubuntu-latest

@@ -21,7 +21,7 @@ def _turtles():
         node = AggregateNode(
             name, turtles.main, neighbourhood=WithinRange(2.5), sensors=lambda name=name: {"source": name == "turtle1"}
         )
-        node.sense(turtle_pose().read(SimpleNamespace(x=x, y=y, theta=math.pi)))
+        node.sense(turtle_pose().read(SimpleNamespace(x=x, y=y, theta=math.pi), {}))
         nodes.append(node)
     return nodes
 

@@ -7,6 +7,7 @@ ROS names them, ``"package/msg/Type"``, and the conversions see only the fields 
 messages, so a robot of any kind is wired with the presets below, or with conversions of
 one's own.
 """
+import math
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -22,12 +23,13 @@ class SensorTopic:
     Attributes:
         topic: The topic, relative to the namespace of the robot unless absolute.
         message_type: Its type, as ``"package/msg/Type"``.
-        read: From a message, the sensors it gives, by name; they hold until the next one.
+        read: From a message and the latest sensors, the sensors the message gives, by name;
+            they hold until the next one.
     """
 
     topic: str
     message_type: str
-    read: Callable[[Any], Mapping[str, Any]]
+    read: Callable[[Any, Mapping[str, Any]], Mapping[str, Any]]
 
 
 @dataclass(frozen=True)
@@ -59,7 +61,7 @@ def odometry(topic: str = "odom") -> SensorTopic:
     Returns:
         The sensor topic.
     """
-    def read(message: Any) -> dict[str, Any]:
+    def read(message: Any, _sensors: Mapping[str, Any]) -> dict[str, Any]:
         position, orientation = message.pose.pose.position, message.pose.pose.orientation
         angle = yaw_of(orientation.x, orientation.y, orientation.z, orientation.w)
         return {"position": (position.x, position.y, position.z), "heading": heading_of(angle)}
@@ -77,10 +79,44 @@ def turtle_pose(topic: str = "pose") -> SensorTopic:
     Returns:
         The sensor topic.
     """
-    def read(message: Any) -> dict[str, Any]:
+    def read(message: Any, _sensors: Mapping[str, Any]) -> dict[str, Any]:
         return {"position": (message.x, message.y, 0.0), "heading": heading_of(message.theta)}
 
     return SensorTopic(topic, "turtlesim/msg/Pose", read)
+
+
+def laser_obstacle(topic: str = "scan") -> SensorTopic:
+    """
+    The ``obstacle``, from a ``sensor_msgs/LaserScan``: away from the nearest thing it sees.
+
+    The push points away from the nearest ray within the range of the scan, in the frame of
+    the world, and is as long as that ray is close: 1 at ``range_min``, 0 at ``range_max``.
+    It is zero when no ray sees anything, and ``None`` before the ``heading`` is sensed. As
+    on Webots and ARGoS, ``avoid_obstacles`` and the swarm blocks read it.
+
+    Args:
+        topic: The scan topic.
+
+    Returns:
+        The sensor topic.
+    """
+    def read(message: Any, sensors: Mapping[str, Any]) -> dict[str, Any]:
+        heading = sensors.get("heading")
+        if heading is None:
+            return {"obstacle": None}
+        seen = [
+            (distance, message.angle_min + index * message.angle_increment)
+            for index, distance in enumerate(message.ranges)
+            if message.range_min <= distance <= message.range_max
+        ]
+        if not seen:
+            return {"obstacle": (0.0, 0.0, 0.0)}
+        distance, angle = min(seen)
+        closeness = 1.0 - (distance - message.range_min) / (message.range_max - message.range_min)
+        towards = angle + yaw_of_heading(heading)
+        return {"obstacle": (-closeness * math.cos(towards), -closeness * math.sin(towards), 0.0)}
+
+    return SensorTopic(topic, "sensor_msgs/msg/LaserScan", read)
 
 
 def reading(name: str, topic: str, message_type: str, *, field: str = "data") -> SensorTopic:
@@ -96,7 +132,10 @@ def reading(name: str, topic: str, message_type: str, *, field: str = "data") ->
     Returns:
         The sensor topic.
     """
-    return SensorTopic(topic, message_type, lambda message: {name: getattr(message, field)})
+    def read(message: Any, _sensors: Mapping[str, Any]) -> dict[str, Any]:
+        return {name: getattr(message, field)}
+
+    return SensorTopic(topic, message_type, read)
 
 
 def differential_drive(

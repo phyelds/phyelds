@@ -13,12 +13,13 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any
 
 from phyelds.ros2.aggregate_node import AggregateNode
-from phyelds.ros2.neighbourhood import Neighbourhood, Reachable, WithinRange
+from phyelds.ros2.neighbourhood import Neighbourhood, Reachable, Transforms, WithinRange
 from phyelds.ros2.topics import (
     ActuatorTopic,
     SensorTopic,
     differential_drive,
     holonomic_drive,
+    laser_obstacle,
     odometry,
     text,
     turtle_pose,
@@ -27,11 +28,14 @@ from phyelds.ros2.topics import (
 TOPIC = "/phyelds/messages"
 """The topic all the nodes share, by default."""
 
-SENSES = {"odom": odometry, "turtlesim": turtle_pose}
+SENSES = {"odom": odometry, "turtlesim": turtle_pose, "scan": laser_obstacle}
 """The sensor topics the command line names, with ``--sense``."""
 
 ACTS = ("differential", "holonomic", "label")
 """The actuator topics the command line names, with ``--act``."""
+
+NEIGHBOURHOODS = ("reachable", "range", "tf")
+"""The neighbourhoods the command line names, with ``--neighbourhood``."""
 
 
 class AggregateRosNode:  # pylint: disable=too-few-public-methods
@@ -47,7 +51,9 @@ class AggregateRosNode:  # pylint: disable=too-few-public-methods
             ``None``.
         device_id: The id of the robot; its namespace without slashes, or the node name in
             the root namespace, if ``None``.
-        neighbourhood: Which senders are neighbours; ``Reachable()`` by default.
+        neighbourhood: Which senders are neighbours, or a function of the ``rclpy`` node that
+            builds the strategy, for one that needs the node, such as ``Transforms`` with
+            ``tf_locator``; ``Reachable()`` by default.
         sensor_topics: The topics to sense; ``odometry()`` if ``None``.
         actuator_topics: The topics to act on; ``differential_drive()`` and ``text()`` if
             ``None``.
@@ -65,7 +71,7 @@ class AggregateRosNode:  # pylint: disable=too-few-public-methods
         node_name: str = "phyelds",
         namespace: str | None = None,
         device_id: str | None = None,
-        neighbourhood: Neighbourhood | None = None,
+        neighbourhood: Neighbourhood | Callable[[Any], Neighbourhood] | None = None,
         sensor_topics: Iterable[SensorTopic] | None = None,
         actuator_topics: Iterable[ActuatorTopic] | None = None,
         sensors: Callable[[], Mapping[str, Any]] | None = None,
@@ -80,6 +86,8 @@ class AggregateRosNode:  # pylint: disable=too-few-public-methods
         from std_msgs.msg import UInt8MultiArray
 
         self.node = Node(node_name) if namespace is None else Node(node_name, namespace=namespace)
+        if neighbourhood is not None and not hasattr(neighbourhood, "admit"):
+            neighbourhood = neighbourhood(self.node)
         self.aggregate = AggregateNode(
             device_id or self.node.get_namespace().strip("/") or self.node.get_name(),
             program, neighbourhood=neighbourhood, sensors=sensors, paths=paths, lifetime=lifetime,
@@ -94,7 +102,7 @@ class AggregateRosNode:  # pylint: disable=too-few-public-methods
         for sensor in [odometry()] if sensor_topics is None else sensor_topics:
             self.node.create_subscription(
                 _message_type(sensor.message_type), sensor.topic,
-                lambda message, read=sensor.read: self.aggregate.sense(read(message)), 10,
+                lambda message, read=sensor.read: self._sense(read, message), 10,
             )
         actuators = [differential_drive(), text()] if actuator_topics is None else actuator_topics
         self._actuators = []
@@ -118,6 +126,12 @@ class AggregateRosNode:  # pylint: disable=too-few-public-methods
             command = message_type()
             if actuator.write(command, value, self.aggregate.readings):
                 publisher.publish(command)
+
+    def _sense(
+        self, read: Callable[[Any, Mapping[str, Any]], Mapping[str, Any]], message: Any
+    ) -> None:
+        """Take the sensors a message of a sensor topic gives."""
+        self.aggregate.sense(read(message, self.aggregate.readings))
 
     def _hear(self, message: Any) -> None:
         """Take a message of the shared topic."""
@@ -163,13 +177,17 @@ def parser() -> argparse.ArgumentParser:
     options.add_argument("program", type=_function, help="the program to run, as module:function")
     options.add_argument("--id", help="the id of the robot; its namespace by default")
     options.add_argument("--source", help="the id of the robot that senses source")
-    options.add_argument("--neighbourhood", choices=("reachable", "range"), default="reachable",
-                         help="who is a neighbour: whoever is heard, or whoever is within --range")
+    options.add_argument("--neighbourhood", choices=NEIGHBOURHOODS, default="reachable",
+                         help="who is a neighbour: whoever is heard, whoever is within --range, or"
+                              " whoever tf2 locates")
     options.add_argument("--range", type=float, help="how far a robot reaches, in metres")
+    options.add_argument("--frame", help="with tf, the frame of the robot; ID/base_link by default")
+    options.add_argument("--fixed-frame", default="map",
+                         help="with tf, the frame all the robots are located in (default map)")
     options.add_argument("--measure", action="store_true",
                          help="with reachable, measure the neighbours from their positions")
     options.add_argument("--sense", nargs="*", choices=tuple(SENSES), default=["odom"],
-                         help="the topics to sense: odom, the pose of turtlesim, or none")
+                         help="the topics to sense: odom, a turtlesim pose, a laser scan; or none")
     options.add_argument("--act", nargs="*", choices=ACTS, default=["differential", "label"],
                          help="the outputs to act on: velocity, for a robot that turns or one that"
                               " moves in any direction, and label; or none")
@@ -186,7 +204,9 @@ def parser() -> argparse.ArgumentParser:
     return options
 
 
-def neighbourhood_of(options: argparse.Namespace) -> Neighbourhood:
+def neighbourhood_of(
+    options: argparse.Namespace,
+) -> Neighbourhood | Callable[[Any], Neighbourhood]:
     """
     The neighbourhood strategy the command line asks for.
 
@@ -194,11 +214,18 @@ def neighbourhood_of(options: argparse.Namespace) -> Neighbourhood:
         options: The parsed command line.
 
     Returns:
-        ``WithinRange`` for ``--neighbourhood range``, ``Reachable`` otherwise.
+        ``WithinRange`` for ``--neighbourhood range``; for ``--neighbourhood tf``, a function
+        of the node that builds ``Transforms`` on tf2; ``Reachable`` otherwise.
 
     Raises:
         ValueError: If ``--neighbourhood range`` comes without ``--range``.
     """
+    if options.neighbourhood == "tf":
+        def transforms(node: Any) -> Neighbourhood:
+            frame = options.frame or f"{options.id or node.get_namespace().strip('/')}/base_link"
+            return Transforms(frame, tf_locator(node, options.fixed_frame), radius=options.range)
+
+        return transforms
     if options.neighbourhood == "range":
         if options.range is None:
             raise ValueError("--neighbourhood range needs --range")
@@ -238,6 +265,34 @@ def _act(name: str, options: argparse.Namespace) -> ActuatorTopic:
     if name == "holonomic":
         return holonomic_drive(max_speed=options.max_speed)
     return text()
+
+
+def tf_locator(node: Any, fixed_frame: str = "map") -> Callable[[str], tuple[float, ...] | None]:
+    """
+    Where frames are in ``fixed_frame``, from the tf2 transforms ``node`` listens to.
+
+    Args:
+        node: The ``rclpy`` node that listens.
+        fixed_frame: The frame all the robots are located in.
+
+    Returns:
+        A function from a frame to its position, ``None`` while tf2 cannot transform it.
+    """
+    # pylint: disable=import-error,import-outside-toplevel
+    from rclpy.time import Time
+    from tf2_ros import Buffer, TransformException, TransformListener
+
+    buffer = Buffer()
+    node.tf_listener = TransformListener(buffer, node)  # kept with the node, which it feeds
+
+    def locate(frame: str) -> tuple[float, ...] | None:
+        try:
+            translation = buffer.lookup_transform(fixed_frame, frame, Time()).transform.translation
+        except TransformException:
+            return None
+        return translation.x, translation.y, translation.z
+
+    return locate
 
 
 def _message_type(name: str) -> type:

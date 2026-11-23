@@ -1,6 +1,6 @@
 import pytest
 
-from phyelds.ros2.neighbourhood import Neighbour, Reachable, WithinRange
+from phyelds.ros2.neighbourhood import Neighbour, Reachable, Transforms, WithinRange
 
 
 def test_reachable_admits_any_sender_without_a_distance():
@@ -53,3 +53,37 @@ def test_within_range_admits_no_sender_when_a_position_is_unknown(there, here):
     neighbour = within_range.admit(within_range.header(there), here)
 
     assert neighbour is None
+
+
+FRAMES = {"a/base_link": (0.0, 0.0, 0.0), "b/base_link": (3.0, 4.0, 0.0)}
+
+
+def test_transforms_measure_a_sender_from_where_the_transforms_put_both_frames():
+    here, there = Transforms("a/base_link", FRAMES.get), Transforms("b/base_link", FRAMES.get)
+
+    neighbour = here.admit(there.header(None), None)
+
+    assert neighbour == Neighbour(distance=5.0, vector=(3.0, 4.0, 0.0))
+    assert here.measures
+
+
+@pytest.mark.parametrize(("radius", "admitted"), [(4.0, False), (5.0, True), (None, True)])
+def test_transforms_admit_a_sender_up_to_the_radius_if_any(radius, admitted):
+    here = Transforms("a/base_link", FRAMES.get, radius=radius)
+
+    neighbour = here.admit({"frame": "b/base_link"}, None)
+
+    assert (neighbour is not None) == admitted
+
+
+@pytest.mark.parametrize("frame", ["c/base_link", None])
+def test_transforms_admit_no_sender_whose_frame_is_unknown(frame):
+    here = Transforms("a/base_link", FRAMES.get)
+
+    assert here.admit({"frame": frame}, None) is None
+
+
+def test_transforms_admit_no_sender_while_the_frame_of_the_node_is_unknown():
+    here = Transforms("c/base_link", FRAMES.get)
+
+    assert here.admit({"frame": "b/base_link"}, None) is None

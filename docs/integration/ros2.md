@@ -60,10 +60,11 @@ robot, whose name, without slashes, is the id of the robot: **namespaces must be
 |---|---|
 | `--id ID` | The id of the robot, if not its namespace |
 | `--source ID` | The robot that senses `source`; none if omitted |
-| `--neighbourhood reachable\|range` | Who is a neighbour (default `reachable`): see [neighbourhoods](#neighbourhoods) |
-| `--range R` | With `range`, how far a robot reaches, in metres |
+| `--neighbourhood reachable\|range\|tf` | Who is a neighbour (default `reachable`): see [neighbourhoods](#neighbourhoods) |
+| `--range R` | With `range`, how far a robot reaches, in metres; with `tf`, optional |
+| `--frame F`, `--fixed-frame M` | With `tf`, the frame of the robot (default `ID/base_link`) and the one all are located in (default `map`) |
 | `--measure` | With `reachable`, measure the neighbours from their positions |
-| `--sense [odom] [turtlesim]` | The topics to sense, see [any robot](#any-robot) (default `odom`; none if empty) |
+| `--sense [odom] [turtlesim] [scan]` | The topics to sense, see [any robot](#any-robot) (default `odom`; none if empty) |
 | `--act [differential] [holonomic] [label]` | The outputs to act on (default `differential label`; none if empty) |
 | `--topics module:function` | A function that returns more topics, of your own |
 | `--period T` | The time between two rounds, in seconds (default 0.1) |
@@ -74,6 +75,41 @@ robot, whose name, without slashes, is the id of the robot: **namespaces must be
 
 The ROS arguments follow `--ros-args`, as for any node: `-p use_sim_time:=true` makes the
 rounds follow the clock of a simulator.
+
+---
+
+## Robots in Gazebo
+
+[Gazebo](https://gazebosim.org) simulates the robots, their wheels and their lidars, and
+`ros_gz_bridge` brings their topics to ROS 2. Five differential-drive robots measure how far
+`robot1` is, gather around it, and keep off a wall their lidars see:
+
+```python
+--8<-- "gazebo/swarm.py:program"
+```
+
+`swarm.world()` writes the SDF of the world, from where each robot starts. Gazebo publishes
+the odometry of each robot in the frame of the world, so `WithinRange` measures the robots
+from it. Each robot has its topics in its own namespace, `/robot2/odom`, `/robot2/cmd_vel` and
+`/robot2/scan`, and its node senses the odometry and the scan:
+
+```python
+--8<-- "gazebo/swarm.launch.py:nodes"
+```
+
+The program, the world and the launch file are in
+[`docs/examples/gazebo`](https://github.com/phyelds/phyelds/tree/master/docs/examples/gazebo).
+Gazebo Harmonic comes with `ros-jazzy-ros-gz`:
+
+```bash
+sudo apt install ros-jazzy-ros-gz
+source /opt/ros/jazzy/setup.bash
+cd docs/examples/gazebo
+ros2 launch swarm.launch.py              # gui:=false runs Gazebo without its window
+```
+
+The nodes follow the clock of the simulation, with `use_sim_time`. The tests run a smaller
+world in Gazebo, headless: a robot heads to the source, and another senses the wall.
 
 ---
 
@@ -88,6 +124,7 @@ namespace of the robot, and `-r` remaps them. These are ready, in `phyelds.ros2.
 |---|---|---|---|
 | `odometry("odom")` | `--sense odom` | `nav_msgs/Odometry` | The `position` and `heading` of the robot |
 | `turtle_pose("pose")` | `--sense turtlesim` | `turtlesim/Pose` | The `position` and `heading` of a turtle |
+| `laser_obstacle("scan")` | `--sense scan` | `sensor_msgs/LaserScan` | The `obstacle`: away from the nearest thing the scan sees, in the frame of the world, 1 at `range_min` and 0 at `range_max`; it needs the `heading` |
 | `differential_drive("cmd_vel")` | `--act differential` | `geometry_msgs/Twist` | The `velocity`, for a robot that turns to move: it turns towards it, and drives forward as it faces it |
 | `holonomic_drive("cmd_vel")` | `--act holonomic` | `geometry_msgs/Twist` | The `velocity`, for a robot that moves in any direction: `linear.x` and `linear.y`, in its frame |
 | `text("label")` | `--act label` | `std_msgs/String` | The `label` output, as text |
@@ -108,7 +145,7 @@ def robot():
         reading("battery", "battery_state", "sensor_msgs/msg/BatteryState", field="percentage"),
         command("grip", "gripper", "std_msgs/msg/Bool"),
         SensorTopic("scan", "sensor_msgs/msg/LaserScan",
-                    lambda scan: {"nearest": min(scan.ranges)}),
+                    lambda scan, sensors: {"nearest": min(scan.ranges)}),
     ]
 ```
 
@@ -117,7 +154,10 @@ python -m phyelds.ros2 program:main --topics my_robot:robot --ros-args -r __ns:=
 ```
 
 Types are named as ROS names them, `package/msg/Type`. The conversions see only the fields
-of the messages, so they are tested without ROS. An `ActuatorTopic` of your own takes
+of the messages, so they are tested without ROS. A `SensorTopic` of your own takes
+`read(message, sensors)`: it returns the sensors a message gives, from the message and the
+latest sensors, such as the `heading` to turn a reading into the frame of the world. An
+`ActuatorTopic` of your own takes
 `write(message, value, sensors)`: it fills a new message from the value of the output and
 the latest sensors, and returns whether to publish it.
 
@@ -139,6 +179,19 @@ Every node hears the shared topic, and a strategy decides which senders are neig
 - **`WithinRange(radius)`** (`--neighbourhood range --range R`): the senders within `radius`
   metres, from the positions in their messages. It brings the range of a radio to a
   simulator, where the network has none.
+- **`Transforms(frame, locate, radius=None)`** (`--neighbourhood tf`): each message carries
+  the frame of its sender, such as `robot2/base_link`, and both frames are located in a frame
+  all the robots share, such as `map`: from a localisation, a motion capture system or a
+  simulator, through tf2. `tf_locator(node, "map")` locates frames with tf2; it needs the
+  `rclpy` node, so `AggregateRosNode` also takes, as `neighbourhood`, a function of the node
+  that builds the strategy:
+
+    ```python
+    AggregateRosNode(
+        program,
+        neighbourhood=lambda node: Transforms("robot1/base_link", tf_locator(node, "map"), radius=2.0),
+    )
+    ```
 
 A sender whose position is not known yet is a neighbour of `Reachable` without a distance,
 and is not a neighbour of `WithinRange`. Positions must be in a frame all the robots share:
@@ -160,6 +213,7 @@ whether it measures its neighbours.
 | `time` | The time of the node, in seconds: the simulation time with `use_sim_time` | `local_time()` |
 | `position` | The position, from a sensor topic; `None` until sensed | `local_position()` |
 | `heading` | Where the robot faces, a horizontal unit vector, from a sensor topic | `heading.sense()` |
+| `obstacle` | Away from the nearest thing a laser scan sees, in the frame of the world, with `laser_obstacle` | `obstacle.sense()` |
 | any other | What the sensor topics give | `sense(name)` |
 | `neighbors_distances` | Map from neighbour id to distance, when the neighbourhood measures them | `neighbors_distances()` |
 | `neighbors_vectors` | Map from neighbour id to its vector, in the frame of the positions | `neighbors_vectors()` |
