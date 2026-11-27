@@ -247,6 +247,82 @@ def test_batch_runtime_forgets_every_device_on_reset():
     assert torch.equal(together.run_round(batch_sensors)[1], first[1])
 
 
+RESET = [3, 7, 8, 20, 41]
+
+
+def _without(neighbors: dict, devices: list[int]) -> dict:
+    """``neighbors`` with ``devices`` linked to nobody."""
+    return {
+        device: [] if device in devices else [other for other in peers if other not in devices]
+        for device, peers in neighbors.items()
+    }
+
+
+@pytest.mark.parametrize("device", DEVICES)
+@pytest.mark.parametrize("program", PROGRAMS, ids=lambda program: program.__name__)
+def test_batch_runtime_resets_some_devices_as_devices_that_leave_and_join_again(program, device):
+    world, sensors, batch_sensors = _world(device)
+    heard = world.to_neighbors()
+    isolated = GraphTopology.from_neighbors(_without(heard, RESET), device=device)
+    alone = SynchronousRuntime(program)
+    together = BatchSynchronousRuntime(program, world)
+    for _ in range(3):
+        alone.run_round(sensors, heard)
+        together.run_round(batch_sensors)
+    # A round without them: they leave the per-device runtime, and hear nobody in the batch.
+    alone.run_round({d: s for d, s in sensors.items() if d not in RESET}, _without(heard, RESET))
+    together.run_round(batch_sensors, topology=isolated)
+
+    together.reset(torch.tensor(RESET, device=device))
+
+    for _ in range(ROUNDS):
+        expected = alone.run_round(sensors, heard)
+        actual = _per_device(together.run_round(batch_sensors, topology=world), COUNT)
+        assert actual == expected
+
+
+def test_batch_runtime_forgets_the_outputs_of_the_devices_it_resets():
+    world, _, batch_sensors = _world("cpu")
+    together = BatchSynchronousRuntime(branches, world)
+    together.run_round(batch_sensors)
+
+    together.reset(torch.tensor(RESET))
+
+    _, stored = together.outputs["total"]
+    assert torch.nonzero(~stored).squeeze(-1).tolist() == RESET
+
+
+def test_batch_runtime_changes_nothing_when_it_resets_no_device():
+    world, _, batch_sensors = _world("cpu")
+    reset, kept = BatchSynchronousRuntime(branches, world), BatchSynchronousRuntime(branches, world)
+    for runtime in (reset, kept):
+        runtime.run_round(batch_sensors)
+
+    reset.reset(torch.tensor([], dtype=torch.int64))
+
+    assert torch.equal(reset.run_round(batch_sensors)[1], kept.run_round(batch_sensors)[1])
+
+
+def test_batch_runtime_forgets_every_device_when_it_resets_them_all():
+    world, _, batch_sensors = _world("cpu")
+    together = BatchSynchronousRuntime(branches, world)
+    first = together.run_round(batch_sensors)
+    together.run_round(batch_sensors)
+
+    together.reset(torch.arange(COUNT))
+
+    assert torch.equal(together.run_round(batch_sensors)[1], first[1])
+
+
+@pytest.mark.parametrize("ids", [[COUNT], [-1]])
+def test_batch_runtime_refuses_to_reset_devices_it_does_not_have(ids):
+    world, _, _ = _world("cpu")
+    together = BatchSynchronousRuntime(branches, world)
+
+    with pytest.raises(ValueError, match="devices"):
+        together.reset(torch.tensor(ids))
+
+
 def _increment(value):
     return value + 1
 
