@@ -222,21 +222,38 @@ def radius_topology(positions: torch.Tensor, radius: float) -> GraphTopology:
         return GraphTopology.empty(count, positions.device)
 
     grid = _Grid.build(located, radius * _MARGIN if radius > 0.0 else 1.0)
+    # Within a radius each device hears the other: half the cells around each cell find
+    # every pair once, and each pair gives both edges, of the same length.
     parts = [
         found
-        for shift in itertools.product((-1, 0, 1), repeat=grid.dims)
+        for shift in _half_shifts(grid.dims)
         if (found := grid.pairs_within(located, radius, shift)) is not None
     ]
     if not parts:
         return GraphTopology.empty(count, positions.device)
-    senders = torch.cat([part[0] for part in parts])
-    receivers = torch.cat([part[1] for part in parts])
-    distances = torch.cat([part[2] for part in parts])
+    firsts = torch.cat([part[0] for part in parts])
+    seconds = torch.cat([part[1] for part in parts])
+    lengths = torch.cat([part[2] for part in parts])
+    senders = torch.cat([firsts, seconds])
+    receivers = torch.cat([seconds, firsts])
+    distances = torch.cat([lengths, lengths])
     order = torch.argsort(receivers * count + senders)
     receivers = receivers[order]
     return GraphTopology(
         count, senders[order], receivers, _offsets(receivers, count), distances[order]
     )
+
+
+def _half_shifts(dims: int) -> list[tuple[int, ...]]:
+    """
+    The shifts to the cell itself and to half the cells around it: those whose first
+    coordinate that is not zero is positive. With the opposite half, they are all the cells
+    around.
+    """
+    return [
+        shift for shift in itertools.product((-1, 0, 1), repeat=dims)
+        if next((step for step in shift if step != 0), 1) > 0
+    ]
 
 
 def _lengths(vectors: torch.Tensor) -> torch.Tensor:
@@ -314,8 +331,10 @@ class _Grid:
             return None
         receiver_cells = torch.nonzero(matched).squeeze(-1)
         senders, receivers = self._cross(receiver_cells, safe[receiver_cells])
-        apart = senders != receivers
-        senders, receivers = senders[apart], receivers[apart]
+        if not any(shift):
+            # In the cell itself each pair comes in both orders, and each device with itself.
+            apart = senders < receivers
+            senders, receivers = senders[apart], receivers[apart]
         distances = _lengths(positions[senders] - positions[receivers])
         within = distances <= radius
         if not bool(within.any()):

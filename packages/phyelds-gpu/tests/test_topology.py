@@ -2,6 +2,7 @@
 The communication graph as tensors: the radius search on a uniform grid, and the edges into a
 batch of devices.
 """
+import itertools
 import math
 import random
 
@@ -40,6 +41,30 @@ def test_radius_topology_links_the_devices_an_exact_scan_finds(device, dims, rad
     topology = radius_topology(torch.tensor(positions, device=device), radius)
 
     assert topology.to_neighbors() == _scan(positions, radius)
+
+
+@pytest.mark.parametrize("device", DEVICES)
+@pytest.mark.parametrize("dims", [2, 3])
+def test_radius_topology_links_the_devices_exactly_at_the_radius(device, dims):
+    # A lattice of step 0.5, twice over: many devices share a cell, and many pairs lie
+    # exactly at the radius, where rounding would show.
+    side = range(-3, 4)
+    lattice = [tuple(0.5 * step for step in point) for point in itertools.product(side, repeat=dims)]
+    positions = lattice + lattice
+
+    topology = radius_topology(torch.tensor(positions, device=device), 1.0)
+
+    assert topology.to_neighbors() == _scan(positions, 1.0)
+
+
+@pytest.mark.parametrize("device", DEVICES)
+def test_radius_topology_measures_each_edge_the_same_both_ways(device):
+    topology = radius_topology(torch.tensor(_cloud(300, 3), device=device), 1.2)
+
+    lengths = dict(zip(zip(topology.senders.tolist(), topology.receivers.tolist()),
+                       topology.distances.tolist()))
+    assert all(lengths[(receiver, sender)] == length
+               for (sender, receiver), length in lengths.items())
 
 
 @pytest.mark.parametrize("device", DEVICES)
