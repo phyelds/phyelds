@@ -154,6 +154,34 @@ class GraphTopology:
         back = torch.clamp(found, max=max(count - 1, 0))
         return torch.where((found < count) & (keys[back] == wanted), back, -1)
 
+    def edges_from(self, previous: "GraphTopology") -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Where each edge was in ``previous``: the edge with the same sender and receiver.
+
+        Args:
+            previous: A graph of the same devices.
+
+        Returns:
+            The index of each edge among those of ``previous`` (``int64 [E]``, any valid
+                index where there is none), and whether ``previous`` has it (``bool [E]``).
+
+        Raises:
+            ValueError: If ``previous`` links another number of devices.
+        """
+        if previous.num_devices != self.num_devices:
+            raise ValueError(
+                f"a graph of {self.num_devices} devices cannot follow one of"
+                f" {previous.num_devices}"
+            )
+        # Grouped by receiver and sorted by sender: the keys of both graphs are sorted.
+        keys = previous.receivers * self.num_devices + previous.senders
+        wanted = self.receivers * self.num_devices + self.senders
+        count = keys.numel()
+        if count == 0:
+            return torch.zeros_like(wanted), torch.zeros_like(wanted, dtype=torch.bool)
+        found = torch.clamp(torch.searchsorted(keys, wanted), max=count - 1)
+        return found, keys[found] == wanted
+
     def to_neighbors(self) -> dict[int, list[int]]:
         """
         The neighbors of each device, as plain Python values.

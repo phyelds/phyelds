@@ -31,18 +31,28 @@ class BatchSynchronousRuntime:
         self._states = States(topology)
         self._messages = SynchronousMessages(topology)
 
-    def run_round(self, sensors: Mapping[str, Any]) -> Any:
+    def run_round(
+        self, sensors: Mapping[str, Any], *, topology: GraphTopology | None = None
+    ) -> Any:
         """
         Run the program once on every device.
 
         Args:
             sensors: The sensors of the devices, by name: a tensor with a row per device, or
                 one value for all.
+            topology: Who hears whom from this round on, for devices that move; the current
+                graph by default. What a device sent to all its neighbors reaches those of
+                the new graph; what is kept along an edge stays only if the edge does.
 
         Returns:
             What the program returned: a tensor with a row per device for each value, or a
                 single value if it is the same for every device.
+
+        Raises:
+            ValueError: If ``topology`` links another number of devices.
         """
+        if topology is not None and topology is not self.topology:
+            self._move_to(topology)
         batch = BatchEngine(self._edges, self._states, self._messages, sensors)
         result = batch.run(self.program)
         devices = self._edges.devices
@@ -51,6 +61,14 @@ class BatchSynchronousRuntime:
         for name, (values, stored) in batch.node_context.stored.items():
             self.outputs[name] = write_rows(None, count, devices, values, stored)
         return result
+
+    def _move_to(self, topology: GraphTopology) -> None:
+        """Make ``topology`` the graph of the next rounds, moving what is kept along edges."""
+        index, kept = topology.edges_from(self.topology)
+        self._states.move_to(topology, index, kept)
+        self._messages.move_to(topology, index, kept)
+        self.topology = topology
+        self._edges = topology.batch()
 
     def reset(self) -> None:
         """Forget the state, the messages and the outputs of every device."""

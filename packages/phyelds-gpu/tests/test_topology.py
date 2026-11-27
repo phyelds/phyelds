@@ -134,3 +134,28 @@ def test_graph_topology_from_neighbors_ignores_self_loops_and_measures_with_posi
 
     assert topology.to_neighbors() == {0: [1], 1: [0]}
     assert topology.distances.tolist() == [5.0, 5.0]
+
+
+@pytest.mark.parametrize("device", DEVICES)
+def test_graph_topology_finds_the_previous_edge_with_the_same_sender_and_receiver(device):
+    previous = GraphTopology.from_neighbors({0: [1, 2], 1: [0], 2: [], 3: [2]}, device=device)
+    current = GraphTopology.from_neighbors({0: [2, 3], 1: [], 2: [3], 3: [2]}, device=device)
+
+    index, kept = current.edges_from(previous)
+
+    # current edges: 2->0, 3->0, 3->2, 2->3; previous: 1->0, 2->0, 0->1, 2->3
+    assert kept.tolist() == [True, False, False, True]
+    assert index[kept].tolist() == [1, 3]
+
+
+def test_graph_topology_finds_no_previous_edge_in_a_graph_without_edges():
+    current = GraphTopology.from_neighbors({0: [1], 1: [0]})
+
+    _, kept = current.edges_from(GraphTopology.empty(2))
+
+    assert kept.tolist() == [False, False]
+
+
+def test_graph_topology_refuses_to_follow_a_graph_of_other_devices():
+    with pytest.raises(ValueError, match="devices"):
+        GraphTopology.empty(3).edges_from(GraphTopology.empty(2))
